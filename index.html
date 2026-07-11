@@ -145,6 +145,7 @@ select.inp{cursor:pointer}
   <div class="user-bar">
     <span class="dot-live"></span>
     <span id="last-update" style="opacity:.6;font-size:11px"></span>
+    <div id="presencia-bar"></div>
     <div id="user-info" style="display:none;align-items:center;gap:8px">
       <img id="user-avatar" class="user-avatar" src="" alt="">
       <span id="user-name" style="font-size:12px"></span>
@@ -511,11 +512,13 @@ select.inp{cursor:pointer}
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, writeBatch, getDocs, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getDatabase, ref, set, onValue, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-const firebaseConfig={apiKey:"AIzaSyDdcAGBTp_ekIhSJdelyR4M_gY3HshvDhI",authDomain:"seguimiento-poder-judicial.firebaseapp.com",projectId:"seguimiento-poder-judicial",storageBucket:"seguimiento-poder-judicial.firebasestorage.app",messagingSenderId:"25916877483",appId:"1:25916877483:web:756ffe74263b01b61d65ee"};
-const EMAILS_AUTORIZADOS=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com','miguel.del08@gmail.com','rromerom2002@gmail.com'];
+const firebaseConfig={apiKey:"AIzaSyDdcAGBTp_ekIhSJdelyR4M_gY3HshvDhI",authDomain:"seguimiento-poder-judicial.firebaseapp.com",projectId:"seguimiento-poder-judicial",storageBucket:"seguimiento-poder-judicial.firebasestorage.app",messagingSenderId:"25916877483",appId:"1:25916877483:web:756ffe74263b01b61d65ee",databaseURL:"https://seguimiento-poder-judicial-default-rtdb.firebaseio.com"};
+const EMAILS_AUTORIZADOS=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com','miguel.del08@gmail.com','rromerom2002@gmail.com','angel.cruz.condori.2@gmail.com','noemi.optical@gmail.com'];
 const EMAILS_ADMIN=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com'];
 const app=initializeApp(firebaseConfig),db=getFirestore(app),auth=getAuth(app),provider=new GoogleAuthProvider();
+const rtdb=getDatabase(app);
 const TOTAL=745,FIN=new Date('2026-09-06');
 const FERIADOS=['2026-07-23','2026-07-28','2026-07-29','2026-08-06','2026-08-30'];
 let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[];
@@ -569,6 +572,7 @@ onAuthStateChanged(auth,user=>{
   esAdmin=user&&!user.isAnonymous&&EMAILS_ADMIN.includes(user.email);
   actualizarUI();
   document.getElementById('loading').style.display='none';
+  registrarPresencia(user);
 });
 
 // Safety: always hide loading after 5 seconds regardless
@@ -601,7 +605,53 @@ window.iniciarSesion=async function(){
     }
   }catch(e){console.error(e);}
 };
-window.cerrarSesion=async function(){await signOut(auth);signInAnonymously(auth);};
+window.cerrarSesion=async function(){
+  // Remove presence before signing out
+  if(usuarioActual&&!usuarioActual.isAnonymous){
+    await set(ref(rtdb,`presencia/${usuarioActual.uid}`),null);
+  }
+  await signOut(auth);signInAnonymously(auth);
+};
+
+// Presence tracking
+function registrarPresencia(user){
+  if(!user||user.isAnonymous)return;
+  const presRef=ref(rtdb,`presencia/${user.uid}`);
+  const datos={
+    nombre:user.displayName||user.email,
+    email:user.email,
+    foto:user.photoURL||'',
+    desde:serverTimestamp(),
+    activo:true,
+  };
+  set(presRef,datos);
+  onDisconnect(presRef).remove();
+}
+
+// Listen to presence
+const presenciaRef=ref(rtdb,'presencia');
+onValue(presenciaRef,snap=>{
+  const usuarios=[];
+  snap.forEach(child=>{usuarios.push(child.val());});
+  renderPresencia(usuarios);
+});
+
+function renderPresencia(usuarios){
+  const el=document.getElementById('presencia-bar');
+  if(!el)return;
+  if(!usuarios.length){el.innerHTML='';return;}
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="font-size:11px;color:rgba(255,255,255,.6)">En línea:</span>
+      ${usuarios.map(u=>`
+        <div style="display:flex;align-items:center;gap:5px" title="${u.email}">
+          ${u.foto?`<img src="${u.foto}" style="width:22px;height:22px;border-radius:50%;border:2px solid #4ade80">`
+            :`<div style="width:22px;height:22px;border-radius:50%;background:#4ade80;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">${(u.nombre||'?')[0].toUpperCase()}</div>`}
+          <span style="font-size:11px;color:rgba(255,255,255,.85)">${(u.nombre||u.email).split(' ')[0]}</span>
+        </div>`).join('<span style="color:rgba(255,255,255,.3)">·</span>')}
+      <span style="background:#4ade80;color:#064e2e;font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px">${usuarios.length}</span>
+    </div>`;
+}
 
 const q=query(collection(db,'registros'),orderBy('fecha','desc'),orderBy('ts','desc'));
 onSnapshot(q,snap=>{registros=snap.docs.map(d=>({id:d.id,...d.data()}));renderTodo();},err=>{console.error(err);});
