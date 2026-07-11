@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracker SD-WAN — Poder Judicial del Perú</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --navy:#1E2761;--teal:#0F6E56;--purple:#534AB7;--amber:#BA7517;
+    --red:#A32D2D;--gray:#5F5E5A;--surface:#F4F7FC;--card:#FFFFFF;
+    --border:#D8DEE9;--text:#1a1a1a;--text2:#5B6B82;--text3:#888780;
+    --green-bg:#E1F5EE;--green-tx:#085041;
+    --purple-bg:#EEEDFE;--purple-tx:#3C3489;
+    --amber-bg:#FAEEDA;--amber-tx:#633806;
+    --red-bg:#FCEBEB;--red-tx:#791F1F;
+    --radius:8px;
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--surface);color:var(--text);font-size:14px;min-height:100vh}
+  .topbar{background:var(--navy);color:#fff;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .topbar-title{font-size:15px;font-weight:600}
+  .topbar-sub{font-size:11px;opacity:.7;margin-top:2px}
+  .dot-live{width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block;margin-right:6px;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .tabs{background:#fff;border-bottom:1px solid var(--border);display:flex;gap:0;padding:0 24px}
+  .tab{padding:12px 20px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);font-weight:500;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none}
+  .tab.active{color:var(--navy);border-bottom-color:var(--navy)}
+  .tab:hover:not(.active){color:var(--text);border-bottom-color:var(--border)}
+  .content{padding:20px 24px;max-width:1100px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:16px}
+  .card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px}
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+  .kpi-val{font-size:28px;font-weight:600;color:var(--navy);line-height:1}
+  .kpi-lbl{font-size:11px;color:var(--text3);margin-top:5px;text-transform:uppercase;letter-spacing:.4px}
+  .kpi-sub{font-size:11px;color:var(--text2);margin-top:3px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:600px){.grid2{grid-template-columns:1fr}}
+  .bar-bg{background:var(--border);border-radius:6px;height:10px;overflow:hidden;margin:6px 0}
+  .bar-fill{height:10px;border-radius:6px;transition:width .5s ease}
+  .badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
+  .btn{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:8px 16px;font-size:13px;color:var(--text);cursor:pointer;font-weight:500;transition:background .15s}
+  .btn:hover{background:var(--surface)}
+  .btn-primary{background:var(--navy);border-color:var(--navy);color:#fff}
+  .btn-primary:hover{background:#16204A}
+  .btn-danger{background:#fff;border-color:#fca5a5;color:var(--red-tx)}
+  .inp{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:8px 11px;font-size:13px;background:#fff;color:var(--text);font-family:inherit}
+  .inp:focus{outline:none;border-color:var(--navy)}
+  select.inp{cursor:pointer}
+  .label{font-size:12px;color:var(--text2);font-weight:500;display:block;margin-bottom:4px}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:500px){.form-grid{grid-template-columns:1fr}}
+  .log-row{display:grid;grid-template-columns:85px 1fr 65px 55px 1fr;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+  .log-row:last-child{border-bottom:none}
+  .log-head{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border)!important;padding-bottom:6px!important}
+  .hito-row{border-left:3px solid;border-radius:0 8px 8px 0;padding:10px 14px;background:#fff;border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:8px}
+  .semaforo-row{display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .semaforo-row:last-child{border-bottom:none}
+  .dot-sm{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+  .error{font-size:12px;color:var(--red-tx);background:var(--red-bg);padding:6px 10px;border-radius:6px;margin-top:8px;display:none}
+  .success-msg{font-size:12px;color:var(--green-tx);background:var(--green-bg);padding:6px 10px;border-radius:6px;margin-top:8px;display:none}
+  #loading{position:fixed;inset:0;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;z-index:999;font-size:15px;color:var(--navy);font-weight:500}
+</style>
+</head>
+<body>
+
+<div id="loading">Conectando con Firebase...</div>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title">Tracker SD-WAN · Poder Judicial del Perú</div>
+    <div class="topbar-sub">ON Empresas S.A.C. · Contrato CP-SER-02-2025</div>
+  </div>
+  <div style="font-size:12px;color:rgba(255,255,255,.8)">
+    <span class="dot-live"></span>En tiempo real
+    <span id="last-update" style="margin-left:12px;opacity:.6"></span>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('dashboard')">Dashboard</button>
+  <button class="tab" onclick="showTab('registro')">Registrar avance</button>
+  <button class="tab" onclick="showTab('hitos')">Hitos y proyeccion</button>
+  <button class="tab" onclick="showTab('historial')">Historial</button>
+</div>
+
+<div class="content">
+
+<!-- DASHBOARD -->
+<div id="tab-dashboard">
+  <div class="kpi-grid" id="kpis">
+    <div class="kpi"><div class="kpi-val">—</div><div class="kpi-lbl">Equipos configurados</div></div>
+    <div class="kpi"><div class="kpi-val">—</div><div class="kpi-lbl">Sedes instaladas</div></div>
+    <div class="kpi"><div class="kpi-val">—</div><div class="kpi-lbl">Configurados hoy</div></div>
+    <div class="kpi"><div class="kpi-val">—</div><div class="kpi-lbl">Instalados hoy</div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Produccion — configuracion de equipos</div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3)">
+        <span id="prod-label">0 / 745</span><span id="prod-pct" style="font-weight:600">0%</span>
+      </div>
+      <div class="bar-bg"><div class="bar-fill" id="prod-bar" style="width:0%;background:var(--teal)"></div></div>
+      <div style="font-size:12px;color:var(--text2);margin-top:6px" id="prod-proj">Cargando...</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Campo — instalacion en sede</div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3)">
+        <span id="campo-label">0 / 745</span><span id="campo-pct" style="font-weight:600">0%</span>
+      </div>
+      <div class="bar-bg"><div class="bar-fill" id="campo-bar" style="width:0%;background:var(--purple)"></div></div>
+      <div style="font-size:12px;color:var(--text2);margin-top:6px" id="campo-proj">Cargando...</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Semaforo de riesgo</div>
+    <div id="semaforo">Cargando...</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Ultimas entradas</div>
+    <div id="log-dashboard">Cargando...</div>
+  </div>
+</div>
+
+<!-- REGISTRO -->
+<div id="tab-registro" style="display:none">
+  <div class="card">
+    <div class="card-title">Registrar avance del dia</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="form-grid">
+        <div>
+          <label class="label">Fecha</label>
+          <input type="date" class="inp" id="f-fecha">
+        </div>
+        <div>
+          <label class="label">Coordinador / Responsable</label>
+          <select class="inp" id="f-coord">
+            <option value="">Seleccionar...</option>
+            <option>Ayrton Hipolito (Zona Norte)</option>
+            <option>Rodrigo Romero (Zona Sur)</option>
+            <option>Miguel Pando (Zona Oriente)</option>
+            <option>Angel Cruz (Zona Centro)</option>
+            <option>Noemi Rivera (Produccion)</option>
+            <option>NIRQA (Configuracion)</option>
+            <option>TIC+ / Carlos Rodriguez (Campo)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div>
+          <label class="label">Frente de trabajo</label>
+          <select class="inp" id="f-frente">
+            <option value="">Seleccionar...</option>
+            <option value="produccion">Linea de produccion (configuracion)</option>
+            <option value="campo">Campo (instalacion en sede)</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">Unidades completadas hoy</label>
+          <input type="number" class="inp" id="f-unidades" min="1" max="100" placeholder="ej. 15">
+        </div>
+      </div>
+      <div>
+        <label class="label">Zona / Sedes especificas (opcional)</label>
+        <input type="text" class="inp" id="f-sedes" placeholder="ej. Lima Centro — PJ041, PJ042, PJ043">
+      </div>
+      <div>
+        <label class="label">Observaciones / incidencias</label>
+        <input type="text" class="inp" id="f-obs" placeholder="ej. 2 sedes con acceso restringido, se reprograman para manana">
+      </div>
+      <div id="f-error" class="error"></div>
+      <div id="f-success" class="success-msg"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="guardar()">Guardar registro</button>
+        <button class="btn" onclick="limpiarForm()">Limpiar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HITOS -->
+<div id="tab-hitos" style="display:none">
+  <div class="card">
+    <div class="card-title">Proyeccion automatica</div>
+    <div id="proyeccion-detalle">Cargando...</div>
+  </div>
+  <div id="hitos-lista"></div>
+</div>
+
+<!-- HISTORIAL -->
+<div id="tab-historial" style="display:none">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="card-title" style="margin:0">Historial completo</div>
+      <button class="btn btn-danger" style="font-size:12px" onclick="confirmarBorrar()">Borrar seleccion</button>
+    </div>
+    <div id="historial-tabla">Cargando...</div>
+  </div>
+</div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDdcAGBTp_ekIhSJdelyR4M_gY3HshvDhI",
+  authDomain: "seguimiento-poder-judicial.firebaseapp.com",
+  projectId: "seguimiento-poder-judicial",
+  storageBucket: "seguimiento-poder-judicial.firebasestorage.app",
+  messagingSenderId: "25916877483",
+  appId: "1:25916877483:web:756ffe74263b01b61d65ee"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const TOTAL = 745;
+const META = new Date('2026-09-04');
+const FIN = new Date('2026-09-06');
+const FERIADOS = ['2026-07-23','2026-07-28','2026-07-29','2026-08-06','2026-08-30'];
+
+let registros = [];
+let seleccionados = new Set();
+
+function esHabil(d){
+  const s = d.toISOString().slice(0,10);
+  return d.getDay()!==0 && d.getDay()!==6 && !FERIADOS.includes(s);
+}
+function diasHabilesHasta(desde, hasta){
+  let n=0, d=new Date(desde);
+  while(d<=hasta){if(esHabil(d))n++;d.setDate(d.getDate()+1);}
+  return n;
+}
+function sumarDiasHabiles(desde, n){
+  let d=new Date(desde), c=0;
+  while(c<n){d.setDate(d.getDate()+1);if(esHabil(d))c++;}
+  return d;
+}
+function fmt(s){
+  if(!s)return '—';
+  const d=new Date(s+'T00:00:00');
+  return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function hoy(){return new Date().toISOString().slice(0,10);}
+
+function totales(){
+  let prod=0,campo=0;
+  registros.forEach(r=>{
+    if(r.frente==='produccion') prod+=r.unidades;
+    else if(r.frente==='campo') campo+=r.unidades;
+  });
+  return{prod:Math.min(prod,TOTAL), campo:Math.min(campo,TOTAL)};
+}
+
+function hoyTotales(){
+  const h=hoy();
+  let prod=0,campo=0;
+  registros.filter(r=>r.fecha===h).forEach(r=>{
+    if(r.frente==='produccion')prod+=r.unidades;
+    else campo+=r.unidades;
+  });
+  return{prod,campo};
+}
+
+function ritmo(frente){
+  const dias=10;
+  const corte=new Date();corte.setDate(corte.getDate()-dias);
+  const sum=registros.filter(r=>r.frente===frente&&new Date(r.fecha+'T00:00:00')>=corte)
+    .reduce((a,r)=>a+r.unidades,0);
+  const dh=Math.max(1,diasHabilesHasta(corte,new Date()));
+  return Math.max(1,Math.round((sum/dh)*10)/10);
+}
+
+function proyectar(completadas,frente){
+  const pendientes=TOTAL-completadas;
+  if(pendientes<=0)return{ok:true,fecha:'Completado',holgura:999,riesgo:'ok'};
+  const r=ritmo(frente)||15;
+  const dias=Math.ceil(pendientes/r);
+  const fp=sumarDiasHabiles(new Date(),dias);
+  const holgura=Math.round((FIN-fp)/(1000*60*60*24));
+  const riesgo=holgura<0?'critico':holgura<4?'alerta':'ok';
+  return{ok:false,fecha:fp.toISOString().slice(0,10),holgura,riesgo,ritmo:r,pendientes};
+}
+
+function colorR(r){
+  if(r==='ok')return{bg:'#E1F5EE',tx:'#085041',lbl:'En tiempo'};
+  if(r==='alerta')return{bg:'#FAEEDA',tx:'#633806',lbl:'Riesgo medio'};
+  return{bg:'#FCEBEB',tx:'#791F1F',lbl:'Riesgo critico'};
+}
+
+function renderTodo(){
+  const t=totales();
+  const ht=hoyTotales();
+  const pj=proyectar(t.prod,'produccion');
+  const cj=proyectar(t.campo,'campo');
+
+  // KPIs
+  const pp=Math.round(t.prod/TOTAL*100);
+  const cp=Math.round(t.campo/TOTAL*100);
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi"><div class="kpi-val">${t.prod}</div><div class="kpi-lbl">Equipos configurados</div><div class="kpi-sub">${pp}% del universo</div></div>
+    <div class="kpi"><div class="kpi-val">${t.campo}</div><div class="kpi-lbl">Sedes instaladas</div><div class="kpi-sub">${cp}% del universo</div></div>
+    <div class="kpi"><div class="kpi-val">${ht.prod}</div><div class="kpi-lbl">Configurados hoy</div><div class="kpi-sub">${hoy()}</div></div>
+    <div class="kpi"><div class="kpi-val">${ht.campo}</div><div class="kpi-lbl">Instalados hoy</div><div class="kpi-sub">${hoy()}</div></div>
+  `;
+
+  // Barras
+  document.getElementById('prod-label').textContent=`${t.prod} / ${TOTAL} equipos`;
+  document.getElementById('prod-pct').textContent=`${pp}%`;
+  document.getElementById('prod-bar').style.width=pp+'%';
+  document.getElementById('prod-proj').innerHTML=pj.ok
+    ?'<span style="color:#085041;font-weight:600">Completado</span>'
+    :`Ritmo actual: <strong>${pj.ritmo}/dia</strong> &nbsp;·&nbsp; Proyeccion: <strong>${fmt(pj.fecha)}</strong> &nbsp;·&nbsp; Holgura vs 06/09: <strong style="color:${colorR(pj.riesgo).tx}">${pj.holgura} dias</strong>`;
+
+  document.getElementById('campo-label').textContent=`${t.campo} / ${TOTAL} sedes`;
+  document.getElementById('campo-pct').textContent=`${cp}%`;
+  document.getElementById('campo-bar').style.width=cp+'%';
+  document.getElementById('campo-proj').innerHTML=cj.ok
+    ?'<span style="color:#085041;font-weight:600">Completado</span>'
+    :`Ritmo actual: <strong>${cj.ritmo}/dia</strong> &nbsp;·&nbsp; Proyeccion: <strong>${fmt(cj.fecha)}</strong> &nbsp;·&nbsp; Holgura vs 06/09: <strong style="color:${colorR(cj.riesgo).tx}">${cj.holgura} dias</strong>`;
+
+  // Semaforo
+  const rGen=pj.riesgo==='critico'||cj.riesgo==='critico'?'critico':
+    pj.riesgo==='alerta'||cj.riesgo==='alerta'?'alerta':'ok';
+  const items=[
+    {lbl:'Produccion — configuracion',r:pj.riesgo,nota:`${t.prod}/${TOTAL} equipos`},
+    {lbl:'Campo — instalacion en sede',r:cj.riesgo,nota:`${t.campo}/${TOTAL} sedes`},
+    {lbl:'Item 1 — Bitel (cabeceras)',r:'alerta',nota:'Cabecera instalada, sin integrar red lab Integratel'},
+    {lbl:'Item 2 — enlaces',r:'alerta',nota:'Pendiente cierre contractual'},
+    {lbl:'Item 4 — Palo Alto (PJ)',r:'alerta',nota:'Responsabilidad PJ — pendiente coordinacion'},
+  ];
+  const cg=colorR(rGen);
+  document.getElementById('semaforo').innerHTML=`
+    <div style="display:inline-flex;align-items:center;gap:8px;background:${cg.bg};color:${cg.tx};padding:6px 14px;border-radius:20px;font-weight:600;font-size:13px;margin-bottom:12px">
+      Estado general: ${cg.lbl}
+    </div>
+    ${items.map(i=>{const c=colorR(i.r);return`
+    <div class="semaforo-row">
+      <div class="dot-sm" style="background:${c.tx}"></div>
+      <span style="min-width:220px;font-weight:500">${i.lbl}</span>
+      <span class="badge" style="background:${c.bg};color:${c.tx}">${c.lbl}</span>
+      <span style="font-size:12px;color:var(--text3);margin-left:8px">${i.nota}</span>
+    </div>`}).join('')}`;
+
+  // Log dashboard (ultimos 6)
+  const ult=registros.slice(0,6);
+  document.getElementById('log-dashboard').innerHTML=ult.length?`
+    <div class="log-row log-head"><span>Fecha</span><span>Responsable</span><span>Frente</span><span>Uds.</span><span>Obs.</span></div>
+    ${ult.map(r=>`<div class="log-row">
+      <span style="color:var(--text3)">${fmt(r.fecha)}</span>
+      <span style="font-weight:500">${r.coord.split('(')[0].trim()}</span>
+      <span><span class="badge" style="background:${r.frente==='produccion'?'#E1F5EE':'#EEEDFE'};color:${r.frente==='produccion'?'#085041':'#3C3489'}">${r.frente==='produccion'?'Prod.':'Campo'}</span></span>
+      <span style="font-weight:600">${r.unidades}</span>
+      <span style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.sedes||r.obs||'—'}</span>
+    </div>`).join('')}`
+    :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros aun. Usa la pestana Registrar avance.</div>';
+
+  // Proyeccion detallada
+  const dhRestProd=diasHabilesHasta(new Date(),META);
+  const dhRestCampo=diasHabilesHasta(new Date(),META);
+  document.getElementById('proyeccion-detalle').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-bottom:8px">Produccion</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.9">
+          Completado: <strong>${t.prod}/${TOTAL}</strong><br>
+          Pendiente: <strong>${TOTAL-t.prod}</strong> equipos<br>
+          Ritmo actual: <strong>${pj.ritmo} equipos/dia</strong><br>
+          Dias habiles para meta: <strong>${Math.ceil((TOTAL-t.prod)/pj.ritmo)}</strong><br>
+          Fecha estimada fin: <strong>${fmt(pj.fecha)}</strong><br>
+          Holgura vs 06/09: <strong style="color:${colorR(pj.riesgo).tx}">${pj.holgura} dias</strong>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-bottom:8px">Campo</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.9">
+          Completado: <strong>${t.campo}/${TOTAL}</strong><br>
+          Pendiente: <strong>${TOTAL-t.campo}</strong> sedes<br>
+          Ritmo actual: <strong>${cj.ritmo} sedes/dia</strong><br>
+          Dias habiles para meta: <strong>${Math.ceil((TOTAL-t.campo)/cj.ritmo)}</strong><br>
+          Fecha estimada fin: <strong>${fmt(cj.fecha)}</strong><br>
+          Holgura vs 06/09: <strong style="color:${colorR(cj.riesgo).tx}">${cj.holgura} dias</strong>
+        </div>
+      </div>
+    </div>`;
+
+  // Hitos
+  const h=new Date();
+  const hitos=[
+    {f:'2026-07-06',lbl:'Inicio despliegue en campo',det:'111 sedes habilitadas con gabinete Item 5',color:'#0F6E56'},
+    {f:'2026-07-15',lbl:'Meta Fase 1 — 111 sedes SD-WAN',det:'Culminacion estimada de sedes habilitadas al 29/06',color:'#0F6E56'},
+    {f:'2026-08-06',lbl:'Deadline contingencia Item 1 (Bitel)',det:'Si no hay integracion Integratel activa, se ejecuta plan con Telefonica',color:'#BA7517'},
+    {f:'2026-09-04',lbl:'Meta interna de implementacion',det:'745/745 sedes instaladas — ajuste de politicas y calidad',color:'#0F6E56'},
+    {f:'2026-09-06',lbl:'Fin contractual — 150 dias de implementacion',det:'Cierre de fase de implementacion, inicio servicios gestionados 36 meses',color:'#534AB7'},
+    {f:'2026-09-20',lbl:'Prueba Item 1 — Bitel (estimado)',det:'Integracion cabeceras Bitel con red lab Integratel — pruebas end-to-end SD-WAN',color:'#A32D2D'},
+    {f:'2026-09-30',lbl:'Prueba Item 2 — enlaces (estimado)',det:'Validacion de enlaces contractuales, pruebas de failover SD-WAN por sede',color:'#A32D2D'},
+  ];
+  document.getElementById('hitos-lista').innerHTML=hitos.map(it=>{
+    const fd=new Date(it.f+'T00:00:00');
+    const diff=Math.round((fd-h)/(1000*60*60*24));
+    const pasado=diff<0;
+    const badge=pasado?{bg:'#F1EFE8',tx:'#5F5E5A',lbl:'Completado'}:
+      diff===0?{bg:'#E6F1FB',tx:'#185FA5',lbl:'Hoy'}:
+      {bg:'#F1EFE8',tx:'#5F5E5A',lbl:`en ${diff} dias`};
+    return`<div class="hito-row" style="border-left-color:${it.color};opacity:${pasado?.65:1}">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:12px;font-weight:700;color:${it.color}">${fmt(it.f)}</span>
+          <span style="font-size:13px;font-weight:600">${it.lbl}</span>
+        </div>
+        <span class="badge" style="background:${badge.bg};color:${badge.tx}">${badge.lbl}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px">${it.det}</div>
+    </div>`;
+  }).join('');
+
+  // Historial
+  document.getElementById('historial-tabla').innerHTML=registros.length?`
+    <div class="log-row log-head" style="grid-template-columns:85px 1fr 65px 55px 1fr 30px">
+      <span>Fecha</span><span>Responsable</span><span>Frente</span><span>Uds.</span><span>Zona / Obs.</span><span></span>
+    </div>
+    ${registros.map(r=>`<div class="log-row" style="grid-template-columns:85px 1fr 65px 55px 1fr 30px">
+      <span style="color:var(--text3)">${fmt(r.fecha)}</span>
+      <span style="font-weight:500">${r.coord.split('(')[0].trim()}</span>
+      <span><span class="badge" style="background:${r.frente==='produccion'?'#E1F5EE':'#EEEDFE'};color:${r.frente==='produccion'?'#085041':'#3C3489'}">${r.frente==='produccion'?'Prod.':'Campo'}</span></span>
+      <span style="font-weight:600">${r.unidades}</span>
+      <span style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.sedes||r.obs||'—'}</span>
+      <span><input type="checkbox" data-id="${r.id}" onchange="toggleSel(this)" style="cursor:pointer"></span>
+    </div>`).join('')}`
+    :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros aun.</div>';
+
+  document.getElementById('last-update').textContent='Actualizado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+}
+
+// Firebase listener en tiempo real
+const q=query(collection(db,'registros'),orderBy('fecha','desc'),orderBy('ts','desc'));
+onSnapshot(q, snap=>{
+  registros=snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderTodo();
+  document.getElementById('loading').style.display='none';
+}, err=>{
+  document.getElementById('loading').innerHTML='Error de conexion. Recarga la pagina.';
+  console.error(err);
+});
+
+// Guardar
+window.guardar=async function(){
+  const fecha=document.getElementById('f-fecha').value;
+  const coord=document.getElementById('f-coord').value;
+  const frente=document.getElementById('f-frente').value;
+  const unidades=parseInt(document.getElementById('f-unidades').value)||0;
+  const sedes=document.getElementById('f-sedes').value.trim();
+  const obs=document.getElementById('f-obs').value.trim();
+  const err=document.getElementById('f-error');
+  const suc=document.getElementById('f-success');
+  err.style.display='none';suc.style.display='none';
+  if(!fecha||!coord||!frente||unidades<1){
+    err.textContent='Completa fecha, coordinador, frente y unidades (minimo 1).';
+    err.style.display='block';return;
+  }
+  try{
+    await addDoc(collection(db,'registros'),{fecha,coord,frente,unidades,sedes,obs,ts:Date.now()});
+    suc.textContent='Registro guardado correctamente.';suc.style.display='block';
+    limpiarForm();
+    setTimeout(()=>suc.style.display='none',3000);
+  }catch(e){
+    err.textContent='Error al guardar. Verifica tu conexion.';err.style.display='block';
+  }
+};
+
+window.limpiarForm=function(){
+  ['f-coord','f-frente','f-sedes','f-obs','f-unidades'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-fecha').value=new Date().toISOString().slice(0,10);
+  document.getElementById('f-error').style.display='none';
+  document.getElementById('f-success').style.display='none';
+};
+
+window.toggleSel=function(cb){
+  if(cb.checked)seleccionados.add(cb.dataset.id);
+  else seleccionados.delete(cb.dataset.id);
+};
+
+window.confirmarBorrar=async function(){
+  if(!seleccionados.size){alert('Selecciona al menos un registro para borrar.');return;}
+  if(!confirm(`Borrar ${seleccionados.size} registro(s)?`))return;
+  for(const id of seleccionados){
+    await deleteDoc(doc(db,'registros',id));
+  }
+  seleccionados.clear();
+};
+
+window.showTab=function(name){
+  ['dashboard','registro','hitos','historial'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=t===name?'block':'none';
+  });
+  document.querySelectorAll('.tab').forEach((b,i)=>{
+    b.classList.toggle('active',['dashboard','registro','hitos','historial'][i]===name);
+  });
+};
+
+// Fecha inicial
+document.getElementById('f-fecha').value=new Date().toISOString().slice(0,10);
+</script>
+
+</body>
+</html>
