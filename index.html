@@ -570,6 +570,9 @@ onAuthStateChanged(auth,user=>{
   actualizarUI();
   document.getElementById('loading').style.display='none';
 });
+
+// Safety: always hide loading after 5 seconds regardless
+setTimeout(()=>{document.getElementById('loading').style.display='none';},5000);
 signInAnonymously(auth).catch(()=>{});
 
 function actualizarUI(){
@@ -832,4 +835,116 @@ window.guardar=async function(){
   }catch(e){err.textContent='Error al guardar.';err.style.display='block';}
 };
 
-window.limpiarForm=fun
+window.limpiarForm=function(){
+  ['f-coord','f-frente','f-zona','f-sedes','f-obs','f-unidades'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-fecha').value=hoy();
+};
+
+function fxl(v){
+  if(!v)return'';
+  if(typeof v==='number'){const d=new Date((v-25569)*86400000);return d.toISOString().slice(0,10);}
+  if(typeof v==='string'){const p=v.includes('/')?v.split('/'):v.includes('-')?v.split('-'):null;if(p&&p.length===3){if(p[0].length===4)return v.slice(0,10);return`${p[2].length===4?p[2]:'20'+p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;}}
+  return String(v).slice(0,10);
+}
+window.handleDrop=function(e){e.preventDefault();document.getElementById('drop-zone').classList.remove('drag');window.handleFile(e.dataTransfer.files[0]);};
+window.handleFile=function(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+    pendingRows=rows.map(r=>({
+      fecha:fxl(r['Fecha']||r['fecha']||''),coord:r['Coordinador']||r['coordinador']||'',
+      frente:(r['Frente']||r['frente']||'').toLowerCase().replace(/ /g,'_'),
+      zona:r['Zona']||r['zona']||'',
+      unidades:parseInt(r['Total_Unidades']||r['total_unidades']||r['Unidades']||r['unidades']||0),
+      sedes:r['Sedes']||r['sedes']||r['Codigo_Sede']||'',obs:r['Observaciones']||r['observaciones']||'',
+    })).filter(r=>r.fecha&&r.coord&&r.frente&&r.unidades>0);
+    document.getElementById('preview-count').textContent=`${pendingRows.length} registros validos`;
+    document.getElementById('preview-table').innerHTML='<thead><tr><th>Fecha</th><th>Coordinador</th><th>Tipo</th><th>Zona</th><th>Uds.</th><th>Obs.</th></tr></thead><tbody>'+pendingRows.map(r=>`<tr><td>${fmt(r.fecha)}</td><td>${r.coord.split('(')[0].trim()}</td><td>${r.frente}</td><td>${r.zona||'—'}</td><td><strong>${r.unidades}</strong></td><td>${r.obs||'—'}</td></tr>`).join('')+'</tbody>';
+    document.getElementById('preview-area').style.display='block';
+  };
+  reader.readAsArrayBuffer(file);
+};
+window.confirmarCarga=async function(){
+  if(!esAutorizado){alert('No tienes permiso.');return;}
+  const btn=document.querySelector('#preview-area .btn-primary');btn.textContent='Importando...';btn.disabled=true;
+  try{
+    const batch=writeBatch(db);
+    pendingRows.forEach(r=>{batch.set(doc(collection(db,'registros')),{...r,registradoPor:usuarioActual?.email||'',ts:Date.now()});});
+    await batch.commit();
+    const n=pendingRows.length;pendingRows=[];document.getElementById('preview-area').style.display='none';document.getElementById('file-input').value='';
+    btn.textContent='Importar todos';btn.disabled=false;
+    alert(`✓ ${n} registros importados.`);showTab('dashboard');
+  }catch(e){document.getElementById('preview-error').textContent='Error: '+e.message;document.getElementById('preview-error').style.display='block';btn.textContent='Importar todos';btn.disabled=false;}
+};
+window.cancelarCarga=function(){document.getElementById('preview-area').style.display='none';document.getElementById('file-input').value='';pendingRows=[];};
+window.descargarPlantilla=function(tipo){
+  const cols=tipo==='detalle'?['Fecha','Coordinador','Frente','Zona','Codigo_Sede','Tipo_Sede','Observaciones']:['Fecha','Coordinador','Frente','Zona','Total_Unidades','Sedes','Observaciones'];
+  const ej=tipo==='detalle'?[['10/07/2026','Ayrton Hipolito (Zona Norte)','solo_item5','Zona Norte','PJ041','Tipo 2','Sin incidencias']]:
+    [['10/07/2026','NIRQA (Configuracion)','configurados','Lima Metropolis',18,'','Linea Negocios'],['10/07/2026','TIC+ / Carlos Rodriguez (Campo)','retirados','Lima Metropolis',18,'','Recogida de planta'],['10/07/2026','Ayrton Hipolito (Zona Norte)','solo_item5','Zona Norte',15,'PJ041,PJ042','Sin incidencias']];
+  const ws=XLSX.utils.aoa_to_sheet([cols,...ej]);ws['!cols']=cols.map(()=>({wch:24}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Avance');
+  XLSX.writeFile(wb,`Plantilla_${tipo}_SDWAN.xlsx`);
+};
+window.toggleSel=function(cb){if(cb.checked)seleccionados.add(cb.dataset.id);else seleccionados.delete(cb.dataset.id);};
+
+window.toggleRow=function(id){
+  const det=document.getElementById('hdet-'+id);
+  if(det)det.classList.toggle('open');
+};
+
+window.abrirEditar=function(id){
+  const r=registros.find(x=>x.id===id);if(!r||!esAutorizado)return;
+  document.getElementById('edit-id').value=id;
+  document.getElementById('edit-fecha').value=r.fecha||'';
+  document.getElementById('edit-coord').value=r.coord||'';
+  document.getElementById('edit-frente').value=r.frente||'';
+  document.getElementById('edit-zona').value=r.zona||'';
+  document.getElementById('edit-unidades').value=r.unidades||'';
+  document.getElementById('edit-tipo').value=r.tipo||'';
+  document.getElementById('edit-sedes').value=r.sedes||'';
+  document.getElementById('edit-obs').value=r.obs||'';
+  document.getElementById('edit-error').style.display='none';
+  document.getElementById('modal-editar').style.display='flex';
+};
+
+window.cerrarModal=function(){
+  document.getElementById('modal-editar').style.display='none';
+};
+
+window.guardarEdicion=async function(){
+  const id=document.getElementById('edit-id').value;
+  const fecha=document.getElementById('edit-fecha').value;
+  const coord=document.getElementById('edit-coord').value;
+  const frente=document.getElementById('edit-frente').value;
+  const zona=document.getElementById('edit-zona').value;
+  const unidades=parseInt(document.getElementById('edit-unidades').value)||0;
+  const tipo=document.getElementById('edit-tipo').value;
+  const sedes=document.getElementById('edit-sedes').value.trim();
+  const obs=document.getElementById('edit-obs').value.trim();
+  const err=document.getElementById('edit-error');
+  if(!fecha||!coord||!frente||unidades<1){err.textContent='Completa todos los campos.';err.style.display='block';return;}
+  try{
+    await updateDoc(doc(db,'registros',id),{fecha,coord,frente,zona,unidades,tipo,sedes,obs,editadoPor:usuarioActual?.email||'',editadoTs:Date.now()});
+    window.cerrarModal();
+  }catch(e){err.textContent='Error al guardar: '+e.message;err.style.display='block';}
+};
+window.confirmarBorrar=async function(){
+  if(!esAutorizado||!seleccionados.size){alert('Selecciona registros primero.');return;}
+  if(!confirm(`Borrar ${seleccionados.size} registro(s)?`))return;
+  for(const id of seleccionados)await deleteDoc(doc(db,'registros',id));
+  seleccionados.clear();
+};
+window.showTab=function(name){
+  ['dashboard','registro','carga','hitos','historial'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
+  document.querySelectorAll('.tabs .tab').forEach((b,i)=>b.classList.toggle('active',['dashboard','registro','carga','hitos','historial'][i]===name));
+};
+window.showSubTab=function(name){
+  ['plantilla','subir'].forEach(t=>document.getElementById('subtab-'+t).style.display=t===name?'block':'none');
+  document.querySelectorAll('.sub-tab').forEach((b,i)=>b.classList.toggle('active',['plantilla','subir'][i]===name));
+};
+window.renderTodo=renderTodo;
+document.getElementById('f-fecha').value=hoy();
+</script>
+</body>
+</html>
