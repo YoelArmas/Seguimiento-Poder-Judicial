@@ -4,82 +4,110 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tracker SD-WAN — Poder Judicial del Perú</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  :root{
-    --navy:#1E2761;--teal:#0F6E56;--purple:#534AB7;--amber:#BA7517;
-    --red:#A32D2D;--gray:#5F5E5A;--surface:#F4F7FC;--card:#FFFFFF;
-    --border:#D8DEE9;--text:#1a1a1a;--text2:#5B6B82;--text3:#888780;
-    --green-bg:#E1F5EE;--green-tx:#085041;
-    --purple-bg:#EEEDFE;--purple-tx:#3C3489;
-    --amber-bg:#FAEEDA;--amber-tx:#633806;
-    --red-bg:#FCEBEB;--red-tx:#791F1F;
-    --radius:8px;
-  }
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--surface);color:var(--text);font-size:14px;min-height:100vh}
-  .topbar{background:var(--navy);color:#fff;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
-  .topbar-title{font-size:15px;font-weight:600}
-  .topbar-sub{font-size:11px;opacity:.7;margin-top:2px}
-  .dot-live{width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block;margin-right:6px;animation:pulse 2s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-  .tabs{background:#fff;border-bottom:1px solid var(--border);display:flex;gap:0;padding:0 24px}
-  .tab{padding:12px 20px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);font-weight:500;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none}
-  .tab.active{color:var(--navy);border-bottom-color:var(--navy)}
-  .tab:hover:not(.active){color:var(--text);border-bottom-color:var(--border)}
-  .content{padding:20px 24px;max-width:1100px;margin:0 auto}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:16px}
-  .card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px}
-  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
-  .kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
-  .kpi-val{font-size:28px;font-weight:600;color:var(--navy);line-height:1}
-  .kpi-lbl{font-size:11px;color:var(--text3);margin-top:5px;text-transform:uppercase;letter-spacing:.4px}
-  .kpi-sub{font-size:11px;color:var(--text2);margin-top:3px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  @media(max-width:600px){.grid2{grid-template-columns:1fr}}
-  .bar-bg{background:var(--border);border-radius:6px;height:10px;overflow:hidden;margin:6px 0}
-  .bar-fill{height:10px;border-radius:6px;transition:width .5s ease}
-  .badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
-  .btn{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:8px 16px;font-size:13px;color:var(--text);cursor:pointer;font-weight:500;transition:background .15s}
-  .btn:hover{background:var(--surface)}
-  .btn-primary{background:var(--navy);border-color:var(--navy);color:#fff}
-  .btn-primary:hover{background:#16204A}
-  .btn-danger{background:#fff;border-color:#fca5a5;color:var(--red-tx)}
-  .inp{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:8px 11px;font-size:13px;background:#fff;color:var(--text);font-family:inherit}
-  .inp:focus{outline:none;border-color:var(--navy)}
-  select.inp{cursor:pointer}
-  .label{font-size:12px;color:var(--text2);font-weight:500;display:block;margin-bottom:4px}
-  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media(max-width:500px){.form-grid{grid-template-columns:1fr}}
-  .log-row{display:grid;grid-template-columns:85px 1fr 65px 55px 1fr;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
-  .log-row:last-child{border-bottom:none}
-  .log-head{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border)!important;padding-bottom:6px!important}
-  .hito-row{border-left:3px solid;border-radius:0 8px 8px 0;padding:10px 14px;background:#fff;border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:8px}
-  .semaforo-row{display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
-  .semaforo-row:last-child{border-bottom:none}
-  .dot-sm{width:11px;height:11px;border-radius:50%;flex-shrink:0}
-  .error{font-size:12px;color:var(--red-tx);background:var(--red-bg);padding:6px 10px;border-radius:6px;margin-top:8px;display:none}
-  .success-msg{font-size:12px;color:var(--green-tx);background:var(--green-bg);padding:6px 10px;border-radius:6px;margin-top:8px;display:none}
-  #loading{position:fixed;inset:0;background:rgba(255,255,255,.9);display:flex;align-items:center;justify-content:center;z-index:999;font-size:15px;color:var(--navy);font-weight:500}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1E2761;--teal:#0F6E56;--purple:#534AB7;--amber:#BA7517;
+  --red:#A32D2D;--surface:#F4F7FC;--card:#FFFFFF;--border:#D8DEE9;
+  --text:#1a1a1a;--text2:#5B6B82;--text3:#888780;--radius:8px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--surface);color:var(--text);font-size:14px;min-height:100vh}
+.topbar{background:var(--navy);color:#fff;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.topbar-title{font-size:15px;font-weight:600}
+.topbar-sub{font-size:11px;opacity:.7;margin-top:2px}
+.dot-live{width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block;margin-right:6px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.user-bar{display:flex;align-items:center;gap:10px;font-size:12px}
+.user-avatar{width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.4)}
+.btn-login{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500}
+.btn-login:hover{background:rgba(255,255,255,.25)}
+.tabs{background:#fff;border-bottom:1px solid var(--border);display:flex;padding:0 24px;overflow-x:auto}
+.tab{padding:12px 18px;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;color:var(--text2);font-weight:500;background:none;border-top:none;border-left:none;border-right:none;white-space:nowrap;transition:all .15s}
+.tab.active{color:var(--navy);border-bottom-color:var(--navy)}
+.tab:hover:not(.active){color:var(--text);border-bottom-color:var(--border)}
+.content{padding:20px 24px;max-width:1100px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:600;margin-bottom:12px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.kpi-val{font-size:28px;font-weight:600;color:var(--navy);line-height:1}
+.kpi-lbl{font-size:11px;color:var(--text3);margin-top:5px;text-transform:uppercase;letter-spacing:.4px}
+.kpi-sub{font-size:11px;color:var(--text2);margin-top:3px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+.bar-bg{background:var(--border);border-radius:6px;height:10px;overflow:hidden;margin:6px 0}
+.bar-fill{height:10px;border-radius:6px;transition:width .5s ease}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
+.btn{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:8px 16px;font-size:13px;color:var(--text);cursor:pointer;font-weight:500;transition:background .15s;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--surface)}
+.btn-primary{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn-primary:hover{background:#16204A}
+.btn-teal{background:var(--teal);border-color:var(--teal);color:#fff}
+.btn-teal:hover{background:#0a5240}
+.btn-danger{border-color:#fca5a5;color:#791F1F}
+.inp{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:8px 11px;font-size:13px;background:#fff;color:var(--text);font-family:inherit}
+.inp:focus{outline:none;border-color:var(--navy)}
+select.inp{cursor:pointer}
+.label{font-size:12px;color:var(--text2);font-weight:500;display:block;margin-bottom:4px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:500px){.form-grid{grid-template-columns:1fr}}
+.log-row{display:grid;grid-template-columns:85px 1fr 65px 55px 1fr;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.log-row:last-child{border-bottom:none}
+.log-head{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border)!important;padding-bottom:6px!important}
+.hito-row{border-left:3px solid;border-radius:0 8px 8px 0;padding:10px 14px;background:#fff;border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:8px}
+.semaforo-row{display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.semaforo-row:last-child{border-bottom:none}
+.dot-sm{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.error{font-size:12px;color:#791F1F;background:#FCEBEB;padding:6px 10px;border-radius:6px;margin-top:8px;display:none}
+.success-msg{font-size:12px;color:#085041;background:#E1F5EE;padding:6px 10px;border-radius:6px;margin-top:8px;display:none}
+#loading{position:fixed;inset:0;background:rgba(255,255,255,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px}
+#loading-text{font-size:15px;color:var(--navy);font-weight:500}
+.lock-screen{text-align:center;padding:60px 20px;max-width:400px;margin:0 auto}
+.lock-icon{font-size:48px;margin-bottom:16px}
+.upload-zone{border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:border-color .2s;background:#fafbfc}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--navy);background:#f0f4ff}
+.upload-zone input{display:none}
+.preview-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}
+.preview-table th{background:var(--navy);color:#fff;padding:6px 10px;text-align:left;font-weight:500}
+.preview-table td{padding:6px 10px;border-bottom:1px solid var(--border)}
+.preview-table tr:nth-child(even) td{background:#f8f9fc}
+.sub-tab{padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border);color:var(--text2);background:#fff;font-weight:500}
+.sub-tab.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.google-btn{display:inline-flex;align-items:center;gap:10px;background:#fff;border:1px solid #dadce0;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:500;color:#3c4043;cursor:pointer;transition:box-shadow .2s}
+.google-btn:hover{box-shadow:0 2px 8px rgba(0,0,0,.15)}
 </style>
 </head>
 <body>
 
-<div id="loading">Conectando con Firebase...</div>
+<div id="loading">
+  <div style="font-size:32px">📡</div>
+  <div id="loading-text">Conectando...</div>
+</div>
 
 <div class="topbar">
   <div>
     <div class="topbar-title">Tracker SD-WAN · Poder Judicial del Perú</div>
     <div class="topbar-sub">ON Empresas S.A.C. · Contrato CP-SER-02-2025</div>
   </div>
-  <div style="font-size:12px;color:rgba(255,255,255,.8)">
-    <span class="dot-live"></span>En tiempo real
-    <span id="last-update" style="margin-left:12px;opacity:.6"></span>
+  <div class="user-bar">
+    <span class="dot-live"></span>
+    <span id="last-update" style="opacity:.6"></span>
+    <div id="user-info" style="display:none;align-items:center;gap:8px">
+      <img id="user-avatar" class="user-avatar" src="" alt="">
+      <span id="user-name" style="font-size:12px"></span>
+      <button class="btn-login" onclick="window.cerrarSesion()">Salir</button>
+    </div>
+    <button id="btn-login-top" class="btn-login" onclick="window.iniciarSesion()" style="display:none">
+      Iniciar sesión con Google
+    </button>
   </div>
 </div>
 
 <div class="tabs">
   <button class="tab active" onclick="showTab('dashboard')">Dashboard</button>
-  <button class="tab" onclick="showTab('registro')">Registrar avance</button>
+  <button class="tab" onclick="showTab('registro')" id="tab-btn-registro">Registrar avance</button>
+  <button class="tab" onclick="showTab('carga')" id="tab-btn-carga">Carga masiva Excel</button>
   <button class="tab" onclick="showTab('hitos')">Hitos y proyeccion</button>
   <button class="tab" onclick="showTab('historial')">Historial</button>
 </div>
@@ -88,13 +116,7 @@
 
 <!-- DASHBOARD -->
 <div id="tab-dashboard">
-  <div class="kpi-grid" id="kpis">
-    <div class="kpi"><div class="kpi-val">—</div><div class="kpi-lbl">Equipos configurados</div></div>
-    <div class="kpi"><div class="kpi-val">—</div><div class="kpi-lbl">Sedes instaladas</div></div>
-    <div class="kpi"><div class="kpi-val">—</div><div class="kpi-lbl">Configurados hoy</div></div>
-    <div class="kpi"><div class="kpi-val">—</div><div class="kpi-lbl">Instalados hoy</div></div>
-  </div>
-
+  <div class="kpi-grid" id="kpis"></div>
   <div class="grid2">
     <div class="card">
       <div class="card-title">Produccion — configuracion de equipos</div>
@@ -113,69 +135,143 @@
       <div style="font-size:12px;color:var(--text2);margin-top:6px" id="campo-proj">Cargando...</div>
     </div>
   </div>
-
-  <div class="card">
-    <div class="card-title">Semaforo de riesgo</div>
-    <div id="semaforo">Cargando...</div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Ultimas entradas</div>
-    <div id="log-dashboard">Cargando...</div>
-  </div>
+  <div class="card"><div class="card-title">Semaforo de riesgo</div><div id="semaforo">Cargando...</div></div>
+  <div class="card"><div class="card-title">Ultimas entradas</div><div id="log-dashboard">Cargando...</div></div>
 </div>
 
 <!-- REGISTRO -->
 <div id="tab-registro" style="display:none">
-  <div class="card">
-    <div class="card-title">Registrar avance del dia</div>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="form-grid">
-        <div>
-          <label class="label">Fecha</label>
-          <input type="date" class="inp" id="f-fecha">
+  <div id="registro-lock" class="lock-screen" style="display:none">
+    <div class="lock-icon">🔒</div>
+    <div style="font-size:18px;font-weight:600;color:var(--navy);margin-bottom:8px">Acceso restringido</div>
+    <div style="font-size:14px;color:var(--text2);margin-bottom:24px">Inicia sesion con tu cuenta Google autorizada para registrar avances.</div>
+    <button class="google-btn" onclick="window.iniciarSesion()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continuar con Google
+    </button>
+  </div>
+  <div id="registro-form" style="display:none">
+    <div class="card">
+      <div class="card-title">Registrar avance del dia</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="form-grid">
+          <div><label class="label">Fecha</label><input type="date" class="inp" id="f-fecha"></div>
+          <div><label class="label">Coordinador / Responsable</label>
+            <select class="inp" id="f-coord">
+              <option value="">Seleccionar...</option>
+              <option>Ayrton Hipolito (Zona Norte)</option>
+              <option>Rodrigo Romero (Zona Sur)</option>
+              <option>Miguel Pando (Zona Oriente)</option>
+              <option>Angel Cruz (Zona Centro)</option>
+              <option>Noemi Rivera (Produccion)</option>
+              <option>NIRQA (Configuracion)</option>
+              <option>TIC+ / Carlos Rodriguez (Campo)</option>
+            </select>
+          </div>
         </div>
-        <div>
-          <label class="label">Coordinador / Responsable</label>
-          <select class="inp" id="f-coord">
-            <option value="">Seleccionar...</option>
-            <option>Ayrton Hipolito (Pivot-Controller)</option>
-            <option>Rodrigo Romero (Zona Centro)</option>
-            <option>Miguel Pando (Zona Oriente)</option>
-            <option>Angel Cruz (Zona Norte)</option>
-            <option>Noemi Rivera (Zona Sur)</option>
-            <option>NIRQA (Configuracion)</option>
-            <option>TIC+ / Carlos Rodriguez (Campo)</option>
-          </select>
+        <div class="form-grid">
+          <div><label class="label">Frente de trabajo</label>
+            <select class="inp" id="f-frente">
+              <option value="">Seleccionar...</option>
+              <option value="produccion">Linea de produccion (configuracion)</option>
+              <option value="campo">Campo (instalacion en sede)</option>
+            </select>
+          </div>
+          <div><label class="label">Zona</label>
+            <select class="inp" id="f-zona">
+              <option value="">Seleccionar...</option>
+              <option>Zona Norte</option><option>Zona Sur</option>
+              <option>Zona Centro</option><option>Zona Oriente</option>
+              <option>Lima Metropolis</option><option>Callao</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div><label class="label">Unidades completadas hoy</label>
+            <input type="number" class="inp" id="f-unidades" min="1" max="100" placeholder="ej. 15">
+          </div>
+          <div><label class="label">Tipo de sede</label>
+            <select class="inp" id="f-tipo">
+              <option value="">Seleccionar...</option>
+              <option>Tipo 1</option><option>Tipo 2</option><option>Tipo 3</option><option>Mixto</option>
+            </select>
+          </div>
+        </div>
+        <div><label class="label">Codigos de sede (separados por coma)</label>
+          <input type="text" class="inp" id="f-sedes" placeholder="ej. PJ041, PJ042, PJ043">
+        </div>
+        <div><label class="label">Observaciones / incidencias</label>
+          <input type="text" class="inp" id="f-obs" placeholder="ej. 2 sedes reprogramadas por acceso restringido">
+        </div>
+        <div id="f-error" class="error"></div>
+        <div id="f-success" class="success-msg"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="window.guardar()">Guardar registro</button>
+          <button class="btn" onclick="window.limpiarForm()">Limpiar</button>
         </div>
       </div>
-      <div class="form-grid">
-        <div>
-          <label class="label">Frente de trabajo</label>
-          <select class="inp" id="f-frente">
-            <option value="">Seleccionar...</option>
-            <option value="produccion">Linea de produccion (configuracion)</option>
-            <option value="campo">Campo (instalacion en sede)</option>
-          </select>
+    </div>
+  </div>
+</div>
+
+<!-- CARGA MASIVA -->
+<div id="tab-carga" style="display:none">
+  <div id="carga-lock" class="lock-screen" style="display:none">
+    <div class="lock-icon">🔒</div>
+    <div style="font-size:18px;font-weight:600;color:var(--navy);margin-bottom:8px">Acceso restringido</div>
+    <div style="font-size:14px;color:var(--text2);margin-bottom:24px">Inicia sesion con tu cuenta Google autorizada para cargar archivos Excel.</div>
+    <button class="google-btn" onclick="window.iniciarSesion()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continuar con Google
+    </button>
+  </div>
+  <div id="carga-form" style="display:none">
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="sub-tab active" onclick="showSubTab('plantilla')">Descargar plantilla</button>
+      <button class="sub-tab" onclick="showSubTab('subir')">Subir Excel</button>
+    </div>
+    <div id="subtab-plantilla">
+      <div class="card">
+        <div class="card-title">Plantillas de carga masiva</div>
+        <div class="grid2" style="gap:12px">
+          <div style="border:1px solid var(--border);border-radius:10px;padding:16px">
+            <div style="font-weight:600;font-size:13px;margin-bottom:6px">Plantilla por sede (detalle)</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Una fila por sede instalada. Ideal para TIC+ y NIRQA.</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Fecha · Coordinador · Frente · Zona · Codigo_Sede · Tipo_Sede · Observaciones</div>
+            <button class="btn btn-teal" onclick="window.descargarPlantilla('detalle')">Descargar plantilla detalle</button>
+          </div>
+          <div style="border:1px solid var(--border);border-radius:10px;padding:16px">
+            <div style="font-weight:600;font-size:13px;margin-bottom:6px">Plantilla resumen (por coordinador)</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Una fila por coordinador por dia. Registro rapido.</div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Fecha · Coordinador · Frente · Zona · Total_Unidades · Sedes · Observaciones</div>
+            <button class="btn btn-teal" onclick="window.descargarPlantilla('resumen')">Descargar plantilla resumen</button>
+          </div>
         </div>
-        <div>
-          <label class="label">Unidades completadas hoy</label>
-          <input type="number" class="inp" id="f-unidades" min="1" max="100" placeholder="ej. 15">
+      </div>
+    </div>
+    <div id="subtab-subir" style="display:none">
+      <div class="card">
+        <div class="card-title">Subir archivo Excel</div>
+        <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+          ondragover="event.preventDefault();this.classList.add('drag')"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="window.handleDrop(event)">
+          <input type="file" id="file-input" accept=".xlsx,.xls" onchange="window.handleFile(this.files[0])">
+          <div style="font-size:32px;margin-bottom:8px">📊</div>
+          <div style="font-weight:600;color:var(--navy);margin-bottom:4px">Arrastra tu Excel aqui o haz clic</div>
+          <div style="font-size:12px;color:var(--text3)">Acepta .xlsx — plantilla detalle o resumen</div>
         </div>
-      </div>
-      <div>
-        <label class="label">Zona / Sedes especificas (opcional)</label>
-        <input type="text" class="inp" id="f-sedes" placeholder="ej. Lima Centro — PJ041, PJ042, PJ043">
-      </div>
-      <div>
-        <label class="label">Observaciones / incidencias</label>
-        <input type="text" class="inp" id="f-obs" placeholder="ej. 2 sedes con acceso restringido, se reprograman para manana">
-      </div>
-      <div id="f-error" class="error"></div>
-      <div id="f-success" class="success-msg"></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-primary" onclick="guardar()">Guardar registro</button>
-        <button class="btn" onclick="limpiarForm()">Limpiar</button>
+        <div id="preview-area" style="display:none;margin-top:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+            <div><span style="font-weight:600;font-size:13px">Vista previa</span><span id="preview-count" style="font-size:12px;color:var(--text2);margin-left:8px"></span></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn" onclick="window.cancelarCarga()">Cancelar</button>
+              <button class="btn btn-primary" onclick="window.confirmarCarga()">Importar todos</button>
+            </div>
+          </div>
+          <div id="preview-error" class="error"></div>
+          <div style="overflow-x:auto"><table class="preview-table" id="preview-table"></table></div>
+        </div>
       </div>
     </div>
   </div>
@@ -183,19 +279,23 @@
 
 <!-- HITOS -->
 <div id="tab-hitos" style="display:none">
-  <div class="card">
-    <div class="card-title">Proyeccion automatica</div>
-    <div id="proyeccion-detalle">Cargando...</div>
-  </div>
+  <div class="card"><div class="card-title">Proyeccion automatica</div><div id="proyeccion-detalle">Cargando...</div></div>
   <div id="hitos-lista"></div>
 </div>
 
 <!-- HISTORIAL -->
 <div id="tab-historial" style="display:none">
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <div class="card-title" style="margin:0">Historial completo</div>
-      <button class="btn btn-danger" style="font-size:12px" onclick="confirmarBorrar()">Borrar seleccion</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select class="inp" id="filtro-frente" style="width:auto" onchange="renderTodo()">
+          <option value="">Todos los frentes</option>
+          <option value="produccion">Solo produccion</option>
+          <option value="campo">Solo campo</option>
+        </select>
+        <button class="btn btn-danger" style="font-size:12px" id="btn-borrar" onclick="window.confirmarBorrar()" style="display:none">Borrar seleccionados</button>
+      </div>
     </div>
     <div id="historial-tabla">Cargando...</div>
   </div>
@@ -205,8 +305,8 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDdcAGBTp_ekIhSJdelyR4M_gY3HshvDhI",
@@ -217,298 +317,290 @@ const firebaseConfig = {
   appId: "1:25916877483:web:756ffe74263b01b61d65ee"
 };
 
+const EMAILS_AUTORIZADOS = [
+  'ryoel110@gmail.com',
+  'joel.hipolito.garcia@gmail.com',
+  'miguel.del08@gmail.com',
+  'rodrigoromeromeza2002@gmail.com',
+];
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-await signInAnonymously(auth);
+const provider = new GoogleAuthProvider();
 
-const TOTAL = 745;
-const META = new Date('2026-09-04');
-const FIN = new Date('2026-09-06');
-const FERIADOS = ['2026-07-23','2026-07-28','2026-07-29','2026-08-06','2026-08-30'];
+const TOTAL=745, FIN=new Date('2026-09-06');
+const FERIADOS=['2026-07-23','2026-07-28','2026-07-29','2026-08-06','2026-08-30'];
+let registros=[], seleccionados=new Set(), pendingRows=[], usuarioActual=null, esAutorizado=false;
 
-let registros = [];
-let seleccionados = new Set();
+function esHabil(d){const s=d.toISOString().slice(0,10);return d.getDay()!==0&&d.getDay()!==6&&!FERIADOS.includes(s)}
+function diasHabilesHasta(d1,d2){let n=0,d=new Date(d1);while(d<=d2){if(esHabil(d))n++;d.setDate(d.getDate()+1)}return n}
+function sumarDH(desde,n){let d=new Date(desde),c=0;while(c<n){d.setDate(d.getDate()+1);if(esHabil(d))c++}return d}
+function fmt(s){if(!s)return'—';const d=new Date(s+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'})}
+function hoy(){return new Date().toISOString().slice(0,10)}
 
-function esHabil(d){
-  const s = d.toISOString().slice(0,10);
-  return d.getDay()!==0 && d.getDay()!==6 && !FERIADOS.includes(s);
-}
-function diasHabilesHasta(desde, hasta){
-  let n=0, d=new Date(desde);
-  while(d<=hasta){if(esHabil(d))n++;d.setDate(d.getDate()+1);}
-  return n;
-}
-function sumarDiasHabiles(desde, n){
-  let d=new Date(desde), c=0;
-  while(c<n){d.setDate(d.getDate()+1);if(esHabil(d))c++;}
-  return d;
-}
-function fmt(s){
-  if(!s)return '—';
-  const d=new Date(s+'T00:00:00');
-  return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
-}
-function hoy(){return new Date().toISOString().slice(0,10);}
-
-function totales(){
-  let prod=0,campo=0;
-  registros.forEach(r=>{
-    if(r.frente==='produccion') prod+=r.unidades;
-    else if(r.frente==='campo') campo+=r.unidades;
-  });
-  return{prod:Math.min(prod,TOTAL), campo:Math.min(campo,TOTAL)};
-}
-
-function hoyTotales(){
-  const h=hoy();
-  let prod=0,campo=0;
-  registros.filter(r=>r.fecha===h).forEach(r=>{
-    if(r.frente==='produccion')prod+=r.unidades;
-    else campo+=r.unidades;
-  });
-  return{prod,campo};
-}
-
-function ritmo(frente){
-  const dias=10;
-  const corte=new Date();corte.setDate(corte.getDate()-dias);
-  const sum=registros.filter(r=>r.frente===frente&&new Date(r.fecha+'T00:00:00')>=corte)
-    .reduce((a,r)=>a+r.unidades,0);
-  const dh=Math.max(1,diasHabilesHasta(corte,new Date()));
-  return Math.max(1,Math.round((sum/dh)*10)/10);
-}
-
+function totales(){let prod=0,campo=0;registros.forEach(r=>{if(r.frente==='produccion')prod+=r.unidades;else if(r.frente==='campo')campo+=r.unidades});return{prod:Math.min(prod,TOTAL),campo:Math.min(campo,TOTAL)}}
+function hoyTotales(){const h=hoy();let prod=0,campo=0;registros.filter(r=>r.fecha===h).forEach(r=>{if(r.frente==='produccion')prod+=r.unidades;else campo+=r.unidades});return{prod,campo}}
+function ritmo(frente){const corte=new Date();corte.setDate(corte.getDate()-10);const sum=registros.filter(r=>r.frente===frente&&new Date(r.fecha+'T00:00:00')>=corte).reduce((a,r)=>a+r.unidades,0);return Math.max(1,Math.round((sum/Math.max(1,diasHabilesHasta(corte,new Date())))*10)/10)}
 function proyectar(completadas,frente){
-  const pendientes=TOTAL-completadas;
-  if(pendientes<=0)return{ok:true,fecha:'Completado',holgura:999,riesgo:'ok'};
-  const r=ritmo(frente)||15;
-  const dias=Math.ceil(pendientes/r);
-  const fp=sumarDiasHabiles(new Date(),dias);
+  const pend=TOTAL-completadas;
+  if(pend<=0)return{ok:true,fecha:'Completado',holgura:999,riesgo:'ok'};
+  const r=ritmo(frente),dias=Math.ceil(pend/r),fp=sumarDH(new Date(),dias);
   const holgura=Math.round((FIN-fp)/(1000*60*60*24));
-  const riesgo=holgura<0?'critico':holgura<4?'alerta':'ok';
-  return{ok:false,fecha:fp.toISOString().slice(0,10),holgura,riesgo,ritmo:r,pendientes};
+  return{ok:false,fecha:fp.toISOString().slice(0,10),holgura,riesgo:holgura<0?'critico':holgura<4?'alerta':'ok',ritmo:r};
 }
-
 function colorR(r){
   if(r==='ok')return{bg:'#E1F5EE',tx:'#085041',lbl:'En tiempo'};
   if(r==='alerta')return{bg:'#FAEEDA',tx:'#633806',lbl:'Riesgo medio'};
   return{bg:'#FCEBEB',tx:'#791F1F',lbl:'Riesgo critico'};
 }
 
-function renderTodo(){
-  const t=totales();
-  const ht=hoyTotales();
-  const pj=proyectar(t.prod,'produccion');
-  const cj=proyectar(t.campo,'campo');
+// Auth state
+onAuthStateChanged(auth, user=>{
+  usuarioActual=user;
+  esAutorizado=user&&!user.isAnonymous&&EMAILS_AUTORIZADOS.includes(user.email);
+  actualizarUI();
+  document.getElementById('loading').style.display='none';
+});
 
-  // KPIs
-  const pp=Math.round(t.prod/TOTAL*100);
-  const cp=Math.round(t.campo/TOTAL*100);
+// Iniciar sesion anonima para dashboard publico
+signInAnonymously(auth).catch(()=>{});
+
+function actualizarUI(){
+  const userInfo=document.getElementById('user-info');
+  const btnLogin=document.getElementById('btn-login-top');
+  if(usuarioActual&&!usuarioActual.isAnonymous){
+    userInfo.style.display='flex';
+    btnLogin.style.display='none';
+    document.getElementById('user-avatar').src=usuarioActual.photoURL||'';
+    document.getElementById('user-name').textContent=usuarioActual.displayName||usuarioActual.email;
+  } else {
+    userInfo.style.display='none';
+    btnLogin.style.display='block';
+  }
+  // Registro
+  document.getElementById('registro-lock').style.display=esAutorizado?'none':'block';
+  document.getElementById('registro-form').style.display=esAutorizado?'block':'none';
+  // Carga
+  document.getElementById('carga-lock').style.display=esAutorizado?'none':'block';
+  document.getElementById('carga-form').style.display=esAutorizado?'block':'none';
+  // Borrar (solo admin)
+  const btnB=document.getElementById('btn-borrar');
+  if(btnB)btnB.style.display=esAutorizado?'inline-flex':'none';
+}
+
+window.iniciarSesion=async function(){
+  try{await signInWithPopup(auth,provider);}
+  catch(e){
+    if(usuarioActual&&!usuarioActual.isAnonymous&&!EMAILS_AUTORIZADOS.includes(usuarioActual.email)){
+      alert('Tu cuenta ('+usuarioActual.email+') no está autorizada para registrar avances. Contacta al administrador del proyecto.');
+      await signOut(auth);
+      signInAnonymously(auth);
+    }
+  }
+};
+window.cerrarSesion=async function(){await signOut(auth);signInAnonymously(auth);};
+
+// Firestore listener
+const q=query(collection(db,'registros'),orderBy('fecha','desc'),orderBy('ts','desc'));
+onSnapshot(q,snap=>{registros=snap.docs.map(d=>({id:d.id,...d.data()}));renderTodo();},err=>{console.error(err)});
+
+function renderTodo(){
+  const t=totales(),ht=hoyTotales(),pj=proyectar(t.prod,'produccion'),cj=proyectar(t.campo,'campo');
+  const pp=Math.round(t.prod/TOTAL*100),cp=Math.round(t.campo/TOTAL*100);
+
   document.getElementById('kpis').innerHTML=`
     <div class="kpi"><div class="kpi-val">${t.prod}</div><div class="kpi-lbl">Equipos configurados</div><div class="kpi-sub">${pp}% del universo</div></div>
     <div class="kpi"><div class="kpi-val">${t.campo}</div><div class="kpi-lbl">Sedes instaladas</div><div class="kpi-sub">${cp}% del universo</div></div>
     <div class="kpi"><div class="kpi-val">${ht.prod}</div><div class="kpi-lbl">Configurados hoy</div><div class="kpi-sub">${hoy()}</div></div>
-    <div class="kpi"><div class="kpi-val">${ht.campo}</div><div class="kpi-lbl">Instalados hoy</div><div class="kpi-sub">${hoy()}</div></div>
-  `;
+    <div class="kpi"><div class="kpi-val">${ht.campo}</div><div class="kpi-lbl">Instalados hoy</div><div class="kpi-sub">${hoy()}</div></div>`;
 
-  // Barras
-  document.getElementById('prod-label').textContent=`${t.prod} / ${TOTAL} equipos`;
-  document.getElementById('prod-pct').textContent=`${pp}%`;
-  document.getElementById('prod-bar').style.width=pp+'%';
-  document.getElementById('prod-proj').innerHTML=pj.ok
-    ?'<span style="color:#085041;font-weight:600">Completado</span>'
-    :`Ritmo actual: <strong>${pj.ritmo}/dia</strong> &nbsp;·&nbsp; Proyeccion: <strong>${fmt(pj.fecha)}</strong> &nbsp;·&nbsp; Holgura vs 06/09: <strong style="color:${colorR(pj.riesgo).tx}">${pj.holgura} dias</strong>`;
+  ['prod','campo'].forEach((k,i)=>{
+    const val=i===0?t.prod:t.campo,pct=i===0?pp:cp,pr=i===0?pj:cj;
+    document.getElementById(k+'-label').textContent=`${val} / ${TOTAL} ${i===0?'equipos':'sedes'}`;
+    document.getElementById(k+'-pct').textContent=pct+'%';
+    document.getElementById(k+'-bar').style.width=pct+'%';
+    document.getElementById(k+'-proj').innerHTML=pr.ok?'<span style="color:#085041;font-weight:600">Completado</span>'
+      :`Ritmo: <strong>${pr.ritmo}/dia</strong> &nbsp;·&nbsp; Proyeccion: <strong>${fmt(pr.fecha)}</strong> &nbsp;·&nbsp; Holgura: <strong style="color:${colorR(pr.riesgo).tx}">${pr.holgura} dias</strong>`;
+  });
 
-  document.getElementById('campo-label').textContent=`${t.campo} / ${TOTAL} sedes`;
-  document.getElementById('campo-pct').textContent=`${cp}%`;
-  document.getElementById('campo-bar').style.width=cp+'%';
-  document.getElementById('campo-proj').innerHTML=cj.ok
-    ?'<span style="color:#085041;font-weight:600">Completado</span>'
-    :`Ritmo actual: <strong>${cj.ritmo}/dia</strong> &nbsp;·&nbsp; Proyeccion: <strong>${fmt(cj.fecha)}</strong> &nbsp;·&nbsp; Holgura vs 06/09: <strong style="color:${colorR(cj.riesgo).tx}">${cj.holgura} dias</strong>`;
-
-  // Semaforo
-  const rGen=pj.riesgo==='critico'||cj.riesgo==='critico'?'critico':
-    pj.riesgo==='alerta'||cj.riesgo==='alerta'?'alerta':'ok';
-  const items=[
-    {lbl:'Produccion — configuracion',r:pj.riesgo,nota:`${t.prod}/${TOTAL} equipos`},
-    {lbl:'Campo — instalacion en sede',r:cj.riesgo,nota:`${t.campo}/${TOTAL} sedes`},
-    {lbl:'Item 1 — Bitel (cabeceras)',r:'alerta',nota:'Cabecera instalada, sin integrar red lab Integratel'},
-    {lbl:'Item 2 — enlaces',r:'alerta',nota:'Pendiente cierre contractual'},
-    {lbl:'Item 4 — Palo Alto (PJ)',r:'alerta',nota:'Responsabilidad PJ — pendiente coordinacion'},
-  ];
+  const rGen=pj.riesgo==='critico'||cj.riesgo==='critico'?'critico':pj.riesgo==='alerta'||cj.riesgo==='alerta'?'alerta':'ok';
   const cg=colorR(rGen);
   document.getElementById('semaforo').innerHTML=`
-    <div style="display:inline-flex;align-items:center;gap:8px;background:${cg.bg};color:${cg.tx};padding:6px 14px;border-radius:20px;font-weight:600;font-size:13px;margin-bottom:12px">
-      Estado general: ${cg.lbl}
-    </div>
-    ${items.map(i=>{const c=colorR(i.r);return`
-    <div class="semaforo-row">
-      <div class="dot-sm" style="background:${c.tx}"></div>
-      <span style="min-width:220px;font-weight:500">${i.lbl}</span>
-      <span class="badge" style="background:${c.bg};color:${c.tx}">${c.lbl}</span>
-      <span style="font-size:12px;color:var(--text3);margin-left:8px">${i.nota}</span>
-    </div>`}).join('')}`;
+    <div style="display:inline-flex;align-items:center;gap:8px;background:${cg.bg};color:${cg.tx};padding:6px 14px;border-radius:20px;font-weight:600;font-size:13px;margin-bottom:12px">Estado general: ${cg.lbl}</div>
+    ${[
+      {lbl:'Produccion — configuracion',r:pj.riesgo,nota:`${t.prod}/${TOTAL} equipos`},
+      {lbl:'Campo — instalacion en sede',r:cj.riesgo,nota:`${t.campo}/${TOTAL} sedes`},
+      {lbl:'Item 1 — Bitel (cabeceras)',r:'alerta',nota:'Cabecera instalada, sin integrar red lab Integratel'},
+      {lbl:'Item 2 — enlaces',r:'alerta',nota:'Pendiente cierre contractual'},
+      {lbl:'Item 4 — Palo Alto (PJ)',r:'alerta',nota:'Responsabilidad PJ — pendiente coordinacion'},
+    ].map(i=>{const c=colorR(i.r);return`<div class="semaforo-row"><div class="dot-sm" style="background:${c.tx}"></div><span style="min-width:220px;font-weight:500">${i.lbl}</span><span class="badge" style="background:${c.bg};color:${c.tx}">${c.lbl}</span><span style="font-size:12px;color:var(--text3);margin-left:8px">${i.nota}</span></div>`}).join('')}`;
 
-  // Log dashboard (ultimos 6)
   const ult=registros.slice(0,6);
   document.getElementById('log-dashboard').innerHTML=ult.length?`
-    <div class="log-row log-head"><span>Fecha</span><span>Responsable</span><span>Frente</span><span>Uds.</span><span>Obs.</span></div>
-    ${ult.map(r=>`<div class="log-row">
-      <span style="color:var(--text3)">${fmt(r.fecha)}</span>
-      <span style="font-weight:500">${r.coord.split('(')[0].trim()}</span>
-      <span><span class="badge" style="background:${r.frente==='produccion'?'#E1F5EE':'#EEEDFE'};color:${r.frente==='produccion'?'#085041':'#3C3489'}">${r.frente==='produccion'?'Prod.':'Campo'}</span></span>
-      <span style="font-weight:600">${r.unidades}</span>
-      <span style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.sedes||r.obs||'—'}</span>
-    </div>`).join('')}`
-    :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros aun. Usa la pestana Registrar avance.</div>';
+    <div class="log-row log-head"><span>Fecha</span><span>Responsable</span><span>Frente</span><span>Uds.</span><span>Zona</span></div>
+    ${ult.map(r=>`<div class="log-row"><span style="color:var(--text3)">${fmt(r.fecha)}</span><span style="font-weight:500">${r.coord.split('(')[0].trim()}</span><span><span class="badge" style="background:${r.frente==='produccion'?'#E1F5EE':'#EEEDFE'};color:${r.frente==='produccion'?'#085041':'#3C3489'}">${r.frente==='produccion'?'Prod.':'Campo'}</span></span><span style="font-weight:600">${r.unidades}</span><span style="color:var(--text3)">${r.zona||'—'}</span></div>`).join('')}`
+    :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros aun.</div>';
 
-  // Proyeccion detallada
-  const dhRestProd=diasHabilesHasta(new Date(),META);
-  const dhRestCampo=diasHabilesHasta(new Date(),META);
   document.getElementById('proyeccion-detalle').innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div>
-        <div style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-bottom:8px">Produccion</div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.9">
-          Completado: <strong>${t.prod}/${TOTAL}</strong><br>
-          Pendiente: <strong>${TOTAL-t.prod}</strong> equipos<br>
-          Ritmo actual: <strong>${pj.ritmo} equipos/dia</strong><br>
-          Dias habiles para meta: <strong>${Math.ceil((TOTAL-t.prod)/pj.ritmo)}</strong><br>
-          Fecha estimada fin: <strong>${fmt(pj.fecha)}</strong><br>
-          Holgura vs 06/09: <strong style="color:${colorR(pj.riesgo).tx}">${pj.holgura} dias</strong>
-        </div>
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-bottom:8px">Campo</div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.9">
-          Completado: <strong>${t.campo}/${TOTAL}</strong><br>
-          Pendiente: <strong>${TOTAL-t.campo}</strong> sedes<br>
-          Ritmo actual: <strong>${cj.ritmo} sedes/dia</strong><br>
-          Dias habiles para meta: <strong>${Math.ceil((TOTAL-t.campo)/cj.ritmo)}</strong><br>
-          Fecha estimada fin: <strong>${fmt(cj.fecha)}</strong><br>
-          Holgura vs 06/09: <strong style="color:${colorR(cj.riesgo).tx}">${cj.holgura} dias</strong>
-        </div>
-      </div>
+      ${[{lbl:'Produccion',p:pj,v:t.prod},{lbl:'Campo',p:cj,v:t.campo}].map(x=>`
+      <div><div style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-bottom:8px">${x.lbl}</div>
+      <div style="font-size:13px;color:var(--text2);line-height:2">
+        Completado: <strong>${x.v}/${TOTAL}</strong><br>Pendiente: <strong>${TOTAL-x.v}</strong><br>
+        Ritmo actual: <strong>${x.p.ritmo||1}/dia</strong><br>Fecha estimada: <strong>${fmt(x.p.fecha)}</strong><br>
+        Holgura vs 06/09: <strong style="color:${colorR(x.p.riesgo).tx}">${x.p.holgura} dias</strong>
+      </div></div>`).join('')}
     </div>`;
 
-  // Hitos
   const h=new Date();
-  const hitos=[
-    {f:'2026-07-06',lbl:'Inicio despliegue en campo',det:'143 sedes habilitadas con gabinete Item 5',color:'#0F6E56'},
-    {f:'2026-07-15',lbl:'Meta Fase 1 — 143 sedes SD-WAN',det:'Culminacion estimada de sedes habilitadas al 29/06',color:'#0F6E56'},
+  document.getElementById('hitos-lista').innerHTML=[
+    {f:'2026-07-06',lbl:'Inicio despliegue en campo',det:'111 sedes habilitadas con gabinete Item 5',color:'#0F6E56'},
+    {f:'2026-07-15',lbl:'Meta Fase 1 — 111 sedes SD-WAN',det:'Culminacion estimada de sedes habilitadas al 29/06',color:'#0F6E56'},
     {f:'2026-08-06',lbl:'Deadline contingencia Item 1 (Bitel)',det:'Si no hay integracion Integratel activa, se ejecuta plan con Telefonica',color:'#BA7517'},
     {f:'2026-09-04',lbl:'Meta interna de implementacion',det:'745/745 sedes instaladas — ajuste de politicas y calidad',color:'#0F6E56'},
-    {f:'2026-09-06',lbl:'Fin contractual — 150 dias de implementacion',det:'Cierre de fase de implementacion, inicio servicios gestionados 36 meses',color:'#534AB7'},
-    {f:'2026-09-20',lbl:'Prueba Item 1 — Bitel (estimado)',det:'Integracion cabeceras Bitel con red lab Integratel — pruebas end-to-end SD-WAN',color:'#A32D2D'},
-    {f:'2026-09-30',lbl:'Prueba Item 2 — enlaces (estimado)',det:'Cabeceras Zavala - Alzamora culminadas',color:'#A32D2D'},
-  ];
-  document.getElementById('hitos-lista').innerHTML=hitos.map(it=>{
-    const fd=new Date(it.f+'T00:00:00');
-    const diff=Math.round((fd-h)/(1000*60*60*24));
-    const pasado=diff<0;
-    const badge=pasado?{bg:'#F1EFE8',tx:'#5F5E5A',lbl:'Completado'}:
-      diff===0?{bg:'#E6F1FB',tx:'#185FA5',lbl:'Hoy'}:
-      {bg:'#F1EFE8',tx:'#5F5E5A',lbl:`en ${diff} dias`};
+    {f:'2026-09-06',lbl:'Fin contractual — 150 dias',det:'Cierre de implementacion, inicio servicios gestionados 36 meses',color:'#534AB7'},
+    {f:'2026-09-20',lbl:'Prueba Item 1 — Bitel (estimado)',det:'Integracion cabeceras Bitel con red lab Integratel — pruebas end-to-end',color:'#A32D2D'},
+    {f:'2026-09-30',lbl:'Prueba Item 2 — enlaces (estimado)',det:'Validacion de enlaces contractuales, pruebas de failover SD-WAN',color:'#A32D2D'},
+  ].map(it=>{
+    const fd=new Date(it.f+'T00:00:00'),diff=Math.round((fd-h)/(1000*60*60*24)),pasado=diff<0;
+    const badge=pasado?{bg:'#F1EFE8',tx:'#5F5E5A',lbl:'Completado'}:diff===0?{bg:'#E6F1FB',tx:'#185FA5',lbl:'Hoy'}:{bg:'#F1EFE8',tx:'#5F5E5A',lbl:`en ${diff} dias`};
     return`<div class="hito-row" style="border-left-color:${it.color};opacity:${pasado?.65:1}">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:12px;font-weight:700;color:${it.color}">${fmt(it.f)}</span>
-          <span style="font-size:13px;font-weight:600">${it.lbl}</span>
-        </div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;font-weight:700;color:${it.color}">${fmt(it.f)}</span><span style="font-size:13px;font-weight:600">${it.lbl}</span></div>
         <span class="badge" style="background:${badge.bg};color:${badge.tx}">${badge.lbl}</span>
       </div>
       <div style="font-size:12px;color:var(--text2);margin-top:4px">${it.det}</div>
     </div>`;
   }).join('');
 
-  // Historial
-  document.getElementById('historial-tabla').innerHTML=registros.length?`
-    <div class="log-row log-head" style="grid-template-columns:85px 1fr 65px 55px 1fr 30px">
-      <span>Fecha</span><span>Responsable</span><span>Frente</span><span>Uds.</span><span>Zona / Obs.</span><span></span>
+  const filtro=document.getElementById('filtro-frente')?.value||'';
+  const lista=filtro?registros.filter(r=>r.frente===filtro):registros;
+  const mostrarBorrar=esAutorizado;
+  document.getElementById('historial-tabla').innerHTML=lista.length?`
+    <div class="log-row log-head" style="grid-template-columns:85px 1fr 60px 50px 80px 1fr ${mostrarBorrar?'30px':''}">
+      <span>Fecha</span><span>Responsable</span><span>Frente</span><span>Uds.</span><span>Zona</span><span>Obs.</span>${mostrarBorrar?'<span></span>':''}
     </div>
-    ${registros.map(r=>`<div class="log-row" style="grid-template-columns:85px 1fr 65px 55px 1fr 30px">
+    ${lista.map(r=>`<div class="log-row" style="grid-template-columns:85px 1fr 60px 50px 80px 1fr ${mostrarBorrar?'30px':''}">
       <span style="color:var(--text3)">${fmt(r.fecha)}</span>
       <span style="font-weight:500">${r.coord.split('(')[0].trim()}</span>
       <span><span class="badge" style="background:${r.frente==='produccion'?'#E1F5EE':'#EEEDFE'};color:${r.frente==='produccion'?'#085041':'#3C3489'}">${r.frente==='produccion'?'Prod.':'Campo'}</span></span>
       <span style="font-weight:600">${r.unidades}</span>
-      <span style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.sedes||r.obs||'—'}</span>
-      <span><input type="checkbox" data-id="${r.id}" onchange="toggleSel(this)" style="cursor:pointer"></span>
+      <span style="color:var(--text3);font-size:11px">${r.zona||'—'}</span>
+      <span style="color:var(--text3);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obs||'—'}</span>
+      ${mostrarBorrar?`<span><input type="checkbox" data-id="${r.id}" onchange="window.toggleSel(this)" style="cursor:pointer"></span>`:''}
     </div>`).join('')}`
-    :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros aun.</div>';
+    :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros.</div>';
 
   document.getElementById('last-update').textContent='Actualizado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
 }
 
-// Firebase listener en tiempo real
-const q=query(collection(db,'registros'),orderBy('fecha','desc'),orderBy('ts','desc'));
-onSnapshot(q, snap=>{
-  registros=snap.docs.map(d=>({id:d.id,...d.data()}));
-  renderTodo();
-  document.getElementById('loading').style.display='none';
-}, err=>{
-  document.getElementById('loading').innerHTML='Error de conexion. Recarga la pagina.';
-  console.error(err);
-});
-
-// Guardar
 window.guardar=async function(){
+  if(!esAutorizado){alert('No tienes permiso para registrar avances.');return;}
   const fecha=document.getElementById('f-fecha').value;
   const coord=document.getElementById('f-coord').value;
   const frente=document.getElementById('f-frente').value;
+  const zona=document.getElementById('f-zona').value;
   const unidades=parseInt(document.getElementById('f-unidades').value)||0;
   const sedes=document.getElementById('f-sedes').value.trim();
   const obs=document.getElementById('f-obs').value.trim();
-  const err=document.getElementById('f-error');
-  const suc=document.getElementById('f-success');
+  const err=document.getElementById('f-error'),suc=document.getElementById('f-success');
   err.style.display='none';suc.style.display='none';
-  if(!fecha||!coord||!frente||unidades<1){
-    err.textContent='Completa fecha, coordinador, frente y unidades (minimo 1).';
-    err.style.display='block';return;
-  }
+  if(!fecha||!coord||!frente||unidades<1){err.textContent='Completa fecha, coordinador, frente y unidades.';err.style.display='block';return;}
   try{
-    await addDoc(collection(db,'registros'),{fecha,coord,frente,unidades,sedes,obs,ts:Date.now()});
-    suc.textContent='Registro guardado correctamente.';suc.style.display='block';
-    limpiarForm();
-    setTimeout(()=>suc.style.display='none',3000);
-  }catch(e){
-    err.textContent='Error al guardar. Verifica tu conexion.';err.style.display='block';
-  }
+    await addDoc(collection(db,'registros'),{fecha,coord,frente,zona,unidades,sedes,obs,registradoPor:usuarioActual?.email||'',ts:Date.now()});
+    suc.textContent='Registro guardado.';suc.style.display='block';
+    limpiarForm();setTimeout(()=>suc.style.display='none',3000);
+  }catch(e){err.textContent='Error al guardar.';err.style.display='block';}
 };
 
 window.limpiarForm=function(){
-  ['f-coord','f-frente','f-sedes','f-obs','f-unidades'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('f-fecha').value=new Date().toISOString().slice(0,10);
-  document.getElementById('f-error').style.display='none';
-  document.getElementById('f-success').style.display='none';
+  ['f-coord','f-frente','f-zona','f-sedes','f-obs','f-unidades'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-fecha').value=hoy();
 };
 
-window.toggleSel=function(cb){
-  if(cb.checked)seleccionados.add(cb.dataset.id);
-  else seleccionados.delete(cb.dataset.id);
-};
-
-window.confirmarBorrar=async function(){
-  if(!seleccionados.size){alert('Selecciona al menos un registro para borrar.');return;}
-  if(!confirm(`Borrar ${seleccionados.size} registro(s)?`))return;
-  for(const id of seleccionados){
-    await deleteDoc(doc(db,'registros',id));
+function formatFechaExcel(v){
+  if(!v)return'';
+  if(typeof v==='number'){const d=new Date((v-25569)*86400000);return d.toISOString().slice(0,10);}
+  if(typeof v==='string'){
+    const parts=v.includes('/')?v.split('/'):v.includes('-')?v.split('-'):null;
+    if(parts&&parts.length===3){if(parts[0].length===4)return v.slice(0,10);return`${parts[2].length===4?parts[2]:'20'+parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;}
   }
+  return String(v).slice(0,10);
+}
+
+window.handleDrop=function(e){e.preventDefault();document.getElementById('drop-zone').classList.remove('drag');window.handleFile(e.dataTransfer.files[0]);}
+window.handleFile=function(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+    pendingRows=rows.map(r=>({
+      fecha:formatFechaExcel(r['Fecha']||r['fecha']||''),
+      coord:r['Coordinador']||r['coordinador']||'',
+      frente:(r['Frente']||r['frente']||'').toLowerCase(),
+      zona:r['Zona']||r['zona']||'',
+      unidades:parseInt(r['Total_Unidades']||r['total_unidades']||r['Unidades']||r['unidades']||0),
+      sedes:r['Sedes']||r['sedes']||r['Codigo_Sede']||r['codigo_sede']||'',
+      obs:r['Observaciones']||r['observaciones']||'',
+    })).filter(r=>r.fecha&&r.coord&&r.frente&&r.unidades>0);
+    document.getElementById('preview-count').textContent=`${pendingRows.length} registros validos`;
+    document.getElementById('preview-table').innerHTML='<thead><tr><th>Fecha</th><th>Coordinador</th><th>Frente</th><th>Zona</th><th>Uds.</th><th>Sedes</th><th>Obs.</th></tr></thead><tbody>'+pendingRows.map(r=>`<tr><td>${fmt(r.fecha)}</td><td>${r.coord.split('(')[0].trim()}</td><td>${r.frente}</td><td>${r.zona||'—'}</td><td><strong>${r.unidades}</strong></td><td>${r.sedes||'—'}</td><td>${r.obs||'—'}</td></tr>`).join('')+'</tbody>';
+    document.getElementById('preview-area').style.display='block';
+  };
+  reader.readAsArrayBuffer(file);
+};
+
+window.confirmarCarga=async function(){
+  if(!esAutorizado){alert('No tienes permiso.');return;}
+  const btn=document.querySelector('#preview-area .btn-primary');
+  btn.textContent='Importando...';btn.disabled=true;
+  try{
+    const batch=writeBatch(db);
+    pendingRows.forEach(r=>{const ref=doc(collection(db,'registros'));batch.set(ref,{...r,registradoPor:usuarioActual?.email||'',ts:Date.now()});});
+    await batch.commit();
+    document.getElementById('preview-area').style.display='none';
+    document.getElementById('file-input').value='';
+    const n=pendingRows.length;pendingRows=[];
+    btn.textContent='Importar todos';btn.disabled=false;
+    alert(`✓ ${n} registros importados correctamente.`);
+    showTab('dashboard');
+  }catch(e){document.getElementById('preview-error').textContent='Error: '+e.message;document.getElementById('preview-error').style.display='block';btn.textContent='Importar todos';btn.disabled=false;}
+};
+
+window.cancelarCarga=function(){document.getElementById('preview-area').style.display='none';document.getElementById('file-input').value='';pendingRows=[];};
+
+window.descargarPlantilla=function(tipo){
+  const cols=tipo==='detalle'?['Fecha','Coordinador','Frente','Zona','Codigo_Sede','Tipo_Sede','Observaciones']:['Fecha','Coordinador','Frente','Zona','Total_Unidades','Sedes','Observaciones'];
+  const ej=tipo==='detalle'?[['10/07/2026','Ayrton Hipolito (Zona Norte)','campo','Zona Norte','PJ041','Tipo 2','Sin incidencias']]:
+    [['10/07/2026','Ayrton Hipolito (Zona Norte)','campo','Zona Norte',15,'PJ041,PJ042','Sin incidencias']];
+  const ws=XLSX.utils.aoa_to_sheet([cols,...ej]);ws['!cols']=cols.map(()=>({wch:22}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Avance');
+  XLSX.writeFile(wb,`Plantilla_${tipo}_SDWAN.xlsx`);
+};
+
+window.toggleSel=function(cb){if(cb.checked)seleccionados.add(cb.dataset.id);else seleccionados.delete(cb.dataset.id);};
+window.confirmarBorrar=async function(){
+  if(!esAutorizado){alert('No tienes permiso.');return;}
+  if(!seleccionados.size){alert('Selecciona al menos un registro.');return;}
+  if(!confirm(`Borrar ${seleccionados.size} registro(s)?`))return;
+  for(const id of seleccionados)await deleteDoc(doc(db,'registros',id));
   seleccionados.clear();
 };
 
 window.showTab=function(name){
-  ['dashboard','registro','hitos','historial'].forEach(t=>{
-    document.getElementById('tab-'+t).style.display=t===name?'block':'none';
-  });
-  document.querySelectorAll('.tab').forEach((b,i)=>{
-    b.classList.toggle('active',['dashboard','registro','hitos','historial'][i]===name);
-  });
+  ['dashboard','registro','carga','hitos','historial'].forEach(t=>{document.getElementById('tab-'+t).style.display=t===name?'block':'none';});
+  document.querySelectorAll('.tabs .tab').forEach((b,i)=>b.classList.toggle('active',['dashboard','registro','carga','hitos','historial'][i]===name));
+};
+window.showSubTab=function(name){
+  ['plantilla','subir'].forEach(t=>document.getElementById('subtab-'+t).style.display=t===name?'block':'none');
+  document.querySelectorAll('.sub-tab').forEach((b,i)=>b.classList.toggle('active',['plantilla','subir'][i]===name));
 };
 
-// Fecha inicial
-document.getElementById('f-fecha').value=new Date().toISOString().slice(0,10);
+document.getElementById('f-fecha').value=hoy();
+window.renderTodo=renderTodo;
 </script>
-
 </body>
 </html>
