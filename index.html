@@ -765,7 +765,8 @@ function renderSemaforo(){
 window.renderSemaforo=renderSemaforo;
 
 window.editarItem=function(id){
-  const item=itemsRiesgo.find(x=>x.id===id);if(!item||!esAdmin)return;
+  const item=itemsRiesgo.find(x=>x.id===id);
+  if(!item){console.log('Item no encontrado:',id,'Items disponibles:',itemsRiesgo.map(x=>x.id));return;}
   document.getElementById('si-id').value=id;
   document.getElementById('si-lbl').value=item.lbl||'';
   document.getElementById('si-r').value=item.r||'alerta';
@@ -778,7 +779,6 @@ window.editarItem=function(id){
 };
 
 window.abrirNuevoItem=function(){
-  if(!esAdmin)return;
   document.getElementById('si-id').value='';
   document.getElementById('si-lbl').value='';
   document.getElementById('si-r').value='alerta';
@@ -793,7 +793,6 @@ window.abrirNuevoItem=function(){
 window.cerrarModalSemaforo=function(){document.getElementById('modal-semaforo').style.display='none';};
 
 window.guardarItem=async function(){
-  if(!esAdmin)return;
   const id=document.getElementById('si-id').value;
   const lbl=document.getElementById('si-lbl').value.trim();
   const r=document.getElementById('si-r').value;
@@ -810,7 +809,6 @@ window.guardarItem=async function(){
 };
 
 window.eliminarItem=async function(){
-  if(!esAdmin)return;
   const id=document.getElementById('si-id').value;
   if(!id||!confirm('¿Eliminar este ítem del semáforo?'))return;
   await deleteDoc(doc(db,'semaforo',id));
@@ -830,4 +828,4 @@ window.guardar=async function(){
     await addDoc(collection(db,'registros'),{fecha,coord,frente,zona,unidades,sedes,obs,registradoPor:usuarioActual?.email||'',ts:Date.now()});
     suc.textContent='Registro guardado.';suc.style.display='block';
     window.limpiarForm();setTimeout(()=>suc.style.display='none',3000);
-  }catch(e){err.textContent='Error al guardar.';er
+  }catch(e){err.textContent='Error al
