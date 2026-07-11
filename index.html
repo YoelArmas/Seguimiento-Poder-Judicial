@@ -661,9 +661,9 @@ function renderTodo(){
         </span>
       </div>
       <div class="hist-row-detail" id="hdet-${r.id}">
-        <div class="detail-chip"><strong>Sedes:</strong> ${r.sedes||'—'}</div>
+        ${r.sedes?`<div style="width:100%"><strong style="font-size:11px;color:var(--text)">Sedes:</strong><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${r.sedes.split(',').map(s=>s.trim()).filter(Boolean).map(s=>`<span style="background:#EEF2FF;color:#3C3489;border:1px solid #C7D0F5;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:500">${s}</span>`).join('')}</div></div>`:''}
         <div class="detail-chip"><strong>Tipo sede:</strong> ${r.tipo||'—'}</div>
-        <div class="detail-chip"><strong>Obs.:</strong> ${r.obs||'—'}</div>
+        <div class="detail-chip" style="flex:1;min-width:150px"><strong>Obs.:</strong> ${r.obs||'—'}</div>
         <div class="detail-chip"><strong>Registrado por:</strong> ${r.registradoPor||'—'}</div>
       </div>
     </div>`}).join('')}`
