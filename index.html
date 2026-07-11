@@ -742,6 +742,7 @@ function renderTodo(){
         <div class="detail-chip"><strong>Tipo sede:</strong> ${r.tipo||'—'}</div>
         <div class="detail-chip" style="flex:1;min-width:150px"><strong>Obs.:</strong> ${r.obs||'—'}</div>
         <div class="detail-chip"><strong>Registrado por:</strong> ${r.registradoPor||'—'}</div>
+        ${r.editadoPor?`<div class="detail-chip" style="background:#FFF8E1;border-color:#FFE082"><strong>✏️ Editado por:</strong> ${r.editadoPor} &nbsp;·&nbsp; ${r.editadoTs?new Date(r.editadoTs).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}</div>`:''}
       </div>
     </div>`}).join('')}`
     :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros.</div>';
