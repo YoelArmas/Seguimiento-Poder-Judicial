@@ -509,7 +509,7 @@ select.inp{cursor:pointer}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, writeBatch, getDocs, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig={apiKey:"AIzaSyDdcAGBTp_ekIhSJdelyR4M_gY3HshvDhI",authDomain:"seguimiento-poder-judicial.firebaseapp.com",projectId:"seguimiento-poder-judicial",storageBucket:"seguimiento-poder-judicial.firebasestorage.app",messagingSenderId:"25916877483",appId:"1:25916877483:web:756ffe74263b01b61d65ee"};
@@ -617,21 +617,23 @@ const ITEMS_DEFAULT=[
 ];
 
 async function inicializarSemaforo(){
-  const {getDocs}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
-  const snap=await getDocs(collection(db,'semaforo'));
-  if(snap.empty){
-    const batch=writeBatch(db);
-    ITEMS_DEFAULT.forEach(item=>{batch.set(doc(collection(db,'semaforo')),item);});
-    await batch.commit();
-  }
+  try{
+    const snap=await getDocs(collection(db,'semaforo'));
+    if(snap.empty){
+      const batch=writeBatch(db);
+      ITEMS_DEFAULT.forEach(item=>{batch.set(doc(collection(db,'semaforo')),item);});
+      await batch.commit();
+    }
+  }catch(e){console.error('init semaforo:',e);}
 }
 inicializarSemaforo();
 
-const qSem=query(collection(db,'semaforo'),orderBy('orden','asc'));
+const qSem=query(collection(db,'semaforo'));
 onSnapshot(qSem,snap=>{
   itemsRiesgo=snap.docs.map(d=>({id:d.id,...d.data()}));
+  itemsRiesgo.sort((a,b)=>(a.orden||99)-(b.orden||99));
   renderSemaforo();
-},err=>{console.error(err);});
+},err=>{console.error('semaforo error:',err);});
 
 function renderTodo(){
   const t=totalesPorFrente(),ht=hoyPorFrente();
@@ -801,7 +803,6 @@ window.guardarItem=async function(){
   const err=document.getElementById('si-error');
   if(!lbl||!r){err.textContent='Completa el nombre y el estado.';err.style.display='block';return;}
   try{
-    const {updateDoc,setDoc}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
     if(id){await updateDoc(doc(db,'semaforo',id),{lbl,r,nota,orden});}
     else{await setDoc(doc(collection(db,'semaforo')),{lbl,r,nota,orden});}
     window.cerrarModalSemaforo();
@@ -828,4 +829,7 @@ window.guardar=async function(){
     await addDoc(collection(db,'registros'),{fecha,coord,frente,zona,unidades,sedes,obs,registradoPor:usuarioActual?.email||'',ts:Date.now()});
     suc.textContent='Registro guardado.';suc.style.display='block';
     window.limpiarForm();setTimeout(()=>suc.style.display='none',3000);
-  }catch(e){err.textContent='Error al
+  }catch(e){err.textContent='Error al guardar.';err.style.display='block';}
+};
+
+window.limpiarForm=fun
