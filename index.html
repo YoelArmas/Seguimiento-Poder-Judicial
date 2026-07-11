@@ -30,15 +30,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .section-label{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
 
 /* EMBUDO */
-.funnel-wrap{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr auto 1fr;gap:0;align-items:stretch;margin-bottom:16px}
-@media(max-width:900px){.funnel-wrap{grid-template-columns:1fr 1fr;gap:10px}.funnel-arrow{display:none!important}}
 .funnel-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center;position:relative}
 .funnel-card .num{font-size:32px;font-weight:700;line-height:1;margin-bottom:4px}
 .funnel-card .lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 .funnel-card .sub{font-size:11px;color:var(--text3);margin-bottom:8px}
 .funnel-card .pct-bar{height:5px;border-radius:3px;background:var(--border);overflow:hidden}
 .funnel-card .pct-fill{height:5px;border-radius:3px;transition:width .5s}
-.funnel-arrow{display:flex;align-items:center;justify-content:center;color:var(--border);font-size:20px;padding:0 4px;flex-shrink:0}
+.funnel-arrow{display:flex;align-items:center;justify-content:center;color:#C7D0E0;font-size:22px;padding:0 4px;flex-shrink:0}
+/* Desktop: horizontal */
+.prod-grid{display:grid;grid-template-columns:1fr 40px 1fr;align-items:center;margin-bottom:20px}
+.desp-grid{display:grid;grid-template-columns:1fr 44px 1fr 44px 1fr;align-items:center}
+/* Mobile: vertical stacked */
+@media(max-width:640px){
+  .prod-grid{grid-template-columns:1fr;gap:0}
+  .desp-grid{grid-template-columns:1fr;gap:0}
+  .funnel-arrow{transform:rotate(90deg);padding:2px 0;font-size:18px}
+  .funnel-arrow-label{display:none}
+  .funnel-card{padding:12px 14px}
+  .funnel-card .num{font-size:26px}
+  .funnel-card .sub{font-size:10px}
+  .kpi-row{grid-template-columns:1fr 1fr}
+  .log-row{grid-template-columns:70px 1fr 70px 40px!important;font-size:11px}
+  .log-col-zona,.log-col-obs{display:none}
+}
 
 /* KPI mini */
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
@@ -149,7 +163,7 @@ select.inp{cursor:pointer}
 
     <!-- Bloque Produccion -->
     <div class="section-label">Linea de produccion (NIRQA — planta ON Empresas)</div>
-    <div style="display:grid;grid-template-columns:1fr 40px 1fr;gap:0;align-items:center;margin-bottom:20px">
+    <div class="prod-grid">
       <div class="funnel-card" style="border-top:3px solid var(--teal)">
         <div class="num" id="f-configurados" style="color:var(--teal)">0</div>
         <div class="lbl" style="color:var(--teal)">Equipos configurados</div>
@@ -169,7 +183,7 @@ select.inp{cursor:pointer}
 
     <!-- Bloque Despliegue -->
     <div class="section-label">Despliegue en campo</div>
-    <div style="display:grid;grid-template-columns:1fr 36px 1fr 36px 1fr;gap:0;align-items:center">
+    <div class="desp-grid">
       <div class="funnel-card" style="border-top:3px solid var(--amber)">
         <div style="font-size:18px;margin-bottom:4px">🏗️</div>
         <div class="num" id="f-solo5" style="color:var(--amber)">0</div>
@@ -179,7 +193,7 @@ select.inp{cursor:pointer}
         <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-solo5">0% del universo</div>
       </div>
       <div class="funnel-arrow" style="flex-direction:column;gap:2px">
-        <div style="font-size:11px;color:var(--text3);writing-mode:vertical-rl;transform:rotate(180deg)">+Item 1 o 2</div>
+        <div class="funnel-arrow-label" style="font-size:11px;color:var(--text3);writing-mode:vertical-rl;transform:rotate(180deg)">+Item 1 o 2</div>
         <div style="font-size:18px">→</div>
       </div>
       <div class="funnel-card" style="border-top:3px solid var(--purple)">
@@ -191,7 +205,7 @@ select.inp{cursor:pointer}
         <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-con-enlace">0% del universo</div>
       </div>
       <div class="funnel-arrow" style="flex-direction:column;gap:2px">
-        <div style="font-size:11px;color:var(--text3);writing-mode:vertical-rl;transform:rotate(180deg)">Aprueba PJ</div>
+        <div class="funnel-arrow-label" style="font-size:11px;color:var(--text3);writing-mode:vertical-rl;transform:rotate(180deg)">Aprueba PJ</div>
         <div style="font-size:18px">→</div>
       </div>
       <div class="funnel-card" style="border-top:3px solid var(--teal);background:linear-gradient(135deg,#fff 0%,#f0faf5 100%)">
@@ -267,7 +281,6 @@ select.inp{cursor:pointer}
               <option value="">Seleccionar...</option>
               <option>Zona Norte</option><option>Zona Sur</option>
               <option>Zona Centro</option><option>Zona Oriente</option>
-              <option>Lima Metropolis</option><option>Callao</option>
             </select>
           </div>
         </div>
@@ -519,7 +532,7 @@ function renderTodo(){
   const ult=registros.slice(0,6);
   document.getElementById('log-dashboard').innerHTML=ult.length?`
     <div class="log-row log-head" style="grid-template-columns:80px 1fr 100px 50px 80px 1fr"><span>Fecha</span><span>Responsable</span><span>Tipo</span><span>Uds.</span><span>Zona</span><span>Obs.</span></div>
-    ${ult.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`<div class="log-row" style="grid-template-columns:80px 1fr 100px 50px 80px 1fr"><span style="color:var(--text3)">${fmt(r.fecha)}</span><span style="font-weight:500">${r.coord.split('(')[0].trim()}</span><span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span></span><span style="font-weight:600">${r.unidades}</span><span style="color:var(--text3)">${r.zona||'—'}</span><span style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obs||'—'}</span></div>`}).join('')}`
+    ${ult.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`<div class="log-row" style="grid-template-columns:80px 1fr 100px 50px 80px 1fr"><span style="color:var(--text3)">${fmt(r.fecha)}</span><span style="font-weight:500">${r.coord.split('(')[0].trim()}</span><span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span></span><span style="font-weight:600">${r.unidades}</span><span class="log-col-zona" style="color:var(--text3)">${r.zona||'—'}</span><span class="log-col-obs" style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obs||'—'}</span></div>`}).join('')}`
     :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros aun.</div>';
 
   // Proyeccion
