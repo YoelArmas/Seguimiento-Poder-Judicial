@@ -415,7 +415,43 @@ select.inp{cursor:pointer}
 
 </div><!-- /content -->
 
-<!-- MODAL EDITAR -->
+<!-- MODAL SEMAFORO -->
+<div id="modal-semaforo" class="modal-overlay" style="display:none" onclick="if(event.target===this)window.cerrarModalSemaforo()">
+  <div class="modal-box">
+    <div class="modal-title" id="si-modal-title">Editar ítem de riesgo</div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <input type="hidden" id="si-id">
+      <div><label class="label">Nombre del ítem</label>
+        <input type="text" class="inp" id="si-lbl" placeholder="ej. Item 3 — Bitel (Sedes)">
+      </div>
+      <div class="form-grid">
+        <div><label class="label">Estado</label>
+          <select class="inp" id="si-r">
+            <option value="ok">🟢 En tiempo (verde)</option>
+            <option value="alerta">🟡 Riesgo medio (amarillo)</option>
+            <option value="critico">🔴 Riesgo crítico (rojo)</option>
+          </select>
+        </div>
+        <div><label class="label">Orden en lista</label>
+          <input type="number" class="inp" id="si-orden" min="1" max="50">
+        </div>
+      </div>
+      <div><label class="label">Nota / descripción</label>
+        <input type="text" class="inp" id="si-nota" placeholder="ej. Pendiente integración al SD-WAN">
+      </div>
+      <div id="si-error" class="error"></div>
+      <div style="display:flex;gap:8px;justify-content:space-between;margin-top:4px">
+        <button id="si-btn-delete" class="btn btn-danger" style="display:none" onclick="window.eliminarItem()">🗑 Eliminar</button>
+        <div style="display:flex;gap:8px;margin-left:auto">
+          <button class="btn" onclick="window.cerrarModalSemaforo()">Cancelar</button>
+          <button class="btn btn-primary" onclick="window.guardarItem()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR REGISTRO -->
 <div id="modal-editar" class="modal-overlay" style="display:none" onclick="if(event.target===this)window.cerrarModal()">
   <div class="modal-box">
     <div class="modal-title">Editar registro</div>
@@ -478,10 +514,11 @@ import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOu
 
 const firebaseConfig={apiKey:"AIzaSyDdcAGBTp_ekIhSJdelyR4M_gY3HshvDhI",authDomain:"seguimiento-poder-judicial.firebaseapp.com",projectId:"seguimiento-poder-judicial",storageBucket:"seguimiento-poder-judicial.firebasestorage.app",messagingSenderId:"25916877483",appId:"1:25916877483:web:756ffe74263b01b61d65ee"};
 const EMAILS_AUTORIZADOS=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com','miguel.del08@gmail.com','rromerom2002@gmail.com'];
+const EMAILS_ADMIN=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com'];
 const app=initializeApp(firebaseConfig),db=getFirestore(app),auth=getAuth(app),provider=new GoogleAuthProvider();
 const TOTAL=745,FIN=new Date('2026-09-06');
 const FERIADOS=['2026-07-23','2026-07-28','2026-07-29','2026-08-06','2026-08-30'];
-let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false;
+let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[];
 
 function esHabil(d){const s=d.toISOString().slice(0,10);return d.getDay()!==0&&d.getDay()!==6&&!FERIADOS.includes(s)}
 function diasHabilesHasta(d1,d2){let n=0,d=new Date(d1);while(d<=d2){if(esHabil(d))n++;d.setDate(d.getDate()+1)}return n}
@@ -503,13 +540,20 @@ function hoyPorFrente(){
 }
 function ritmo(frente){
   const corte=new Date();corte.setDate(corte.getDate()-10);
-  const sum=registros.filter(r=>r.frente===frente&&new Date(r.fecha+'T00:00:00')>=corte).reduce((a,r)=>a+r.unidades,0);
-  return Math.max(1,Math.round((sum/Math.max(1,diasHabilesHasta(corte,new Date())))*10)/10);
+  const regs=registros.filter(r=>r.frente===frente&&new Date(r.fecha+'T00:00:00')>=corte);
+  const sum=regs.reduce((a,r)=>a+r.unidades,0);
+  const dh=Math.max(1,diasHabilesHasta(corte,new Date()));
+  const r=Math.round((sum/dh)*10)/10;
+  // Minimo 30/dia para configuracion, sin minimo para otros (datos insuficientes)
+  if(frente==='configurados') return Math.max(30,r);
+  return r>0?r:null; // null = sin datos suficientes
 }
 function proyectar(completadas,frente){
   const pend=TOTAL-completadas;
   if(pend<=0)return{ok:true,fecha:'Completado',holgura:999,riesgo:'ok'};
-  const r=ritmo(frente),dias=Math.ceil(pend/r),fp=sumarDH(new Date(),dias);
+  const r=ritmo(frente);
+  if(r===null)return{sinDatos:true,riesgo:'alerta'};
+  const dias=Math.ceil(pend/r),fp=sumarDH(new Date(),dias);
   const holgura=Math.round((FIN-fp)/(1000*60*60*24));
   return{ok:false,fecha:fp.toISOString().slice(0,10),holgura,riesgo:holgura<0?'critico':holgura<4?'alerta':'ok',ritmo:r};
 }
@@ -522,6 +566,7 @@ function colorR(r){
 onAuthStateChanged(auth,user=>{
   usuarioActual=user;
   esAutorizado=user&&!user.isAnonymous&&EMAILS_AUTORIZADOS.includes(user.email);
+  esAdmin=user&&!user.isAnonymous&&EMAILS_ADMIN.includes(user.email);
   actualizarUI();
   document.getElementById('loading').style.display='none';
 });
@@ -539,8 +584,8 @@ function actualizarUI(){
   document.getElementById('carga-lock').style.display=esAutorizado?'none':'block';
   document.getElementById('carga-form').style.display=esAutorizado?'block':'none';
   const bb=document.getElementById('btn-borrar');if(bb)bb.style.display=esAutorizado?'inline-flex':'none';
-  // Trigger re-render to show edit buttons if historial is visible
   if(registros.length)renderTodo();
+  renderSemaforo();
 }
 
 window.iniciarSesion=async function(){
@@ -557,6 +602,36 @@ window.cerrarSesion=async function(){await signOut(auth);signInAnonymously(auth)
 
 const q=query(collection(db,'registros'),orderBy('fecha','desc'),orderBy('ts','desc'));
 onSnapshot(q,snap=>{registros=snap.docs.map(d=>({id:d.id,...d.data()}));renderTodo();},err=>{console.error(err);});
+
+// Semaforo items listener
+const ITEMS_DEFAULT=[
+  {orden:1,lbl:'Produccion — equipos configurados',r:'critico',nota:'20/745 — Fecha límite culminación: 26/07/2026'},
+  {orden:2,lbl:'Campo — altas operativas PJ',r:'critico',nota:'0/745 aprobadas — Fecha límite: 06/09/2026'},
+  {orden:3,lbl:'Item 1 — Bitel (Sedes)',r:'critico',nota:'Culminación instalación equipos CPE antes del 30/08'},
+  {orden:4,lbl:'Item 1 — Bitel (Cabeceras)',r:'alerta',nota:'Pendiente instalación equipos cabecera e integración al SD-WAN'},
+  {orden:5,lbl:'Item 2 — Claro (Sedes)',r:'critico',nota:'Culminación instalación equipos CPE antes del 30/08'},
+  {orden:6,lbl:'Item 2 — Claro (Cabeceras)',r:'alerta',nota:'Pendiente instalación equipo cabecera en Zavala e integración al SD-WAN'},
+  {orden:7,lbl:'Item 4 — LAN (PJ)',r:'alerta',nota:'Port-mapping pendiente'},
+  {orden:8,lbl:'Item 5 — Gabinetes',r:'alerta',nota:'Culminación instalación gabinetes antes del 30/08'},
+  {orden:9,lbl:'Poder Judicial — Puesta en Marcha Callao',r:'critico',nota:'Culminación puesta en marcha sedes Callao para afinación de plantillas'},
+];
+
+async function inicializarSemaforo(){
+  const {getDocs}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+  const snap=await getDocs(collection(db,'semaforo'));
+  if(snap.empty){
+    const batch=writeBatch(db);
+    ITEMS_DEFAULT.forEach(item=>{batch.set(doc(collection(db,'semaforo')),item);});
+    await batch.commit();
+  }
+}
+inicializarSemaforo();
+
+const qSem=query(collection(db,'semaforo'),orderBy('orden','asc'));
+onSnapshot(qSem,snap=>{
+  itemsRiesgo=snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderSemaforo();
+},err=>{console.error(err);});
 
 function renderTodo(){
   const t=totalesPorFrente(),ht=hoyPorFrente();
@@ -587,16 +662,7 @@ function renderTodo(){
     <div class="kpi"><div class="val">${TOTAL-t.alta}</div><div class="lbl">Pendiente alta</div><div class="sub">Sedes sin servicio activo</div></div>`;
 
   // Semaforo
-  const rAlt=aj.riesgo,cg=colorR(rAlt);
-  document.getElementById('semaforo').innerHTML=`
-    <div style="display:inline-flex;align-items:center;gap:8px;background:${cg.bg};color:${cg.tx};padding:6px 14px;border-radius:20px;font-weight:600;font-size:13px;margin-bottom:12px">Estado general: ${cg.lbl}</div>
-    ${[
-      {lbl:'Produccion — equipos configurados',r:pj.riesgo,nota:`${t.configurados}/${TOTAL}`},
-      {lbl:'Campo — altas operativas PJ',r:aj.riesgo,nota:`${t.alta}/${TOTAL} aprobadas`},
-      {lbl:'Item 1 — Bitel (cabeceras)',r:'alerta',nota:'Instalada, sin integrar red lab Integratel'},
-      {lbl:'Item 2 — enlaces',r:'alerta',nota:'Pendiente cierre contractual'},
-      {lbl:'Item 4 — Palo Alto (PJ)',r:'alerta',nota:'Responsabilidad PJ — pendiente coordinacion'},
-    ].map(i=>{const c=colorR(i.r);return`<div class="semaforo-row"><div class="dot-sm" style="background:${c.tx}"></div><span style="min-width:230px;font-weight:500">${i.lbl}</span><span class="badge" style="background:${c.bg};color:${c.tx}">${c.lbl}</span><span style="font-size:12px;color:var(--text3);margin-left:8px">${i.nota}</span></div>`}).join('')}`;
+  renderSemaforo();
 
   const NOMBRES={configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
   const COLORES={configurados:['#E1F5EE','#085041'],retirados:['#F1EFE8','#5F5E5A'],solo_item5:['#FAEEDA','#633806'],con_enlace:['#EEEDFE','#3C3489'],alta:['#E1F5EE','#085041']};
@@ -613,10 +679,16 @@ function renderTodo(){
         {lbl:'Equipos configurados',p:pj,v:t.configurados},
         {lbl:'Altas operativas (meta final)',p:aj,v:t.alta},
       ].map(x=>`<div><div style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-bottom:8px">${x.lbl}</div>
-      <div style="font-size:13px;color:var(--text2);line-height:2">
+      <div style="font-size:13px;color:var(--text2);line-height:1.9">
         Completado: <strong>${x.v}/${TOTAL}</strong><br>Pendiente: <strong>${TOTAL-x.v}</strong><br>
-        Ritmo actual: <strong>${x.p.ritmo||1}/dia</strong><br>Fecha estimada: <strong>${fmt(x.p.fecha)}</strong><br>
-        Holgura vs 06/09: <strong style="color:${colorR(x.p.riesgo).tx}">${x.p.holgura} dias</strong>
+        ${x.p.sinDatos
+          ?`<span style="color:#B07A10;font-weight:500">⚠️ Sin datos suficientes para proyectar</span>`
+          :x.p.ok
+            ?`<span style="color:#085041;font-weight:600">✅ Completado</span>`
+            :`Ritmo actual: <strong>${x.p.ritmo}/dia</strong><br>
+        Fecha estimada fin: <strong>${fmt(x.p.fecha)}</strong><br>
+        <span style="color:${colorR(x.p.riesgo).tx};font-weight:600">${x.p.holgura>=0?`✅ +${x.p.holgura} dias antes del 06/09`:`⚠️ ${Math.abs(x.p.holgura)} dias despues del 06/09`}</span><br>
+        <span style="font-size:11px;color:var(--text3)">${x.p.holgura>=0?'Terminas antes del plazo contractual':'Con el ritmo actual no llegas al 06/09 — ajusta la capacidad'}</span>`}
       </div></div>`).join('')}
     </div>`;
 
@@ -671,6 +743,79 @@ function renderTodo(){
 
   document.getElementById('last-update').textContent='Actualizado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
 }
+
+function renderSemaforo(){
+  const items=itemsRiesgo.length?itemsRiesgo:ITEMS_DEFAULT;
+  const rGen=items.some(i=>i.r==='critico')?'critico':items.some(i=>i.r==='alerta')?'alerta':'ok';
+  const cg=colorR(rGen);
+  document.getElementById('semaforo').innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:${cg.bg};color:${cg.tx};padding:6px 14px;border-radius:20px;font-weight:600;font-size:13px">Estado general: ${cg.lbl}</div>
+      ${esAdmin?`<button onclick="window.abrirNuevoItem()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:500">+ Agregar ítem</button>`:''}
+    </div>
+    ${items.map(i=>{const c=colorR(i.r);return`
+    <div class="semaforo-row" style="align-items:flex-start;padding:9px 0">
+      <div class="dot-sm" style="background:${c.tx};margin-top:3px"></div>
+      <span style="min-width:220px;font-weight:500;font-size:13px">${i.lbl}</span>
+      <span class="badge" style="background:${c.bg};color:${c.tx};white-space:nowrap">${c.lbl}</span>
+      <span style="font-size:12px;color:var(--text3);flex:1">${i.nota}</span>
+      ${esAdmin?`<button onclick="window.editarItem('${i.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--navy);white-space:nowrap;flex-shrink:0">✏️ Editar</button>`:''}
+    </div>`}).join('')}`;
+}
+window.renderSemaforo=renderSemaforo;
+
+window.editarItem=function(id){
+  const item=itemsRiesgo.find(x=>x.id===id);if(!item||!esAdmin)return;
+  document.getElementById('si-id').value=id;
+  document.getElementById('si-lbl').value=item.lbl||'';
+  document.getElementById('si-r').value=item.r||'alerta';
+  document.getElementById('si-nota').value=item.nota||'';
+  document.getElementById('si-orden').value=item.orden||99;
+  document.getElementById('si-modal-title').textContent='Editar ítem de riesgo';
+  document.getElementById('si-btn-delete').style.display='inline-flex';
+  document.getElementById('si-error').style.display='none';
+  document.getElementById('modal-semaforo').style.display='flex';
+};
+
+window.abrirNuevoItem=function(){
+  if(!esAdmin)return;
+  document.getElementById('si-id').value='';
+  document.getElementById('si-lbl').value='';
+  document.getElementById('si-r').value='alerta';
+  document.getElementById('si-nota').value='';
+  document.getElementById('si-orden').value=itemsRiesgo.length+1;
+  document.getElementById('si-modal-title').textContent='Nuevo ítem de riesgo';
+  document.getElementById('si-btn-delete').style.display='none';
+  document.getElementById('si-error').style.display='none';
+  document.getElementById('modal-semaforo').style.display='flex';
+};
+
+window.cerrarModalSemaforo=function(){document.getElementById('modal-semaforo').style.display='none';};
+
+window.guardarItem=async function(){
+  if(!esAdmin)return;
+  const id=document.getElementById('si-id').value;
+  const lbl=document.getElementById('si-lbl').value.trim();
+  const r=document.getElementById('si-r').value;
+  const nota=document.getElementById('si-nota').value.trim();
+  const orden=parseInt(document.getElementById('si-orden').value)||99;
+  const err=document.getElementById('si-error');
+  if(!lbl||!r){err.textContent='Completa el nombre y el estado.';err.style.display='block';return;}
+  try{
+    const {updateDoc,setDoc}=await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    if(id){await updateDoc(doc(db,'semaforo',id),{lbl,r,nota,orden});}
+    else{await setDoc(doc(collection(db,'semaforo')),{lbl,r,nota,orden});}
+    window.cerrarModalSemaforo();
+  }catch(e){err.textContent='Error: '+e.message;err.style.display='block';}
+};
+
+window.eliminarItem=async function(){
+  if(!esAdmin)return;
+  const id=document.getElementById('si-id').value;
+  if(!id||!confirm('¿Eliminar este ítem del semáforo?'))return;
+  await deleteDoc(doc(db,'semaforo',id));
+  window.cerrarModalSemaforo();
+};
 
 window.guardar=async function(){
   if(!esAutorizado){alert('No tienes permiso.');return;}
