@@ -51,8 +51,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .funnel-card .num{font-size:26px}
   .funnel-card .sub{font-size:10px}
   .kpi-row{grid-template-columns:1fr 1fr}
-  .log-row{grid-template-columns:70px 1fr 70px 40px!important;font-size:11px}
-  .log-col-zona,.log-col-obs{display:none}
+  /* Historial mobile: solo fecha, tipo, uds — ocultar responsable, zona */
+  .hist-row-main{grid-template-columns:70px 1fr 60px 35px auto!important;font-size:11px}
+  .hist-col-zona{display:none}
+  /* Semaforo mobile: stack vertical */
+  .semaforo-row{flex-wrap:wrap;gap:6px;padding:10px 0}
+  .semaforo-row span:last-child{width:100%;font-size:11px;color:var(--text2)!important;margin-left:0!important}
 }
 
 /* KPI mini */
@@ -70,7 +74,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
 
 /* SEMAFORO */
-.semaforo-row{display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.semaforo-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
 .semaforo-row:last-child{border-bottom:none}
 .dot-sm{width:11px;height:11px;border-radius:50%;flex-shrink:0}
 
@@ -123,12 +127,11 @@ select.inp{cursor:pointer}
 /* Expandible row */
 .hist-row{border-bottom:1px solid var(--border);cursor:pointer}
 .hist-row:hover{background:#f8f9fc}
-.hist-row-main{display:grid;grid-template-columns:75px 120px 95px 45px 90px auto;gap:8px;align-items:center;padding:9px 4px;font-size:12px}
+.hist-row-main{display:grid;grid-template-columns:75px 130px 95px 45px 85px auto;gap:8px;align-items:center;padding:9px 4px;font-size:12px}
 .hist-row-detail{display:none;padding:8px 12px 12px;background:#f8f9fc;border-top:1px solid var(--border);font-size:12px;gap:8px;flex-wrap:wrap}
 .hist-row-detail.open{display:flex}
 .detail-chip{background:#fff;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text2)}
 .detail-chip strong{color:var(--text);margin-right:4px}
-@media(max-width:640px){.hist-row-main{grid-template-columns:65px 90px 80px 35px 70px auto;font-size:11px}}
 </style>
 </head>
 <body>
@@ -793,7 +796,7 @@ function renderTodo(){
         <span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px" title="${r.coord}">${r.coord.split('(')[0].trim()}</span>
         <span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span></span>
         <span style="font-weight:700">${r.unidades}</span>
-        <span style="color:var(--text3)">${r.zona||'—'}</span>
+        <span class="hist-col-zona" style="color:var(--text3)">${r.zona||'—'}</span>
         <span style="display:flex;gap:6px;align-items:center" onclick="event.stopPropagation()">
           ${esAutorizado?`<button onclick="window.abrirEditar('${r.id}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer">✏️ Editar</button>
           <input type="checkbox" data-id="${r.id}" onchange="window.toggleSel(this)" style="cursor:pointer">`:'<span style="color:var(--text3);font-size:11px">▾</span>'}
@@ -822,12 +825,12 @@ function renderSemaforo(){
       ${esAdmin?`<button onclick="window.abrirNuevoItem()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:500">+ Agregar ítem</button>`:''}
     </div>
     ${items.map(i=>{const c=colorR(i.r);return`
-    <div class="semaforo-row" style="align-items:flex-start;padding:9px 0">
-      <div class="dot-sm" style="background:${c.tx};margin-top:3px"></div>
-      <span style="min-width:220px;font-weight:500;font-size:13px">${i.lbl}</span>
-      <span class="badge" style="background:${c.bg};color:${c.tx};white-space:nowrap">${c.lbl}</span>
-      <span style="font-size:12px;color:var(--text3);flex:1">${i.nota}</span>
-      ${esAdmin?`<button onclick="window.editarItem('${i.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--navy);white-space:nowrap;flex-shrink:0">✏️ Editar</button>`:''}
+    <div class="semaforo-row">
+      <div class="dot-sm" style="background:${c.tx};flex-shrink:0"></div>
+      <span style="font-weight:500;font-size:13px;min-width:0;flex:1">${i.lbl}</span>
+      <span class="badge" style="background:${c.bg};color:${c.tx};white-space:nowrap;flex-shrink:0">${c.lbl}</span>
+      ${esAdmin?`<button onclick="window.editarItem('${i.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--navy);white-space:nowrap;flex-shrink:0">✏️</button>`:''}
+      <span style="font-size:11px;color:var(--text3);width:100%;padding-left:23px;margin-top:2px">${i.nota}</span>
     </div>`}).join('')}`;
 }
 window.renderSemaforo=renderSemaforo;
