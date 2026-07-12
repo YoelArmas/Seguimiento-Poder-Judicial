@@ -51,12 +51,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .funnel-card .num{font-size:26px}
   .funnel-card .sub{font-size:10px}
   .kpi-row{grid-template-columns:1fr 1fr}
-  /* Historial mobile: solo fecha, tipo, uds — ocultar responsable, zona */
-  .hist-row-main{grid-template-columns:70px 1fr 60px 35px auto!important;font-size:11px}
-  .hist-col-zona{display:none}
-  /* Semaforo mobile: stack vertical */
-  .semaforo-row{flex-wrap:wrap;gap:6px;padding:10px 0}
-  .semaforo-row span:last-child{width:100%;font-size:11px;color:var(--text2)!important;margin-left:0!important}
+  .content{padding:12px}
+  .card{padding:12px 14px}
+  /* Historial: scroll horizontal para ver todo */
+  .hist-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .hist-row-main{grid-template-columns:80px 110px 90px 40px 90px auto!important;min-width:500px;font-size:11px!important;gap:6px!important}
+  /* Semaforo: nombre en linea completa, nota debajo */
+  .semaforo-row{flex-wrap:wrap;align-items:flex-start;gap:6px;padding:10px 0}
+  .semaforo-nota{width:100%;font-size:11px;color:var(--text3);padding-left:19px;margin-top:0}
 }
 
 /* KPI mini */
@@ -74,8 +76,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
 
 /* SEMAFORO */
-.semaforo-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+.semaforo-row{display:flex;align-items:flex-start;flex-wrap:wrap;gap:6px 10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
 .semaforo-row:last-child{border-bottom:none}
+.semaforo-nota{font-size:11px;color:var(--text3);width:100%;padding-left:21px}
 .dot-sm{width:11px;height:11px;border-radius:50%;flex-shrink:0}
 
 /* LOG */
@@ -127,7 +130,7 @@ select.inp{cursor:pointer}
 /* Expandible row */
 .hist-row{border-bottom:1px solid var(--border);cursor:pointer}
 .hist-row:hover{background:#f8f9fc}
-.hist-row-main{display:grid;grid-template-columns:75px 130px 95px 45px 85px auto;gap:8px;align-items:center;padding:9px 4px;font-size:12px}
+.hist-row-main{display:grid;grid-template-columns:80px 140px 1fr 80px auto;gap:8px;align-items:center;padding:9px 4px;font-size:12px}
 .hist-row-detail{display:none;padding:8px 12px 12px;background:#f8f9fc;border-top:1px solid var(--border);font-size:12px;gap:8px;flex-wrap:wrap}
 .hist-row-detail.open{display:flex}
 .detail-chip{background:#fff;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text2)}
@@ -414,7 +417,7 @@ select.inp{cursor:pointer}
         <button class="btn btn-danger" id="btn-borrar" style="font-size:12px;display:none" onclick="window.confirmarBorrar()">Borrar seleccionados</button>
       </div>
     </div>
-    <div id="historial-tabla">Cargando...</div>
+    <div class="hist-scroll-wrap"><div id="historial-tabla">Cargando...</div></div>
   </div>
 </div>
 
@@ -787,22 +790,27 @@ function renderTodo(){
   const lista=filtro?registros.filter(r=>r.frente===filtro):registros;
   document.getElementById('historial-tabla').innerHTML=lista.length?`
     <div class="hist-row-main log-head" style="cursor:default;padding:6px 4px;border-bottom:2px solid var(--border)">
-      <span>Fecha</span><span>Responsable</span><span>Tipo</span><span>Uds.</span><span>Zona</span><span></span>
+      <span>Fecha</span><span>Responsable</span><span>Tipo / Uds.</span><span class="hist-col-uds"></span><span class="hist-col-zona">Zona</span><span></span>
     </div>
     ${lista.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`
     <div class="hist-row" id="hrow-${r.id}">
       <div class="hist-row-main" onclick="window.toggleRow('${r.id}')">
-        <span style="color:var(--text3)">${fmt(r.fecha)}</span>
-        <span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px" title="${r.coord}">${r.coord.split('(')[0].trim()}</span>
-        <span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span></span>
-        <span style="font-weight:700">${r.unidades}</span>
-        <span class="hist-col-zona" style="color:var(--text3)">${r.zona||'—'}</span>
-        <span style="display:flex;gap:6px;align-items:center" onclick="event.stopPropagation()">
-          ${esAutorizado?`<button onclick="window.abrirEditar('${r.id}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer">✏️ Editar</button>
+        <span style="color:var(--text3);font-size:11px">${fmt(r.fecha)}</span>
+        <span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.coord}">${r.coord.split('(')[0].trim()}</span>
+        <span style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap">
+          <span class="badge" style="background:${c[0]};color:${c[1]};white-space:nowrap">${NOMBRES[r.frente]||r.frente}</span>
+          <strong class="hist-col-uds" style="font-size:12px;white-space:nowrap">${r.unidades}</strong>
+        </span>
+        <span class="hist-col-uds" style="font-weight:700;display:none">${r.unidades}</span>
+        <span class="hist-col-zona" style="color:var(--text3);font-size:11px">${r.zona||'—'}</span>
+        <span style="display:flex;gap:4px;align-items:center;flex-shrink:0" onclick="event.stopPropagation()">
+          ${esAutorizado?`<button onclick="window.abrirEditar('${r.id}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;white-space:nowrap">✏️</button>
           <input type="checkbox" data-id="${r.id}" onchange="window.toggleSel(this)" style="cursor:pointer">`:'<span style="color:var(--text3);font-size:11px">▾</span>'}
         </span>
       </div>
       <div class="hist-row-detail" id="hdet-${r.id}">
+        <div class="detail-chip"><strong>Uds.:</strong> ${r.unidades}</div>
+        <div class="detail-chip"><strong>Zona:</strong> ${r.zona||'—'}</div>
         ${r.sedes?`<div style="width:100%"><strong style="font-size:11px;color:var(--text)">Sedes:</strong><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${r.sedes.split(',').map(s=>s.trim()).filter(Boolean).map(s=>`<span style="background:#EEF2FF;color:#3C3489;border:1px solid #C7D0F5;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:500">${s}</span>`).join('')}</div></div>`:''}
         <div class="detail-chip"><strong>Tipo sede:</strong> ${r.tipo||'—'}</div>
         <div class="detail-chip" style="flex:1;min-width:150px"><strong>Obs.:</strong> ${r.obs||'—'}</div>
@@ -826,11 +834,11 @@ function renderSemaforo(){
     </div>
     ${items.map(i=>{const c=colorR(i.r);return`
     <div class="semaforo-row">
-      <div class="dot-sm" style="background:${c.tx};flex-shrink:0"></div>
-      <span style="font-weight:500;font-size:13px;min-width:0;flex:1">${i.lbl}</span>
+      <div class="dot-sm" style="background:${c.tx};flex-shrink:0;margin-top:3px"></div>
+      <span style="font-weight:500;font-size:13px;flex:1;min-width:0">${i.lbl}</span>
       <span class="badge" style="background:${c.bg};color:${c.tx};white-space:nowrap;flex-shrink:0">${c.lbl}</span>
       ${esAdmin?`<button onclick="window.editarItem('${i.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--navy);white-space:nowrap;flex-shrink:0">✏️</button>`:''}
-      <span style="font-size:11px;color:var(--text3);width:100%;padding-left:23px;margin-top:2px">${i.nota}</span>
+      <span class="semaforo-nota">${i.nota}</span>
     </div>`}).join('')}`;
 }
 window.renderSemaforo=renderSemaforo;
