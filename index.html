@@ -76,9 +76,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
 
 /* SEMAFORO */
-.semaforo-row{display:flex;align-items:flex-start;flex-wrap:wrap;gap:6px 10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.semaforo-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
 .semaforo-row:last-child{border-bottom:none}
-.semaforo-nota{font-size:11px;color:var(--text3);width:100%;padding-left:21px}
+.semaforo-nota{font-size:12px;color:var(--text3);flex:1;min-width:0}
 .dot-sm{width:11px;height:11px;border-radius:50%;flex-shrink:0}
 
 /* LOG */
@@ -848,11 +848,11 @@ function renderSemaforo(){
     </div>
     ${items.map(i=>{const c=colorR(i.r);return`
     <div class="semaforo-row">
-      <div class="dot-sm" style="background:${c.tx};flex-shrink:0;margin-top:3px"></div>
-      <span style="font-weight:500;font-size:13px;flex:1;min-width:0">${i.lbl}</span>
+      <div class="dot-sm" style="background:${c.tx};flex-shrink:0"></div>
+      <span style="font-weight:500;font-size:13px;min-width:200px;flex-shrink:0">${i.lbl}</span>
       <span class="badge" style="background:${c.bg};color:${c.tx};white-space:nowrap;flex-shrink:0">${c.lbl}</span>
-      ${esAdmin?`<button onclick="window.editarItem('${i.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--navy);white-space:nowrap;flex-shrink:0">✏️</button>`:''}
       <span class="semaforo-nota">${i.nota}</span>
+      ${esAdmin?`<button onclick="window.editarItem('${i.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--navy);white-space:nowrap;flex-shrink:0">✏️ Editar</button>`:''}
     </div>`}).join('')}`;
 }
 window.renderSemaforo=renderSemaforo;
