@@ -530,7 +530,7 @@ const TOTAL=745,FIN=new Date('2026-09-06');
 const FERIADOS=['2026-07-23','2026-07-28','2026-07-29','2026-08-06','2026-08-30'];
 let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[];
 
-function esHabil(d){const s=d.toISOString().slice(0,10);return d.getDay()!==0&&d.getDay()!==6&&!FERIADOS.includes(s)}
+function esHabil(d){const s=d.toISOString().slice(0,10);return d.getDay()!==0&&!FERIADOS.includes(s)}
 function diasHabilesHasta(d1,d2){let n=0,d=new Date(d1);while(d<=d2){if(esHabil(d))n++;d.setDate(d.getDate()+1)}return n}
 function sumarDH(desde,n){let d=new Date(desde),c=0;while(c<n){d.setDate(d.getDate()+1);if(esHabil(d))c++}return d}
 function fmt(s){if(!s)return'—';const d=new Date(s+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'})}
