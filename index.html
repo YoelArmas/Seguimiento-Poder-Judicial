@@ -759,7 +759,6 @@ function renderTodo(){
       :`<div class="log-row log-head" style="grid-template-columns:80px 1fr 100px 50px 80px 1fr"><span>Fecha</span><span>Responsable</span><span>Tipo</span><span>Uds.</span><span>Zona</span><span>Obs.</span></div>
       ${ult.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`<div class="log-row" style="grid-template-columns:80px 1fr 100px 50px 80px 1fr"><span style="color:var(--text3)">${fmt(r.fecha)}</span><span style="font-weight:500">${r.coord.split('(')[0].trim()}</span><span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span></span><span style="font-weight:600">${r.unidades}</span><span style="color:var(--text3)">${r.zona||'—'}</span><span style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obs||'—'}</span></div>`}).join('')}`)
     :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros aun.</div>';
-    :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros aun.</div>';
 
   // Proyeccion
   document.getElementById('proyeccion-detalle').innerHTML=`
