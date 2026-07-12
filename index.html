@@ -187,7 +187,7 @@ select.inp{cursor:pointer}
     <div class="prod-grid">
       <div class="funnel-card" style="border-top:3px solid var(--teal)">
         <div class="num" id="f-configurados" style="color:var(--teal)">0</div>
-        <div class="lbl" style="color:var(--teal)">Equipos configurados</div>
+        <div class="lbl" style="color:var(--teal)">Sedes configuradas</div>
         <div class="sub">Preconfiguración NIRQA completada</div>
         <div class="pct-bar"><div class="pct-fill" id="b-configurados" style="background:var(--teal);width:0%"></div></div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-configurados">0% del universo</div>
@@ -195,8 +195,8 @@ select.inp{cursor:pointer}
       <div class="funnel-arrow">→</div>
       <div class="funnel-card" style="border-top:3px solid #6B7B9A">
         <div class="num" id="f-retirados" style="color:#6B7B9A">0</div>
-        <div class="lbl" style="color:#6B7B9A">Equipos Embalados</div>
-        <div class="sub">TIC+: Validación de todos los accesorios — en tránsito a campo</div>
+        <div class="lbl" style="color:#6B7B9A">Cantidad Sedes retiradas de On Empresas</div>
+        <div class="sub">TIC+: Equipos embalados de las sedes configuradas — en tránsito a campo/almacén</div>
         <div class="pct-bar"><div class="pct-fill" id="b-retirados" style="background:#6B7B9A;width:0%"></div></div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-retirados">0% del universo</div>
       </div>
@@ -781,7 +781,7 @@ function renderTodo(){
 
   const h=new Date();
   document.getElementById('hitos-lista').innerHTML=[
-    {f:'2026-07-06',lbl:'Inicio despliegue en campo',det:'111 sedes habilitadas con gabinete Item 5',color:'#0F6E56'},
+    {f:'2026-07-06',lbl:'Inicio despliegue en campo',det:'143 sedes habilitadas con gabinete Item 5',color:'#0F6E56'},
     {f:'2026-07-14',lbl:'Prueba Item 2 — Claro (estimado)',det:'Integración con Cabecera de Internet - Principal y Respaldo - ¨ruebas de Failover',color:'#A32D2D'},
     {f:'2026-07-17',lbl:'Prueba Item 1 — Bitel (estimado)',det:'Integración con cabeceras MPLS - Principal y Respaldo - Pruebas de failover',color:'#A32D2D'},
     {f:'2026-07-17',lbl:'Meta Fase 1 — 143 gabinetes instaladas',det:'Culminacion estimada de todos los 143 gabinetes',color:'#0F6E56'},
