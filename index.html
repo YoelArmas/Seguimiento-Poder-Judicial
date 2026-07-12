@@ -740,9 +740,25 @@ function renderTodo(){
   const NOMBRES={configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
   const COLORES={configurados:['#E1F5EE','#085041'],retirados:['#F1EFE8','#5F5E5A'],solo_item5:['#FAEEDA','#633806'],con_enlace:['#EEEDFE','#3C3489'],alta:['#E1F5EE','#085041']};
   const ult=registros.slice(0,6);
-  document.getElementById('log-dashboard').innerHTML=ult.length?`
-    <div class="log-row log-head" style="grid-template-columns:80px 1fr 100px 50px 80px 1fr"><span>Fecha</span><span>Responsable</span><span>Tipo</span><span>Uds.</span><span>Zona</span><span>Obs.</span></div>
-    ${ult.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`<div class="log-row" style="grid-template-columns:80px 1fr 100px 50px 80px 1fr"><span style="color:var(--text3)">${fmt(r.fecha)}</span><span style="font-weight:500">${r.coord.split('(')[0].trim()}</span><span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span></span><span style="font-weight:600">${r.unidades}</span><span class="log-col-zona" style="color:var(--text3)">${r.zona||'—'}</span><span class="log-col-obs" style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obs||'—'}</span></div>`}).join('')}`
+  const isMobile=window.innerWidth<=640;
+  document.getElementById('log-dashboard').innerHTML=ult.length?
+    (isMobile?
+      ult.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`
+      <div style="padding:9px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:5px">
+          <span style="font-weight:600;font-size:13px">${r.coord.split('(')[0].trim()}</span>
+          <span style="color:var(--text3);font-size:11px;white-space:nowrap">${fmt(r.fecha)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span>
+          <span style="font-size:12px;color:var(--text2)"><strong>${r.unidades}</strong> uds.</span>
+          ${r.zona?`<span style="font-size:12px;color:var(--text3)">${r.zona}</span>`:''}
+          ${r.obs?`<span style="font-size:11px;color:var(--text3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obs}</span>`:''}
+        </div>
+      </div>`}).join('')
+      :`<div class="log-row log-head" style="grid-template-columns:80px 1fr 100px 50px 80px 1fr"><span>Fecha</span><span>Responsable</span><span>Tipo</span><span>Uds.</span><span>Zona</span><span>Obs.</span></div>
+      ${ult.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`<div class="log-row" style="grid-template-columns:80px 1fr 100px 50px 80px 1fr"><span style="color:var(--text3)">${fmt(r.fecha)}</span><span style="font-weight:500">${r.coord.split('(')[0].trim()}</span><span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span></span><span style="font-weight:600">${r.unidades}</span><span style="color:var(--text3)">${r.zona||'—'}</span><span style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.obs||'—'}</span></div>`}).join('')}`)
+    :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros aun.</div>';
     :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros aun.</div>';
 
   // Proyeccion
