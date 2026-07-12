@@ -782,12 +782,11 @@ function renderTodo(){
   const h=new Date();
   document.getElementById('hitos-lista').innerHTML=[
     {f:'2026-07-06',lbl:'Inicio despliegue en campo',det:'111 sedes habilitadas con gabinete Item 5',color:'#0F6E56'},
-    {f:'2026-07-15',lbl:'Meta Fase 1 — 111 sedes instaladas',det:'Culminacion estimada de sedes habilitadas al 29/06',color:'#0F6E56'},
-    {f:'2026-08-06',lbl:'Deadline contingencia Item 1 (Bitel)',det:'Si no hay integracion Integratel activa se ejecuta plan con Telefonica',color:'#B07A10'},
-    {f:'2026-09-04',lbl:'Meta interna de implementacion',det:'745/745 sedes instaladas — ajuste de politicas y calidad',color:'#0F6E56'},
+    {f:'2026-07-14',lbl:'Prueba Item 2 — Claro (estimado)',det:'Integración con Cabecera de Internet - Principal y Respaldo - ¨ruebas de Failover',color:'#A32D2D'},
+    {f:'2026-07-17',lbl:'Prueba Item 1 — Bitel (estimado)',det:'Integración con cabeceras MPLS - Principal y Respaldo - Pruebas de failover',color:'#A32D2D'},
+    {f:'2026-07-17',lbl:'Meta Fase 1 — 143 gabinetes instaladas',det:'Culminacion estimada de todos los 143 gabinetes',color:'#0F6E56'},
+    {f:'2026-08-31',lbl:'Meta interna de implementacion',det:'745/745 sedes instaladas',color:'#0F6E56'},
     {f:'2026-09-06',lbl:'Fin contractual — 150 dias',det:'Cierre de implementacion, inicio servicios gestionados 36 meses',color:'#534AB7'},
-    {f:'2026-09-20',lbl:'Prueba Item 1 — Bitel (estimado)',det:'Integracion cabeceras Bitel con red lab Integratel',color:'#A32D2D'},
-    {f:'2026-09-30',lbl:'Prueba Item 2 — enlaces (estimado)',det:'Validacion de enlaces contractuales, pruebas failover SD-WAN',color:'#A32D2D'},
   ].map(it=>{
     const fd=new Date(it.f+'T00:00:00'),diff=Math.round((fd-h)/(1000*60*60*24)),pasado=diff<0;
     const badge=pasado?{bg:'#F1EFE8',tx:'#5F5E5A',lbl:'Completado'}:diff===0?{bg:'#E6F1FB',tx:'#185FA5',lbl:'Hoy'}:{bg:'#F1EFE8',tx:'#5F5E5A',lbl:`en ${diff} dias`};
