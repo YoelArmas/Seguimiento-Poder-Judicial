@@ -690,11 +690,10 @@ const ITEMS_DEFAULT=[
 async function inicializarSemaforo(){
   try{
     const snap=await getDocs(collection(db,'semaforo'));
-    if(snap.empty){
-      const batch=writeBatch(db);
-      ITEMS_DEFAULT.forEach(item=>{batch.set(doc(collection(db,'semaforo')),item);});
-      await batch.commit();
-    }
+    if(snap.size>0)return; // Ya existen items, no insertar
+    const batch=writeBatch(db);
+    ITEMS_DEFAULT.forEach(item=>{batch.set(doc(collection(db,'semaforo')),item);});
+    await batch.commit();
   }catch(e){console.error('init semaforo:',e);}
 }
 inicializarSemaforo();
