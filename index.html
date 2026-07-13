@@ -193,6 +193,10 @@ select.inp{cursor:pointer}
         <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
       </div>
     </div>
+    <div id="zona-info-card" style="display:none;background:#F0F4FF;border:1px solid #C7D0F5;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px">
+      <span id="zona-info-text"></span>
+      </div>
+    </div>
 
     <!-- Bloque Produccion -->
     <div class="section-label">Linea de produccion 1 y 2 (NIRQA — TIC+)</div>
@@ -254,6 +258,15 @@ select.inp{cursor:pointer}
 
   <!-- KPIs rápidos -->
   <div class="kpi-row" id="kpis-rapidos"></div>
+
+  <!-- AVANCE ITEM 1, 2 Y 5 -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div class="card-title" style="margin:0">Avance Ítems de Soporte (1, 2 y 5)</div>
+      <span style="font-size:11px;color:var(--text3)">Fuente: SEGUIMIENTO_TDR_WAN — actualizado al 13/07/2026</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" id="cards-items"></div>
+  </div>
 
   <!-- Semaforo -->
   <div class="card">
@@ -378,9 +391,10 @@ select.inp{cursor:pointer}
     </button>
   </div>
   <div id="carga-form" style="display:none">
-    <div style="display:flex;gap:8px;margin-bottom:16px">
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
       <button class="sub-tab active" onclick="showSubTab('plantilla')">Descargar plantilla</button>
-      <button class="sub-tab" onclick="showSubTab('subir')">Subir Excel</button>
+      <button class="sub-tab" onclick="showSubTab('subir')">Subir avance diario</button>
+      <button class="sub-tab" onclick="showSubTab('seguimiento')">Actualizar Ítem 1/2/5</button>
     </div>
     <div id="subtab-plantilla">
       <div class="card">
@@ -424,6 +438,36 @@ select.inp{cursor:pointer}
         </div>
       </div>
     </div>
+
+    <!-- Subtab seguimiento TDR -->
+    <div id="subtab-seguimiento" style="display:none">
+      <div class="card">
+        <div class="card-title">Actualizar avance Ítem 1, 2 y 5 desde Excel de seguimiento</div>
+        <div style="background:#EAF2FB;border:1px solid #C7D0E0;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:#185FA5">
+          📋 Sube el archivo <strong>SEGUIMIENTO_TDR_WAN_2026_IMPLEMENTACIÓN.xlsx</strong>. El sistema leerá automáticamente:<br>
+          <span style="font-size:12px">· Ítem 1 Bitel: columna Q (fecha enlace principal) · Ítem 2 Claro: columnas AC/AE (fecha tipo 1/2 y tipo 3) · Ítem 5 Gabinetes: columna AM (fecha instalación)</span>
+        </div>
+        <div class="upload-zone" id="drop-zone-seg" onclick="document.getElementById('file-seg').click()"
+          ondragover="event.preventDefault();this.classList.add('drag')"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="window.handleDropSeg(event)">
+          <input type="file" id="file-seg" accept=".xlsx,.xls" onchange="window.handleFileSeg(this.files[0])">
+          <div style="font-size:32px;margin-bottom:8px">📊</div>
+          <div style="font-weight:600;color:var(--navy);margin-bottom:4px">Arrastra el Excel de seguimiento aquí</div>
+          <div style="font-size:12px;color:var(--text3)">SEGUIMIENTO_TDR_WAN_2026_IMPLEMENTACIÓN.xlsx</div>
+        </div>
+        <div id="seg-preview" style="display:none;margin-top:14px">
+          <div id="seg-resultado" style="font-size:13px;color:var(--text2);line-height:2"></div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-primary" onclick="window.confirmarSeg()">Guardar en Firebase</button>
+            <button class="btn" onclick="document.getElementById('seg-preview').style.display='none'">Cancelar</button>
+          </div>
+        </div>
+        <div id="seg-error" class="error"></div>
+        <div id="seg-success" class="success-msg"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -825,6 +869,13 @@ function renderTodo(){
 
   // Embudo
   document.getElementById('fecha-corte').textContent='Corte: '+new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+  // Zona info banner
+  const zonaCard=document.getElementById('zona-info-card');
+  const zonaText=document.getElementById('zona-info-text');
+  if(zonaInfo&&zonaCard&&zonaText){
+    zonaCard.style.display='block';
+    zonaText.innerHTML=\`<strong>\${zonaFiltro}</strong> · Coordinador: <strong>\${zonaInfo.coord}</strong> · Universo: <strong>\${zonaInfo.total} sedes</strong> (Tipo 1: \${zonaInfo.t1} · Tipo 2: \${zonaInfo.t2} · Tipo 3: \${zonaInfo.t3})\`;
+  } else if(zonaCard){zonaCard.style.display='none';}
   const bloques=[
     {id:'configurados',val:t.configurados},
     {id:'retirados',val:t.retirados},
@@ -833,14 +884,46 @@ function renderTodo(){
     {id:'alta',val:t.alta},
   ];
   bloques.forEach(b=>{
-    const p=pct(b.val);
+    const universoZona=zonaInfo?zonaInfo.total:TOTAL;
+      const p=Math.min(100,Math.round(b.val/universoZona*100));
     const el=document.getElementById('f-'+b.id);if(el)el.textContent=b.val;
     const bar=document.getElementById('b-'+b.id);if(bar)bar.style.width=p+'%';
-    const pctEl=document.getElementById('pct-'+b.id);if(pctEl)pctEl.textContent=p+'% del universo (745)';
+    const pctEl=document.getElementById('pct-'+b.id);if(pctEl)pctEl.textContent=p+'% '+(zonaInfo?`(${zonaInfo.total} ${zonaFiltro})`:'del universo (745)');
   });
 
   // KPIs rapidos
-  document.getElementById('kpis-rapidos').innerHTML=`
+  // Zona universe
+  const zonaFiltro=document.getElementById('filtro-zona-dash')?.value||'';
+  const zonaInfo=ZONA_UNIVERSO[zonaFiltro]||null;
+  const universo=zonaInfo?zonaInfo.total:TOTAL;
+
+  // Item1/2/5 cards
+  function getLastVal(series){return series.length?series[series.length-1][1]:0;}
+  const it1=getLastVal(window.ITEM1_ACUM),it2=getLastVal(window.ITEM2_ACUM),it5=getLastVal(window.window.ITEM5_ACUM);
+  document.getElementById('cards-items').innerHTML=[
+    {lbl:'Ítem 5 — Gabinetes',val:it5,color:'#0F6E56',bg:'#E1F5EE',sub:'SmartGlobal · Col AM',icon:'🗄️'},
+    {lbl:'Ítem 1 — Bitel (enlaces)',val:it1,color:'#534AB7',bg:'#EEEDFE',sub:'Col Q · Enlace principal activo',icon:'📡'},
+    {lbl:'Ítem 2 — Claro (enlaces)',val:it2,color:'#B07A10',bg:'#FFF8E1',sub:'Col AC/AE · Tipo 1/2/3',icon:'🔗'},
+  ].map(x=>{
+    const pct=Math.round(x.val/TOTAL*100);
+    return\`<div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:#fff">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:20px">\${x.icon}</span>
+        <span style="font-size:12px;font-weight:600;color:var(--text)">\${x.lbl}</span>
+      </div>
+      <div style="font-size:28px;font-weight:700;color:\${x.color};line-height:1">\${x.val}<span style="font-size:14px;font-weight:400;color:var(--text3)"> / 745</span></div>
+      <div style="margin:6px 0 2px">
+        <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
+          <div style="width:\${pct}%;height:6px;background:\${x.color};border-radius:4px;transition:width .4s"></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)">
+        <span>\${pct}% del universo</span><span>\${x.sub}</span>
+      </div>
+    </div>\`;
+  }).join('');
+
+  document.getElementById('kpis-rapidos').innerHTML=\`
     <div class="kpi"><div class="val">${ht.configurados}</div><div class="lbl">Configurados hoy</div><div class="sub">${hoy()}</div></div>
     <div class="kpi"><div class="val">${ht.retirados}</div><div class="lbl">Retirados hoy</div><div class="sub">TIC+ recogió de planta</div></div>
     <div class="kpi"><div class="val">${ht.solo_item5+ht.con_enlace}</div><div class="lbl">Instalados hoy</div><div class="sub">En campo</div></div>
@@ -1211,8 +1294,8 @@ window.showTab=function(name){
   if(name==='metricas')renderMetricas();
 };
 window.showSubTab=function(name){
-  ['plantilla','subir'].forEach(t=>document.getElementById('subtab-'+t).style.display=t===name?'block':'none');
-  document.querySelectorAll('.sub-tab').forEach((b,i)=>b.classList.toggle('active',['plantilla','subir'][i]===name));
+  ['plantilla','subir','seguimiento'].forEach(t=>{const el=document.getElementById('subtab-'+t);if(el)el.style.display=t===name?'block':'none';});
+  document.querySelectorAll('.sub-tab').forEach((b,i)=>b.classList.toggle('active',['plantilla','subir','seguimiento'][i]===name));
 };
 window.renderTodo=renderTodo;
 window.renderMetricas=renderMetricas;
@@ -1250,7 +1333,15 @@ window.renderLogDashboard=function(){
 };
 
 // ---- METRICAS ----
-const ITEM5_ACUM=[["2026-05-21",1],["2026-06-02",2],["2026-06-15",14],["2026-06-16",24],["2026-06-17",38],["2026-06-18",47],["2026-06-19",56],["2026-06-22",70],["2026-06-23",90],["2026-06-24",100],["2026-06-25",114],["2026-06-26",125],["2026-06-29",127],["2026-06-30",138],["2026-07-01",141],["2026-07-03",142],["2026-07-06",144],["2026-07-07",146],["2026-07-08",148]];
+window.ITEM5_ACUM=[["2026-05-21",1],["2026-06-02",2],["2026-06-15",14],["2026-06-16",24],["2026-06-17",38],["2026-06-18",47],["2026-06-19",56],["2026-06-22",70],["2026-06-23",90],["2026-06-24",100],["2026-06-25",114],["2026-06-26",125],["2026-06-29",127],["2026-06-30",138],["2026-07-01",141],["2026-07-03",142],["2026-07-06",144],["2026-07-07",146],["2026-07-08",148]];
+window.ITEM1_ACUM=[["2026-07-10",2]];
+window.ITEM2_ACUM=[["2026-06-30",1],["2026-07-02",2],["2026-07-03",3],["2026-07-06",5],["2026-07-07",7],["2026-07-08",9]];
+const ZONA_UNIVERSO={
+  'Zona Centro':{total:242,t1:22,t2:213,t3:7,coord:'Rodrigo Romero'},
+  'Zona Norte':{total:166,t1:8,t2:143,t3:15,coord:'Noemi Rivera'},
+  'Zona Oriente':{total:124,t1:7,t2:92,t3:25,coord:'Miguel Pando'},
+  'Zona Sur':{total:213,t1:8,t2:192,t3:13,coord:'Angel Cruz'},
+};
 const PROD_PLAN=[["2026-07-02",35],["2026-07-03",47],["2026-07-04",62],["2026-07-06",81],["2026-07-07",106],["2026-07-08",136],["2026-07-09",172],["2026-07-10",215],["2026-07-11",264],["2026-07-13",317],["2026-07-14",372],["2026-07-15",428],["2026-07-16",481],["2026-07-17",530],["2026-07-18",573],["2026-07-20",609],["2026-07-21",639],["2026-07-22",664],["2026-07-24",683],["2026-07-25",745]];
 const DESP_PLAN=[["2026-07-08",35],["2026-07-09",40],["2026-07-10",45],["2026-07-11",51],["2026-07-13",57],["2026-07-14",64],["2026-07-15",72],["2026-07-16",81],["2026-07-17",90],["2026-07-18",101],["2026-07-20",113],["2026-07-21",126],["2026-07-22",139],["2026-07-24",155],["2026-07-25",171],["2026-07-27",188],["2026-07-30",207],["2026-07-31",226],["2026-08-01",247],["2026-08-03",268],["2026-08-04",291],["2026-08-05",314],["2026-08-07",337],["2026-08-08",361],["2026-08-10",384],["2026-08-11",408],["2026-08-12",431],["2026-08-13",454],["2026-08-14",477],["2026-08-15",498],["2026-08-17",519],["2026-08-18",538],["2026-08-19",557],["2026-08-20",574],["2026-08-21",590],["2026-08-22",606],["2026-08-24",619],["2026-08-25",632],["2026-08-26",644],["2026-08-27",655],["2026-08-28",664],["2026-08-29",673],["2026-08-31",681],["2026-09-01",688],["2026-09-02",694],["2026-09-03",700],["2026-09-04",745]];
 
@@ -1512,7 +1603,7 @@ function renderMetricas(){
   const despLabels=dd.planFechas.map(f=>{const d=new Date(f+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'});});
   // Build Item5 real data aligned to desp plan dates
   const item5Map={};
-  ITEM5_ACUM.forEach(([f,v])=>item5Map[f]=v);
+  window.ITEM5_ACUM.forEach(([f,v])=>item5Map[f]=v);
   // Fill forward for dates between item5 known dates
   let lastItem5=0;
   const item5Vals=dd.planFechas.map(f=>{
@@ -1535,6 +1626,103 @@ function renderMetricas(){
     options:chartOpts(dd.hoyIdx,745,despLabels)
   });
 }
+window.handleDropSeg=function(e){e.preventDefault();document.getElementById('drop-zone-seg').classList.remove('drag');window.handleFileSeg(e.dataTransfer.files[0]);};
+
+window.handleFileSeg=function(file){
+  if(!file)return;
+  const err=document.getElementById('seg-error');
+  err.style.display='none';
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{defval:'',header:1});
+      // Skip header row (row 0)
+      const item1=[];const item2=[];const item5=[];
+      raw.slice(1).forEach(r=>{
+        // Item1: col Q = index 16
+        const q=r[16];
+        if(q&&typeof q==='number'){
+          const d=new Date((q-25569)*86400000).toISOString().slice(0,10);
+          item1.push(d);
+        }
+        // Item2: col AC = index 28, AE = index 30
+        const ac=r[28],ae=r[30];
+        const claro=ac&&typeof ac==='number'?ac:ae&&typeof ae==='number'?ae:null;
+        if(claro){
+          const d=new Date((claro-25569)*86400000).toISOString().slice(0,10);
+          item2.push(d);
+        }
+        // Item5: col AM = index 38
+        const am=r[38];
+        if(am&&typeof am==='number'){
+          const d=new Date((am-25569)*86400000).toISOString().slice(0,10);
+          item5.push(d);
+        }
+      });
+
+      // Build cumulative
+      function buildCumul(dates){
+        const cnt={};dates.forEach(d=>{cnt[d]=(cnt[d]||0)+1;});
+        let acc=0;return Object.keys(cnt).sort().map(d=>{acc+=cnt[d];return[d,acc];});
+      }
+      window._segData={item1:buildCumul(item1),item2:buildCumul(item2),item5:buildCumul(item5)};
+      const last=arr=>arr.length?arr[arr.length-1][1]:0;
+      document.getElementById('seg-resultado').innerHTML=
+        \`<strong>Datos encontrados:</strong><br>
+        📡 Ítem 1 (Bitel): <strong>\${last(window._segData.item1)} sedes</strong> con enlace activo<br>
+        🔗 Ítem 2 (Claro): <strong>\${last(window._segData.item2)} sedes</strong> con enlace activo<br>
+        🗄️ Ítem 5 (Gabinetes): <strong>\${last(window._segData.item5)} gabinetes</strong> instalados\`;
+      document.getElementById('seg-preview').style.display='block';
+    }catch(ex){
+      document.getElementById('seg-error').textContent='Error leyendo el archivo: '+ex.message;
+      document.getElementById('seg-error').style.display='block';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+};
+
+window.confirmarSeg=async function(){
+  if(!window._segData)return;
+  try{
+    await setDoc(doc(db,'config','items_externos'),{
+      item1:window._segData.item1,
+      item2:window._segData.item2,
+      item5:window._segData.item5,
+      actualizadoPor:usuarioActual?.email||'',
+      ts:Date.now()
+    });
+    document.getElementById('seg-preview').style.display='none';
+    document.getElementById('seg-success').textContent='✓ Datos de Ítem 1, 2 y 5 actualizados correctamente en Firebase.';
+    document.getElementById('seg-success').style.display='block';
+    setTimeout(()=>document.getElementById('seg-success').style.display='none',4000);
+    // Reload items data
+    await cargarItemsExternos();
+  }catch(ex){
+    document.getElementById('seg-error').textContent='Error guardando: '+ex.message;
+    document.getElementById('seg-error').style.display='block';
+  }
+};
+
+async function cargarItemsExternos(){
+  try{
+    const snap=await getDocs(collection(db,'config'));
+    snap.forEach(d=>{
+      if(d.id==='items_externos'){
+        const data=d.data();
+        if(data.item1)window.ITEM1_ACUM=data.item1;
+        if(data.item2)window.ITEM2_ACUM=data.item2;
+        if(data.item5)window.ITEM5_ACUM=data.item5;
+        renderTodo();
+        if(document.getElementById('tab-metricas')?.style.display!=='none')renderMetricas();
+      }
+    });
+  }catch(e){console.error('cargarItemsExternos:',e);}
+}
+// Load on startup
+cargarItemsExternos();
+
 </script>
 </body>
 </html>
