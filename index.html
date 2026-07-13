@@ -1153,7 +1153,16 @@ const DESP_PLAN=[["2026-07-08",35],["2026-07-09",40],["2026-07-10",45],["2026-07
 
 const FERIADOS_SET=new Set(['2026-07-23','2026-07-28','2026-07-29','2026-08-06','2026-08-30']);
 function esHabilMetrica(d){const s=typeof d==='string'?d:d.toISOString().slice(0,10);const dt=new Date(s+'T00:00:00');return dt.getDay()!==0&&!FERIADOS_SET.has(s);}
-function diasHabilesEntre(d1str,d2str){let n=0;const d=new Date(d1str+'T00:00:00'),fin=new Date(d2str+'T00:00:00');while(d<=fin){if(esHabilMetrica(d.toISOString().slice(0,10)))n++;d.setDate(d.getDate()+1);}return n;}
+function diasHabilesEntre(d1str,d2str,soloLvs=false){
+  const FERIADOS_DESP=new Set(['2026-07-23','2026-07-28','2026-07-29','2026-08-04','2026-08-06']);
+  let n=0;const d=new Date(d1str+'T00:00:00'),fin=new Date(d2str+'T00:00:00');
+  while(d<=fin){
+    const dow=d.getDay();const s=d.toISOString().slice(0,10);
+    if(soloLvs){if(dow>=1&&dow<=5&&!FERIADOS_DESP.has(s))n++;}
+    else{if(esHabilMetrica(s))n++;}
+    d.setDate(d.getDate()+1);
+  }return n;
+}
 function sumarDHMetrica(desdeStr,n){let d=new Date(desdeStr+'T00:00:00'),c=0;while(c<n){d.setDate(d.getDate()+1);if(esHabilMetrica(d.toISOString().slice(0,10)))c++;}return d.toISOString().slice(0,10);}
 
 let chartProd=null,chartDesp=null;
@@ -1187,8 +1196,8 @@ function renderMetricas(){
   const dhProdTotal=diasHabilesEntre('2026-07-02','2026-07-25');
   const dhProdConsumidos=diasHabilesEntre('2026-07-02',hoyStr<='2026-07-25'?hoyStr:'2026-07-25');
   const dhProdRestantes=Math.max(0,dhProdTotal-dhProdConsumidos);
-  const dhDespTotal=diasHabilesEntre('2026-07-08','2026-08-31');
-  const dhDespConsumidos=diasHabilesEntre('2026-07-08',hoyStr<='2026-08-31'?hoyStr:'2026-08-31');
+  const dhDespTotal=diasHabilesEntre('2026-07-08','2026-08-31',true);
+  const dhDespConsumidos=diasHabilesEntre('2026-07-08',hoyStr<='2026-08-31'?hoyStr:'2026-08-31',true);
   const dhDespRestantes=Math.max(0,dhDespTotal-dhDespConsumidos);
 
   document.getElementById('dias-habiles-container').innerHTML=`
