@@ -875,10 +875,7 @@ function renderTodo(){
   // Zona info banner
   const zonaCard=document.getElementById('zona-info-card');
   const zonaText=document.getElementById('zona-info-text');
-  if(zonaInfo&&zonaCard&&zonaText){
-    zonaCard.style.display='block';
-    zonaText.innerHTML=`<strong>${zonaFiltro}</strong> · Coordinador: <strong>${zonaInfo.coord}</strong> · Universo: <strong>${zonaInfo.total} sedes</strong> (Tipo 1: ${zonaInfo.t1} · Tipo 2: ${zonaInfo.t2} · Tipo 3: ${zonaInfo.t3})`;
-  } else if(zonaCard){zonaCard.style.display='none';}
+  if(zonaCard)zonaCard.style.display='none';
   const bloques=[
     {id:'configurados',val:t.configurados},
     {id:'retirados',val:t.retirados},
