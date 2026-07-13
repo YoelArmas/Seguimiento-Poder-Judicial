@@ -165,12 +165,12 @@ select.inp{cursor:pointer}
 </div>
 
 <div class="tabs">
-  <button class="tab active" onclick="showTab('dashboard')">Dashboard</button>
-  <button class="tab" onclick="showTab('registro')">Registrar avance</button>
-  <button class="tab" onclick="showTab('carga')">Carga masiva Excel</button>
-  <button class="tab" onclick="showTab('hitos')">Hitos y proyeccion</button>
-  <button class="tab" onclick="showTab('metricas')">Métricas</button>
-  <button class="tab" onclick="showTab('historial')">Historial</button>
+  <button class="tab active" onclick="window.showTab('dashboard')">Dashboard</button>
+  <button class="tab" onclick="window.showTab('registro')">Registrar avance</button>
+  <button class="tab" onclick="window.showTab('carga')">Carga masiva Excel</button>
+  <button class="tab" onclick="window.showTab('hitos')">Hitos y proyeccion</button>
+  <button class="tab" onclick="window.showTab('metricas')">Métricas</button>
+  <button class="tab" onclick="window.showTab('historial')">Historial</button>
 </div>
 
 <div class="content">
@@ -504,7 +504,7 @@ select.inp{cursor:pointer}
   <div class="card" id="card-coordinadores" style="display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
       <div class="card-title" style="margin:0">Avance por coordinador</div>
-      <select class="inp" id="filtro-periodo" style="width:auto" onchange="renderMetricas()">
+      <select class="inp" id="filtro-periodo" style="width:auto" onchange="window.renderMetricas()">
         <option value="7">Últimos 7 días</option>
         <option value="14">Últimos 14 días</option>
         <option value="semana">Esta semana</option>
@@ -875,7 +875,10 @@ function renderTodo(){
   // Zona info banner
   const zonaCard=document.getElementById('zona-info-card');
   const zonaText=document.getElementById('zona-info-text');
-  if(zonaCard)zonaCard.style.display='none';
+  if(zonaInfo&&zonaCard&&zonaText){
+    zonaCard.style.display='block';
+    zonaText.innerHTML=`<strong>${zonaFiltro}</strong> · Coordinador: <strong>${zonaInfo.coord}</strong> · Universo: <strong>${zonaInfo.total} sedes</strong> (Tipo 1: ${zonaInfo.t1} · Tipo 2: ${zonaInfo.t2} · Tipo 3: ${zonaInfo.t3})`;
+  } else if(zonaCard){zonaCard.style.display='none';}
   const bloques=[
     {id:'configurados',val:t.configurados},
     {id:'retirados',val:t.retirados},
@@ -1285,7 +1288,7 @@ window.confirmarBorrar=async function(){
 window.showTab=function(name){
   ['dashboard','registro','carga','hitos','metricas','historial'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
   document.querySelectorAll('.tabs .tab').forEach((b,i)=>b.classList.toggle('active',['dashboard','registro','carga','hitos','metricas','historial'][i]===name));
-  if(name==='metricas')try{renderMetricas();}catch(e){console.error('renderMetricas error:',e);}
+  if(name==='metricas')renderMetricas();
 };
 window.showSubTab=function(name){
   ['plantilla','subir','seguimiento'].forEach(t=>{const el=document.getElementById('subtab-'+t);if(el)el.style.display=t===name?'block':'none';});
