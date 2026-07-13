@@ -1277,14 +1277,15 @@ function renderMetricas(){
     let fechaDesde,fechaHasta='';
     if(periodo==='semana'){
       const hoy=new Date();const dia=hoy.getDay()===0?7:hoy.getDay();
-      const lunes=new Date(hoy);lunes.setDate(hoy.getDate()-dia+1);lunes.setHours(0,0,0,0);
-      fechaDesde=lunes.toISOString().slice(0,10);
+      const lunes=new Date(hoy);lunes.setDate(hoy.getDate()-dia+1);
+      fechaDesde=`${lunes.getFullYear()}-${String(lunes.getMonth()+1).padStart(2,'0')}-${String(lunes.getDate()).padStart(2,'0')}`;
     }else if(periodo==='semana_ant'){
       const hoy=new Date();const dia=hoy.getDay()===0?7:hoy.getDay();
       const lunesEsta=new Date(hoy);lunesEsta.setDate(hoy.getDate()-dia+1);
       const lunesAnt=new Date(lunesEsta);lunesAnt.setDate(lunesEsta.getDate()-7);
       const viernesAnt=new Date(lunesEsta);viernesAnt.setDate(lunesEsta.getDate()-1);
-      fechaDesde=lunesAnt.toISOString().slice(0,10);fechaHasta=viernesAnt.toISOString().slice(0,10);
+      const lf=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      fechaDesde=lf(lunesAnt);fechaHasta=lf(viernesAnt);
     }
     else if(periodo==='0'){fechaDesde='2026-01-01';}
     else{const d=new Date();d.setDate(d.getDate()-parseInt(periodo));fechaDesde=d.toISOString().slice(0,10);}
