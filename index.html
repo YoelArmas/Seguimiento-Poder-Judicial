@@ -874,7 +874,7 @@ function renderTodo(){
   const zonaText=document.getElementById('zona-info-text');
   if(zonaInfo&&zonaCard&&zonaText){
     zonaCard.style.display='block';
-    zonaText.innerHTML=\`<strong>\${zonaFiltro}</strong> · Coordinador: <strong>\${zonaInfo.coord}</strong> · Universo: <strong>\${zonaInfo.total} sedes</strong> (Tipo 1: \${zonaInfo.t1} · Tipo 2: \${zonaInfo.t2} · Tipo 3: \${zonaInfo.t3})\`;
+    zonaText.innerHTML=`<strong>${zonaFiltro}</strong> · Coordinador: <strong>${zonaInfo.coord}</strong> · Universo: <strong>${zonaInfo.total} sedes</strong> (Tipo 1: ${zonaInfo.t1} · Tipo 2: ${zonaInfo.t2} · Tipo 3: ${zonaInfo.t3})`;
   } else if(zonaCard){zonaCard.style.display='none';}
   const bloques=[
     {id:'configurados',val:t.configurados},
@@ -906,24 +906,24 @@ function renderTodo(){
     {lbl:'Ítem 2 — Claro (enlaces)',val:it2,color:'#B07A10',bg:'#FFF8E1',sub:'Col AC/AE · Tipo 1/2/3',icon:'🔗'},
   ].map(x=>{
     const pct=Math.round(x.val/TOTAL*100);
-    return\`<div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:#fff">
+    return`<div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:#fff">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="font-size:20px">\${x.icon}</span>
-        <span style="font-size:12px;font-weight:600;color:var(--text)">\${x.lbl}</span>
+        <span style="font-size:20px">${x.icon}</span>
+        <span style="font-size:12px;font-weight:600;color:var(--text)">${x.lbl}</span>
       </div>
-      <div style="font-size:28px;font-weight:700;color:\${x.color};line-height:1">\${x.val}<span style="font-size:14px;font-weight:400;color:var(--text3)"> / 745</span></div>
+      <div style="font-size:28px;font-weight:700;color:${x.color};line-height:1">${x.val}<span style="font-size:14px;font-weight:400;color:var(--text3)"> / 745</span></div>
       <div style="margin:6px 0 2px">
         <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
-          <div style="width:\${pct}%;height:6px;background:\${x.color};border-radius:4px;transition:width .4s"></div>
+          <div style="width:${pct}%;height:6px;background:${x.color};border-radius:4px;transition:width .4s"></div>
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)">
-        <span>\${pct}% del universo</span><span>\${x.sub}</span>
+        <span>${pct}% del universo</span><span>${x.sub}</span>
       </div>
-    </div>\`;
+    </div>`;
   }).join('');
 
-  document.getElementById('kpis-rapidos').innerHTML=\`
+  document.getElementById('kpis-rapidos').innerHTML=`
     <div class="kpi"><div class="val">${ht.configurados}</div><div class="lbl">Configurados hoy</div><div class="sub">${hoy()}</div></div>
     <div class="kpi"><div class="val">${ht.retirados}</div><div class="lbl">Retirados hoy</div><div class="sub">TIC+ recogió de planta</div></div>
     <div class="kpi"><div class="val">${ht.solo_item5+ht.con_enlace}</div><div class="lbl">Instalados hoy</div><div class="sub">En campo</div></div>
@@ -1670,10 +1670,10 @@ window.handleFileSeg=function(file){
       window._segData={item1:buildCumul(item1),item2:buildCumul(item2),item5:buildCumul(item5)};
       const last=arr=>arr.length?arr[arr.length-1][1]:0;
       document.getElementById('seg-resultado').innerHTML=
-        \`<strong>Datos encontrados:</strong><br>
-        📡 Ítem 1 (Bitel): <strong>\${last(window._segData.item1)} sedes</strong> con enlace activo<br>
-        🔗 Ítem 2 (Claro): <strong>\${last(window._segData.item2)} sedes</strong> con enlace activo<br>
-        🗄️ Ítem 5 (Gabinetes): <strong>\${last(window._segData.item5)} gabinetes</strong> instalados\`;
+        `<strong>Datos encontrados:</strong><br>
+        📡 Ítem 1 (Bitel): <strong>${last(window._segData.item1)} sedes</strong> con enlace activo<br>
+        🔗 Ítem 2 (Claro): <strong>${last(window._segData.item2)} sedes</strong> con enlace activo<br>
+        🗄️ Ítem 5 (Gabinetes): <strong>${last(window._segData.item5)} gabinetes</strong> instalados`;
       document.getElementById('seg-preview').style.display='block';
     }catch(ex){
       document.getElementById('seg-error').textContent='Error leyendo el archivo: '+ex.message;
