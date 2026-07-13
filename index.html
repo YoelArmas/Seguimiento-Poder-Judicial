@@ -897,9 +897,9 @@ function renderTodo(){
   function getLastVal(series){return series.length?series[series.length-1][1]:0;}
   const it1=getLastVal(window.ITEM1_ACUM),it2=getLastVal(window.ITEM2_ACUM),it5=getLastVal(window.window.ITEM5_ACUM);
   document.getElementById('cards-items').innerHTML=[
-    {lbl:'Ítem 5 — Gabinetes',val:it5,color:'#0F6E56',bg:'#E1F5EE',sub:'SmartGlobal · Col AM',icon:'🗄️'},
-    {lbl:'Ítem 1 — Bitel (enlaces)',val:it1,color:'#534AB7',bg:'#EEEDFE',sub:'Col Q · Enlace principal activo',icon:'📡'},
-    {lbl:'Ítem 2 — Claro (enlaces)',val:it2,color:'#B07A10',bg:'#FFF8E1',sub:'Col AC/AE · Tipo 1/2/3',icon:'🔗'},
+    {lbl:'Ítem 5 — Gabinetes',val:it5,color:'#0F6E56',bg:'#E1F5EE',icon:'🗄️'},
+    {lbl:'Ítem 1 — Bitel (enlaces)',val:it1,color:'#534AB7',bg:'#EEEDFE',icon:'📡'},
+    {lbl:'Ítem 2 — Claro (enlaces)',val:it2,color:'#B07A10',bg:'#FFF8E1',icon:'🔗'},
   ].map(x=>{
     const pct=Math.round(x.val/TOTAL*100);
     return`<div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:#fff">
