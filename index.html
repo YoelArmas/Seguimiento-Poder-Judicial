@@ -866,6 +866,9 @@ onSnapshot(qSem,snap=>{
 function renderTodo(){
   const t=totalesPorFrente(),ht=hoyPorFrente();
   const pj=proyectar(t.configurados,'configurados'),aj=proyectar(t.alta,'alta');
+  const zonaFiltro=document.getElementById('filtro-zona-dash')?.value||'';
+  const zonaInfo=ZONA_UNIVERSO[zonaFiltro]||null;
+  const universo=zonaInfo?zonaInfo.total:TOTAL;
 
   // Embudo
   document.getElementById('fecha-corte').textContent='Corte: '+new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
@@ -885,19 +888,13 @@ function renderTodo(){
   ];
   bloques.forEach(b=>{
     const universoZona=zonaInfo?zonaInfo.total:TOTAL;
-      const p=Math.min(100,Math.round(b.val/universoZona*100));
+    const p=Math.min(100,Math.round(b.val/universoZona*100));
     const el=document.getElementById('f-'+b.id);if(el)el.textContent=b.val;
     const bar=document.getElementById('b-'+b.id);if(bar)bar.style.width=p+'%';
     const pctEl=document.getElementById('pct-'+b.id);if(pctEl)pctEl.textContent=p+'% '+(zonaInfo?`(${zonaInfo.total} ${zonaFiltro})`:'del universo (745)');
   });
 
   // KPIs rapidos
-  // Zona universe
-  const zonaFiltro=document.getElementById('filtro-zona-dash')?.value||'';
-  const zonaInfo=ZONA_UNIVERSO[zonaFiltro]||null;
-  const universo=zonaInfo?zonaInfo.total:TOTAL;
-
-  // Item1/2/5 cards
   function getLastVal(series){return series.length?series[series.length-1][1]:0;}
   const it1=getLastVal(window.ITEM1_ACUM),it2=getLastVal(window.ITEM2_ACUM),it5=getLastVal(window.window.ITEM5_ACUM);
   document.getElementById('cards-items').innerHTML=[
