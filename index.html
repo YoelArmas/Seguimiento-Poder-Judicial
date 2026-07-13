@@ -182,7 +182,16 @@ select.inp{cursor:pointer}
   <div class="card" style="margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
       <div class="card-title" style="margin:0">Flujo de implementacion — 745 sedes</div>
-      <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <select class="inp" id="filtro-zona-dash" style="width:auto;font-size:12px" onchange="window.renderTodo()">
+          <option value="">Todas las zonas</option>
+          <option value="Zona Norte">Zona Norte</option>
+          <option value="Zona Sur">Zona Sur</option>
+          <option value="Zona Centro">Zona Centro</option>
+          <option value="Zona Oriente">Zona Oriente</option>
+        </select>
+        <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
+      </div>
     </div>
 
     <!-- Bloque Produccion -->
@@ -254,7 +263,21 @@ select.inp{cursor:pointer}
 
   <!-- Ultimas entradas -->
   <div class="card">
-    <div class="card-title">Últimas entradas registradas</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <div class="card-title" style="margin:0">Entradas registradas</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <input type="date" class="inp" id="filtro-log-fecha" style="width:auto;font-size:12px" onchange="window.renderLogDashboard()">
+        <select class="inp" id="filtro-log-tipo" style="width:auto;font-size:12px" onchange="window.renderLogDashboard()">
+          <option value="">Todos los tipos</option>
+          <option value="configurados">Configuradas</option>
+          <option value="retirados">Retiradas</option>
+          <option value="solo_item5">Solo Ítem 5</option>
+          <option value="con_enlace">Con enlace</option>
+          <option value="alta">Alta operativa</option>
+        </select>
+        <button class="btn" style="font-size:11px;padding:4px 8px" onclick="document.getElementById('filtro-log-fecha').value='';document.getElementById('filtro-log-tipo').value='';window.renderLogDashboard()">✕ Limpiar</button>
+      </div>
+    </div>
     <div id="log-dashboard">Cargando...</div>
   </div>
 </div>
@@ -305,6 +328,7 @@ select.inp{cursor:pointer}
               <option value="">Seleccionar...</option>
               <option>Zona Norte</option><option>Zona Sur</option>
               <option>Zona Centro</option><option>Zona Oriente</option>
+              <option>Zona Mixta</option>
             </select>
           </div>
         </div>
@@ -315,7 +339,13 @@ select.inp{cursor:pointer}
           <div><label class="label">Tipo de sede</label>
             <select class="inp" id="f-tipo">
               <option value="">Seleccionar...</option>
-              <option>Tipo 1</option><option>Tipo 2</option><option>Tipo 3</option>
+              <option>Tipo 1</option>
+              <option>Tipo 2</option>
+              <option>Tipo 3</option>
+              <option>Tipo 1 y 2</option>
+              <option>Tipo 1 y 3</option>
+              <option>Tipo 2 y 3</option>
+              <option>Tipo 1, 2 y 3</option>
             </select>
           </div>
         </div>
@@ -555,7 +585,10 @@ select.inp{cursor:pointer}
         <div><label class="label">Unidades</label><input type="number" class="inp" id="edit-unidades" min="1"></div>
         <div><label class="label">Tipo de sede</label>
           <select class="inp" id="edit-tipo">
-            <option value="">—</option><option>Tipo 1</option><option>Tipo 2</option><option>Tipo 3</option>
+            <option value="">—</option>
+            <option>Tipo 1</option><option>Tipo 2</option><option>Tipo 3</option>
+            <option>Tipo 1 y 2</option><option>Tipo 1 y 3</option>
+            <option>Tipo 2 y 3</option><option>Tipo 1, 2 y 3</option>
           </select>
         </div>
       </div>
@@ -577,7 +610,13 @@ import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOu
 import { getDatabase, ref, set, onValue, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig={apiKey:"AIzaSyDdcAGBTp_ekIhSJdelyR4M_gY3HshvDhI",authDomain:"seguimiento-poder-judicial.firebaseapp.com",projectId:"seguimiento-poder-judicial",storageBucket:"seguimiento-poder-judicial.firebasestorage.app",messagingSenderId:"25916877483",appId:"1:25916877483:web:756ffe74263b01b61d65ee",databaseURL:"https://seguimiento-poder-judicial-default-rtdb.firebaseio.com"};
-const EMAILS_AUTORIZADOS=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com','miguel.del08@gmail.com','rromerom2002@gmail.com','angel.cruz.condori.2@gmail.com','noemi.optical@gmail.com','claudialavado212@gmail.com'];
+const ZONA_COORD={
+  'Zona Norte':'Noemi Rivera (Zona Norte)',
+  'Zona Sur':'Angel Cruz (Zona Sur)',
+  'Zona Centro':'Rodrigo Romero (Zona Centro)',
+  'Zona Oriente':'Miguel Pando (Zona Oriente)',
+};
+const EMAILS_AUTORIZADOS=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com','miguel.del08@gmail.com','rromerom2002@gmail.com','angel.cruz.condori.2@gmail.com','noemi.optical@gmail.com'];
 const EMAILS_ADMIN=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com'];
 const app=initializeApp(firebaseConfig),db=getFirestore(app),auth=getAuth(app),provider=new GoogleAuthProvider();
 const rtdb=getDatabase(app);
@@ -593,14 +632,17 @@ function hoy(){return new Date().toISOString().slice(0,10)}
 function pct(v){return Math.min(100,Math.round(v/TOTAL*100))}
 
 function totalesPorFrente(){
+  const zonaFiltro=document.getElementById('filtro-zona-dash')?.value||'';
+  const regs=zonaFiltro?registros.filter(r=>r.zona===zonaFiltro):registros;
   const t={configurados:0,retirados:0,solo_item5:0,con_enlace:0,alta:0};
-  registros.forEach(r=>{if(t[r.frente]!==undefined)t[r.frente]+=r.unidades});
+  regs.forEach(r=>{if(t[r.frente]!==undefined)t[r.frente]+=r.unidades});
   Object.keys(t).forEach(k=>t[k]=Math.min(t[k],TOTAL));
   return t;
 }
 function hoyPorFrente(){
-  const h=hoy(),t={configurados:0,retirados:0,solo_item5:0,con_enlace:0,alta:0};
-  registros.filter(r=>r.fecha===h).forEach(r=>{if(t[r.frente]!==undefined)t[r.frente]+=r.unidades});
+  const h=hoy();const zonaFiltro=document.getElementById('filtro-zona-dash')?.value||'';
+  const t={configurados:0,retirados:0,solo_item5:0,con_enlace:0,alta:0};
+  registros.filter(r=>r.fecha===h&&(!zonaFiltro||r.zona===zonaFiltro)).forEach(r=>{if(t[r.frente]!==undefined)t[r.frente]+=r.unidades});
   return t;
 }
 function ritmo(frente){
@@ -810,26 +852,8 @@ function renderTodo(){
 
   const NOMBRES={configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
   const COLORES={configurados:['#E1F5EE','#085041'],retirados:['#F1EFE8','#5F5E5A'],solo_item5:['#FAEEDA','#633806'],con_enlace:['#EEEDFE','#3C3489'],alta:['#E1F5EE','#085041']};
-  const ult=registros.slice(0,6);
-  const isMobile=window.innerWidth<=640;
-  document.getElementById('log-dashboard').innerHTML=ult.length?
-    (isMobile?
-      ult.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`
-      <div style="padding:9px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:5px">
-          <span style="font-weight:600;font-size:13px">${r.coord.split('(')[0].trim()}</span>
-          <span style="color:var(--text3);font-size:11px;white-space:nowrap">${fmt(r.fecha)}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span>
-          <span style="font-size:12px;color:var(--text2)"><strong>${r.unidades}</strong> uds.</span>
-          ${r.zona?`<span style="font-size:12px;color:var(--text3)">${r.zona}</span>`:''}
-          ${r.obs?`<span style="font-size:11px;color:var(--text3);width:100%;margin-top:2px">${r.obs}</span>`:''}
-        </div>
-      </div>`}).join('')
-      :`<div class="log-row log-head" style="grid-template-columns:85px 140px 110px 45px 100px 1fr"><span>Fecha</span><span>Responsable</span><span>Tipo</span><span>Uds.</span><span>Zona</span><span>Observaciones</span></div>
-      ${ult.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`<div class="log-row" style="grid-template-columns:85px 140px 110px 45px 100px 1fr"><span style="color:var(--text3)">${fmt(r.fecha)}</span><span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.coord.split('(')[0].trim()}</span><span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span></span><span style="font-weight:600;text-align:left">${r.unidades}</span><span style="color:var(--text3)">${r.zona||'—'}</span><span style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.obs||''}">${r.obs||'—'}</span></div>`}).join('')}`)
-    :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros aun.</div>';
+  window.NOMBRES=NOMBRES;window.COLORES=COLORES;
+  window.renderLogDashboard();
 
   // Proyeccion
   document.getElementById('proyeccion-detalle').innerHTML=`
@@ -1034,17 +1058,64 @@ window.handleFile=function(file){
   if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
-    const wb=XLSX.read(e.target.result,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-    pendingRows=rows.map(r=>({
-      fecha:fxl(r['Fecha']||r['fecha']||''),coord:r['Coordinador']||r['coordinador']||'',
-      frente:(r['Frente']||r['frente']||'').toLowerCase().replace(/ /g,'_'),
-      zona:r['Zona']||r['zona']||'',
-      unidades:parseInt(r['Total_Unidades']||r['total_unidades']||r['Unidades']||r['unidades']||0),
-      sedes:r['Sedes']||r['sedes']||r['Codigo_Sede']||'',obs:r['Observaciones']||r['observaciones']||'',
-    })).filter(r=>r.fecha&&r.coord&&r.frente&&r.unidades>0);
-    document.getElementById('preview-count').textContent=`${pendingRows.length} registros validos`;
-    document.getElementById('preview-table').innerHTML='<thead><tr><th>Fecha</th><th>Coordinador</th><th>Tipo</th><th>Zona</th><th>Uds.</th><th>Obs.</th></tr></thead><tbody>'+pendingRows.map(r=>`<tr><td>${fmt(r.fecha)}</td><td>${r.coord.split('(')[0].trim()}</td><td>${r.frente}</td><td>${r.zona||'—'}</td><td><strong>${r.unidades}</strong></td><td>${r.obs||'—'}</td></tr>`).join('')+'</tbody>';
+    const wb=XLSX.read(e.target.result,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const raw=XLSX.utils.sheet_to_json(ws,{defval:'',header:1});
+    const esPlantilla=raw.slice(0,5).some(r=>Array.isArray(r)&&r.some(c=>String(c).includes('ESTADO')||String(c).includes('Cód. PJ')));
+    if(esPlantilla){
+      let headerRow=-1;
+      raw.forEach((r,i)=>{if(Array.isArray(r)&&r.some(c=>String(c).trim()==='ESTADO'))headerRow=i;});
+      if(headerRow<0){alert('No se encontró fila de encabezados. Verifica el archivo.');return;}
+      let fechaGlobal='',coordGlobal='';
+      for(let ri=0;ri<4;ri++){
+        const r=raw[ri]||[];
+        for(let ci=0;ci<r.length;ci++){
+          if(String(r[ci]).toLowerCase().includes('fecha de trabajo')&&r[ci+1])fechaGlobal=fxl(r[ci+1]);
+          if(String(r[ci]).toLowerCase().includes('coordinador')&&r[ci+1])coordGlobal=String(r[ci+1]).trim();
+        }
+      }
+      pendingRows=[];
+      raw.slice(headerRow+1).forEach(r=>{
+        if(!r[2])return;
+        const codPJ=String(r[2]).trim(),sede=String(r[3]||'').trim(),tipoSede=String(r[4]||'').trim();
+        const nirqaEstado=String(r[9]||'').trim().toLowerCase();
+        const nirqaFecha=fxl(r[10]||''),nirqaObs=String(r[11]||'').trim();
+        const ticItem5=String(r[12]||'').trim().toLowerCase();
+        const ticEnlace=String(r[13]||'').trim().toLowerCase();
+        const ticFecha=fxl(r[14]||''),ticObs=String(r[15]||'').trim();
+        const fechaUsar=fechaGlobal||nirqaFecha||ticFecha||hoy();
+        // Determine coordinator from zona if not specified globally
+        const zonaRow=String(r[6]||'').trim(); // sector col approximation
+        const coordPorZona=window.ZONA_COORD||{};
+        const coordUsar=coordGlobal||(zonaRow&&coordPorZona[zonaRow])||'Sin especificar';
+        if(nirqaEstado==='configurado')
+          pendingRows.push({fecha:fechaUsar,coord:coordUsar,frente:'configurados',zona:'',tipo:tipoSede,sedes:codPJ,obs:nirqaObs||sede,unidades:1});
+        if(ticItem5==='si')
+          pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'solo_item5',zona:'',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
+        if(ticEnlace==='si')
+          pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'con_enlace',zona:'',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
+      });
+      if(!pendingRows.length){alert('No hay sedes con avance registrado. Marca Configurado o Si en las columnas correspondientes.');return;}
+      const resumen={};pendingRows.forEach(r=>{resumen[r.frente]=(resumen[r.frente]||0)+1;});
+      document.getElementById('preview-count').textContent=`${pendingRows.length} registros · ${Object.entries(resumen).map(([k,v])=>`${NOMBRES[k]||k}: ${v}`).join(' · ')}`;
+      document.getElementById('preview-table').innerHTML='<thead><tr><th>Cód. PJ</th><th>Tipo avance</th><th>Tipo sede</th><th>Fecha</th><th>Coordinador</th><th>Obs.</th></tr></thead><tbody>'+
+        pendingRows.map(r=>`<tr><td><strong>${r.sedes}</strong></td><td>${NOMBRES[r.frente]||r.frente}</td><td>${r.tipo||'—'}</td><td>${fmt(r.fecha)}</td><td>${r.coord.split('(')[0].trim()}</td><td>${r.obs||'—'}</td></tr>`).join('')+'</tbody>';
+    } else {
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      pendingRows=rows.map(r=>({
+        fecha:fxl(r['Fecha']||r['fecha']||''),coord:r['Coordinador']||r['coordinador']||'',
+        frente:(r['Frente']||r['frente']||'').toLowerCase().replace(/ /g,'_'),
+        zona:r['Zona']||r['zona']||'',
+        unidades:parseInt(r['Total_Unidades']||r['total_unidades']||r['Unidades']||r['unidades']||0),
+        sedes:r['Sedes']||r['sedes']||r['Codigo_Sede']||r['codigo_sede']||'',
+        obs:r['Observaciones']||r['observaciones']||'',
+      })).filter(r=>r.fecha&&r.coord&&r.frente&&r.unidades>0);
+      document.getElementById('preview-count').textContent=`${pendingRows.length} registros validos`;
+      document.getElementById('preview-table').innerHTML='<thead><tr><th>Fecha</th><th>Coordinador</th><th>Tipo</th><th>Zona</th><th>Uds.</th><th>Obs.</th></tr></thead><tbody>'+
+        pendingRows.map(r=>`<tr><td>${fmt(r.fecha)}</td><td>${r.coord.split('(')[0].trim()}</td><td>${r.frente}</td><td>${r.zona||'—'}</td><td><strong>${r.unidades}</strong></td><td>${r.obs||'—'}</td></tr>`).join('')+'</tbody>';
+    }
     document.getElementById('preview-area').style.display='block';
+    document.getElementById('preview-error').style.display='none';
   };
   reader.readAsArrayBuffer(file);
 };
@@ -1147,14 +1218,46 @@ window.renderTodo=renderTodo;
 window.renderMetricas=renderMetricas;
 document.getElementById('f-fecha').value=hoy();
 
+// Render log dashboard with filters
+window.renderLogDashboard=function(){
+  const NOMBRES=window.NOMBRES||{configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
+  const COLORES=window.COLORES||{configurados:['#E1F5EE','#085041'],retirados:['#F1EFE8','#5F5E5A'],solo_item5:['#FAEEDA','#633806'],con_enlace:['#EEEDFE','#3C3489'],alta:['#E1F5EE','#085041']};
+  const fechaFiltro=document.getElementById('filtro-log-fecha')?.value||'';
+  const tipoFiltro=document.getElementById('filtro-log-tipo')?.value||'';
+  let lista=registros;
+  if(fechaFiltro)lista=lista.filter(r=>r.fecha===fechaFiltro);
+  if(tipoFiltro)lista=lista.filter(r=>r.frente===tipoFiltro);
+  const isMobile=window.innerWidth<=640;
+  const el=document.getElementById('log-dashboard');
+  if(!el)return;
+  if(!lista.length){el.innerHTML='<div style="color:var(--text3);text-align:center;padding:20px">Sin registros para los filtros seleccionados.</div>';return;}
+  el.innerHTML=isMobile?
+    lista.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`
+    <div style="padding:9px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:5px">
+        <span style="font-weight:600;font-size:13px">${r.coord.split('(')[0].trim()}</span>
+        <span style="color:var(--text3);font-size:11px;white-space:nowrap">${fmt(r.fecha)}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span>
+        <span style="font-size:12px;color:var(--text2)"><strong>${r.unidades}</strong> uds.</span>
+        ${r.zona?`<span style="font-size:12px;color:var(--text3)">${r.zona}</span>`:''}
+        ${r.obs?`<span style="font-size:11px;color:var(--text3);width:100%;margin-top:2px">${r.obs}</span>`:''}
+      </div>
+    </div>`}).join('')
+    :`<div class="log-row log-head" style="grid-template-columns:85px 140px 110px 45px 100px 1fr"><span>Fecha</span><span>Responsable</span><span>Tipo</span><span>Uds.</span><span>Zona</span><span>Observaciones</span></div>
+    ${lista.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`<div class="log-row" style="grid-template-columns:85px 140px 110px 45px 100px 1fr"><span style="color:var(--text3)">${fmt(r.fecha)}</span><span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.coord.split('(')[0].trim()}</span><span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span></span><span style="font-weight:600">${r.unidades}</span><span style="color:var(--text3)">${r.zona||'—'}</span><span style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.obs||''}">${r.obs||'—'}</span></div>`}).join('')}`;
+};
+
 // ---- METRICAS ----
+const ITEM5_ACUM=[["2026-05-21",1],["2026-06-02",2],["2026-06-15",14],["2026-06-16",24],["2026-06-17",38],["2026-06-18",47],["2026-06-19",56],["2026-06-22",70],["2026-06-23",90],["2026-06-24",100],["2026-06-25",114],["2026-06-26",125],["2026-06-29",127],["2026-06-30",138],["2026-07-01",141],["2026-07-03",142],["2026-07-06",144],["2026-07-07",146],["2026-07-08",148]];
 const PROD_PLAN=[["2026-07-02",35],["2026-07-03",47],["2026-07-04",62],["2026-07-06",81],["2026-07-07",106],["2026-07-08",136],["2026-07-09",172],["2026-07-10",215],["2026-07-11",264],["2026-07-13",317],["2026-07-14",372],["2026-07-15",428],["2026-07-16",481],["2026-07-17",530],["2026-07-18",573],["2026-07-20",609],["2026-07-21",639],["2026-07-22",664],["2026-07-24",683],["2026-07-25",745]];
 const DESP_PLAN=[["2026-07-08",35],["2026-07-09",40],["2026-07-10",45],["2026-07-11",51],["2026-07-13",57],["2026-07-14",64],["2026-07-15",72],["2026-07-16",81],["2026-07-17",90],["2026-07-18",101],["2026-07-20",113],["2026-07-21",126],["2026-07-22",139],["2026-07-24",155],["2026-07-25",171],["2026-07-27",188],["2026-07-30",207],["2026-07-31",226],["2026-08-01",247],["2026-08-03",268],["2026-08-04",291],["2026-08-05",314],["2026-08-07",337],["2026-08-08",361],["2026-08-10",384],["2026-08-11",408],["2026-08-12",431],["2026-08-13",454],["2026-08-14",477],["2026-08-15",498],["2026-08-17",519],["2026-08-18",538],["2026-08-19",557],["2026-08-20",574],["2026-08-21",590],["2026-08-22",606],["2026-08-24",619],["2026-08-25",632],["2026-08-26",644],["2026-08-27",655],["2026-08-28",664],["2026-08-29",673],["2026-08-31",681],["2026-09-01",688],["2026-09-02",694],["2026-09-03",700],["2026-09-04",745]];
 
 const FERIADOS_SET=new Set(['2026-07-23','2026-07-28','2026-07-29','2026-08-06','2026-08-30']);
 function esHabilMetrica(d){const s=typeof d==='string'?d:d.toISOString().slice(0,10);const dt=new Date(s+'T00:00:00');return dt.getDay()!==0&&!FERIADOS_SET.has(s);}
 function diasHabilesEntre(d1str,d2str,soloLvs=false){
-  const FERIADOS_DESP=new Set(['2026-07-23','2026-07-27','2026-07-28','2026-07-29','2026-08-04','2026-08-06']);
+  const FERIADOS_DESP=new Set(['2026-07-23','2026-07-28','2026-07-29','2026-08-04','2026-08-06']);
   let n=0;const d=new Date(d1str+'T00:00:00'),fin=new Date(d2str+'T00:00:00');
   while(d<=fin){
     const dow=d.getDay();const s=d.toISOString().slice(0,10);
@@ -1407,14 +1510,26 @@ function renderMetricas(){
 
   if(chartDesp)chartDesp.destroy();
   const despLabels=dd.planFechas.map(f=>{const d=new Date(f+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'});});
+  // Build Item5 real data aligned to desp plan dates
+  const item5Map={};
+  ITEM5_ACUM.forEach(([f,v])=>item5Map[f]=v);
+  // Fill forward for dates between item5 known dates
+  let lastItem5=0;
+  const item5Vals=dd.planFechas.map(f=>{
+    if(item5Map[f]!==undefined)lastItem5=item5Map[f];
+    return f<=hoyStr?lastItem5:null;
+  });
+
+  if(chartDesp)chartDesp.destroy();
   chartDesp=new Chart(document.getElementById('chart-desp'),{
     type:'line',
     data:{
       labels:despLabels,
       datasets:[
-        {label:'Planificado',data:dd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:'origin',order:2},
-        {label:'Real',data:dd.realVals,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.15)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:'origin',spanGaps:false,order:1},
-        {label:'Brecha',data:dd.planVals.map((v,i)=>dd.realVals[i]!==null&&dd.realVals[i]!==undefined?Math.max(0,v-dd.realVals[i]):null),borderColor:'rgba(200,50,50,0)',backgroundColor:'rgba(200,50,50,0.12)',borderWidth:0,pointRadius:0,tension:0.4,fill:'origin',order:3,spanGaps:false},
+        {label:'Planificado SD-WAN',data:dd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:'origin',order:3},
+        {label:'Real SD-WAN',data:dd.realVals,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.15)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:'origin',spanGaps:false,order:1},
+        {label:'Real Ítem 5 (Gabinetes)',data:item5Vals,borderColor:'#E8A33D',backgroundColor:'rgba(232,163,61,0.10)',borderWidth:2,pointRadius:2,tension:0.3,fill:'origin',spanGaps:true,order:2,borderDash:[4,3]},
+        {label:'Brecha',data:dd.planVals.map((v,i)=>dd.realVals[i]!==null&&dd.realVals[i]!==undefined?Math.max(0,v-dd.realVals[i]):null),borderColor:'rgba(200,50,50,0)',backgroundColor:'rgba(200,50,50,0.10)',borderWidth:0,pointRadius:0,tension:0.4,fill:'origin',order:4,spanGaps:false},
       ]
     },
     options:chartOpts(dd.hoyIdx,745,despLabels)
