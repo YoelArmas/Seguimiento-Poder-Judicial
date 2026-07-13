@@ -1154,7 +1154,7 @@ const DESP_PLAN=[["2026-07-08",35],["2026-07-09",40],["2026-07-10",45],["2026-07
 const FERIADOS_SET=new Set(['2026-07-23','2026-07-28','2026-07-29','2026-08-06','2026-08-30']);
 function esHabilMetrica(d){const s=typeof d==='string'?d:d.toISOString().slice(0,10);const dt=new Date(s+'T00:00:00');return dt.getDay()!==0&&!FERIADOS_SET.has(s);}
 function diasHabilesEntre(d1str,d2str,soloLvs=false){
-  const FERIADOS_DESP=new Set(['2026-07-23','2026-07-28','2026-07-29','2026-08-04','2026-08-06']);
+  const FERIADOS_DESP=new Set(['2026-07-23','2026-07-27','2026-07-28','2026-07-29','2026-08-04','2026-08-06']);
   let n=0;const d=new Date(d1str+'T00:00:00'),fin=new Date(d2str+'T00:00:00');
   while(d<=fin){
     const dow=d.getDay();const s=d.toISOString().slice(0,10);
