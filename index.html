@@ -1231,13 +1231,18 @@ function renderMetricas(){
     const ritmoPlanned=745/totalDias;
     return Math.round(sv/ritmoPlanned);
   }
-  // Fecha proyectada basada en SPI
-  function fechaProyectadaSPI(spiData,hoyStr,pendientes,plan){
+  // Fecha proyectada - usa ritmo real si es razonable, sino muestra advertencia
+  function fechaProyectadaSPI(spiData,hoyStr,pendientes,metaStr){
     if(!spiData||spiData.spi<=0)return null;
-    const ritmoReal=spiData.realHoy/Math.max(1,diasHabilesEntre(plan[0][0],hoyStr));
-    if(ritmoReal<=0)return null;
-    const diasNec=Math.ceil(pendientes/ritmoReal);
-    return sumarDHMetrica(hoyStr,diasNec);
+    const diasTranscurridos=Math.max(1,diasHabilesEntre('2026-07-02',hoyStr));
+    const ritmoReal=spiData.realHoy/diasTranscurridos;
+    const diasHastaMetaTotal=Math.max(1,diasHabilesEntre('2026-07-02',metaStr));
+    const ritmoMinimo=745/diasHastaMetaTotal;
+    // Si el ritmo real es menor al 10% del minimo, usar el minimo para proyectar
+    const ritmoEfectivo=ritmoReal>ritmoMinimo*0.1?ritmoReal:ritmoMinimo;
+    const diasNec=Math.ceil(pendientes/ritmoEfectivo);
+    const fp=sumarDHMetrica(hoyStr,diasNec);
+    return {fecha:fp, esSoloReferencial: ritmoReal<ritmoMinimo*0.1};
   }
 
   if(esAutorizado){
@@ -1261,7 +1266,7 @@ function renderMetricas(){
               Planificado hoy: <strong>${x.d?x.d.planHoy:'—'}</strong> sedes<br>
               Real hoy: <strong>${x.d?x.d.realHoy:'—'}</strong> sedes<br>
               Variación: <strong style="color:${x.var>=0?'#0F6E56':'#A32D2D'}">${x.var!==null?(x.var>=0?'+':'')+x.var+' días':'—'}</strong><br>
-              Fecha proyectada: <strong>${x.fp?fmt(x.fp):'Sin datos'}</strong><br>
+              Fecha proyectada: <strong>${x.fp?fmt(x.fp.fecha||x.fp):'Sin datos'}</strong>${x.fp&&x.fp.esSoloReferencial?' <span style="font-size:10px;color:#B07A10">(referencial — actualiza datos reales)</span>':''}<br>
               Meta contractual: <strong>${x.meta}</strong>
             </div>
           </div>`;}).join('')}
@@ -1381,8 +1386,9 @@ function renderMetricas(){
     data:{
       labels:prodLabels,
       datasets:[
-        {label:'Planificado',data:pd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.06)',borderWidth:2,pointRadius:2,tension:0.4,fill:true,order:2},
-        {label:'Real',data:pd.realVals,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.12)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:true,spanGaps:false,order:1},
+        {label:'Planificado',data:pd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:'origin',order:2},
+        {label:'Real',data:pd.realVals,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.15)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:'origin',spanGaps:false,order:1},
+        {label:'Brecha',data:pd.planVals.map((v,i)=>pd.realVals[i]!==null&&pd.realVals[i]!==undefined?Math.max(0,v-pd.realVals[i]):null),borderColor:'rgba(200,50,50,0)',backgroundColor:'rgba(200,50,50,0.12)',borderWidth:0,pointRadius:0,tension:0.4,fill:'origin',order:3,spanGaps:false},
       ]
     },
     options:chartOpts(pd.hoyIdx,745,prodLabels)
@@ -1395,8 +1401,9 @@ function renderMetricas(){
     data:{
       labels:despLabels,
       datasets:[
-        {label:'Planificado',data:dd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.06)',borderWidth:2,pointRadius:2,tension:0.4,fill:true,order:2},
-        {label:'Real',data:dd.realVals,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.12)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:true,spanGaps:false,order:1},
+        {label:'Planificado',data:dd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:'origin',order:2},
+        {label:'Real',data:dd.realVals,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.15)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:'origin',spanGaps:false,order:1},
+        {label:'Brecha',data:dd.planVals.map((v,i)=>dd.realVals[i]!==null&&dd.realVals[i]!==undefined?Math.max(0,v-dd.realVals[i]):null),borderColor:'rgba(200,50,50,0)',backgroundColor:'rgba(200,50,50,0.12)',borderWidth:0,pointRadius:0,tension:0.4,fill:'origin',order:3,spanGaps:false},
       ]
     },
     options:chartOpts(dd.hoyIdx,745,despLabels)
