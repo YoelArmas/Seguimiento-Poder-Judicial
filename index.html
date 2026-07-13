@@ -404,28 +404,55 @@ select.inp{cursor:pointer}
 
 <!-- HISTORIAL -->
 <div id="tab-metricas" style="display:none">
-  <!-- KPIs por coordinador -->
-  <div class="card">
-    <div class="card-title">Avance por coordinador — semana actual</div>
-    <div id="kpi-coordinadores">Cargando...</div>
+
+  <!-- Dias habiles consumidos vs restantes - PUBLICO -->
+  <div class="card" id="card-dias-habiles">
+    <div class="card-title">Días hábiles del proyecto</div>
+    <div id="dias-habiles-container">Cargando...</div>
   </div>
-  <!-- SPI -->
+
+  <!-- Curva S Produccion - PUBLICO -->
   <div class="card">
-    <div class="card-title">Índice de desempeño del cronograma (SPI)</div>
-    <div id="spi-container">Cargando...</div>
-  </div>
-  <!-- Curva S Produccion -->
-  <div class="card">
-    <div class="card-title">Curva S — Configuración de sedes (Producción NIRQA)</div>
+    <div class="card-title">Curva S — Configuración de sedes (Línea de Producción NIRQA)</div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Planificado 02/07 → 25/07 · 745 sedes · Lun-Sáb sin feriados</div>
     <canvas id="chart-prod" style="width:100%;max-height:320px"></canvas>
   </div>
-  <!-- Curva S Despliegue -->
+
+  <!-- Curva S Despliegue - PUBLICO -->
   <div class="card">
-    <div class="card-title">Curva S — Despliegue en campo (TIC+)</div>
+    <div class="card-title">Curva S — Despliegue SD-WAN (TIC+/NQ)</div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Planificado 08/07 → 04/09 · 745 sedes · Lun-Sáb sin feriados</div>
     <canvas id="chart-desp" style="width:100%;max-height:320px"></canvas>
   </div>
+
+  <!-- Avance por coordinador - SOLO LOGUEADOS -->
+  <div class="card" id="card-coordinadores" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <div class="card-title" style="margin:0">Avance por coordinador</div>
+      <select class="inp" id="filtro-periodo" style="width:auto" onchange="renderMetricas()">
+        <option value="7">Últimos 7 días</option>
+        <option value="14">Últimos 14 días</option>
+        <option value="semana">Esta semana</option>
+        <option value="semana_ant">Semana pasada</option>
+        <option value="0">Todo el proyecto</option>
+      </select>
+    </div>
+    <div id="kpi-coordinadores">Cargando...</div>
+  </div>
+
+  <!-- SPI - SOLO LOGUEADOS -->
+  <div class="card" id="card-spi" style="display:none">
+    <div class="card-title">Índice de desempeño del cronograma (SPI)</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">SPI = Avance real acumulado ÷ Avance planificado a la fecha. SPI &gt;1 adelantado · =1 en tiempo · &lt;1 atrasado</div>
+    <div id="spi-container">Cargando...</div>
+  </div>
+
+  <!-- CPI y variacion - SOLO ADMIN -->
+  <div class="card" id="card-admin-metrics" style="display:none">
+    <div class="card-title">🔒 Métricas avanzadas (solo administradores)</div>
+    <div id="admin-metrics-container">Cargando...</div>
+  </div>
+
 </div>
 
 <div id="tab-historial" style="display:none">
@@ -856,7 +883,7 @@ const isMobileHist=window.innerWidth<=640;
         <div class="detail-chip"><strong>Tipo sede:</strong> ${r.tipo||'—'}</div>
         <div class="detail-chip"><strong>Obs.:</strong> ${r.obs||'—'}</div>
         <div class="detail-chip"><strong>Registrado por:</strong> ${r.registradoPor||'—'}</div>
-        ${r.editadoPor?`<div class="detail-chip" style="background:#FFF8E1;border-color:#FFE082"><strong>✏️ Editado por:</strong> ${r.editadoPor} &nbsp;·&nbsp; ${r.editadoTs?new Date(r.editadoTs).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}</div>`:''}
+        ${r.editadoPor?`<div class="detail-chip" style="background:#FFF8E1;border-color:#FFE082;width:100%"><strong>✏️ Editado por:</strong> ${r.editadoPor} · ${r.editadoTs?new Date(r.editadoTs).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}<br><span style="font-size:11px;color:#633806"><strong>Cambios:</strong> ${r.cambios||'Sin detalle de cambios'}</span></div>`:''}
       </div>
     </div>`}).join('')
     :
@@ -879,7 +906,7 @@ const isMobileHist=window.innerWidth<=640;
         <div class="detail-chip"><strong>Tipo sede:</strong> ${r.tipo||'—'}</div>
         <div class="detail-chip" style="flex:1;min-width:150px"><strong>Obs.:</strong> ${r.obs||'—'}</div>
         <div class="detail-chip"><strong>Registrado por:</strong> ${r.registradoPor||'—'}</div>
-        ${r.editadoPor?`<div class="detail-chip" style="background:#FFF8E1;border-color:#FFE082"><strong>✏️ Editado por:</strong> ${r.editadoPor} &nbsp;·&nbsp; ${r.editadoTs?new Date(r.editadoTs).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}</div>`:''}
+        ${r.editadoPor?`<div class="detail-chip" style="background:#FFF8E1;border-color:#FFE082;width:100%"><strong>✏️ Editado por:</strong> ${r.editadoPor} · ${r.editadoTs?new Date(r.editadoTs).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}<br><span style="font-size:11px;color:#633806"><strong>Cambios:</strong> ${r.cambios||'Sin detalle de cambios'}</span></div>`:''}
       </div>
     </div>`}).join('')}`)
     :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros.</div>';
@@ -1062,8 +1089,24 @@ window.guardarEdicion=async function(){
   const obs=document.getElementById('edit-obs').value.trim();
   const err=document.getElementById('edit-error');
   if(!fecha||!coord||!frente||unidades<1){err.textContent='Completa todos los campos.';err.style.display='block';return;}
+  // Capturar cambios vs registro original
+  const original=registros.find(r=>r.id===id);
+  const cambios=[];
+  if(original){
+    const NOMBRES_CAMPO={fecha:'Fecha',coord:'Coordinador',frente:'Tipo',zona:'Zona',unidades:'Unidades',tipo:'Tipo sede',sedes:'Sedes',obs:'Observaciones'};
+    const campos={fecha,coord,frente,zona,unidades,tipo,sedes,obs};
+    Object.entries(campos).forEach(([k,v])=>{
+      const orig=String(original[k]||'');
+      const nuevo=String(v||'');
+      if(orig!==nuevo)cambios.push(`${NOMBRES_CAMPO[k]}: "${orig}" → "${nuevo}"`);
+    });
+  }
   try{
-    await updateDoc(doc(db,'registros',id),{fecha,coord,frente,zona,unidades,tipo,sedes,obs,editadoPor:usuarioActual?.email||'',editadoTs:Date.now()});
+    await updateDoc(doc(db,'registros',id),{fecha,coord,frente,zona,unidades,tipo,sedes,obs,
+      editadoPor:usuarioActual?.email||'',
+      editadoTs:Date.now(),
+      cambios:cambios.join(' | ')
+    });
     window.cerrarModal();
   }catch(e){err.textContent='Error al guardar: '+e.message;err.style.display='block';}
 };
@@ -1089,122 +1132,232 @@ document.getElementById('f-fecha').value=hoy();
 const PROD_PLAN=[["2026-07-02",35],["2026-07-03",47],["2026-07-04",62],["2026-07-06",81],["2026-07-07",106],["2026-07-08",136],["2026-07-09",172],["2026-07-10",215],["2026-07-11",264],["2026-07-13",317],["2026-07-14",372],["2026-07-15",428],["2026-07-16",481],["2026-07-17",530],["2026-07-18",573],["2026-07-20",609],["2026-07-21",639],["2026-07-22",664],["2026-07-24",683],["2026-07-25",745]];
 const DESP_PLAN=[["2026-07-08",35],["2026-07-09",40],["2026-07-10",45],["2026-07-11",51],["2026-07-13",57],["2026-07-14",64],["2026-07-15",72],["2026-07-16",81],["2026-07-17",90],["2026-07-18",101],["2026-07-20",113],["2026-07-21",126],["2026-07-22",139],["2026-07-24",155],["2026-07-25",171],["2026-07-27",188],["2026-07-30",207],["2026-07-31",226],["2026-08-01",247],["2026-08-03",268],["2026-08-04",291],["2026-08-05",314],["2026-08-07",337],["2026-08-08",361],["2026-08-10",384],["2026-08-11",408],["2026-08-12",431],["2026-08-13",454],["2026-08-14",477],["2026-08-15",498],["2026-08-17",519],["2026-08-18",538],["2026-08-19",557],["2026-08-20",574],["2026-08-21",590],["2026-08-22",606],["2026-08-24",619],["2026-08-25",632],["2026-08-26",644],["2026-08-27",655],["2026-08-28",664],["2026-08-29",673],["2026-08-31",681],["2026-09-01",688],["2026-09-02",694],["2026-09-03",700],["2026-09-04",745]];
 
-let chartProd=null, chartDesp=null;
+const FERIADOS_SET=new Set(['2026-07-23','2026-07-28','2026-07-29','2026-08-06','2026-08-30']);
+function esHabilMetrica(d){const s=typeof d==='string'?d:d.toISOString().slice(0,10);const dt=new Date(s+'T00:00:00');return dt.getDay()!==0&&!FERIADOS_SET.has(s);}
+function diasHabilesEntre(d1str,d2str){let n=0;const d=new Date(d1str+'T00:00:00'),fin=new Date(d2str+'T00:00:00');while(d<=fin){if(esHabilMetrica(d.toISOString().slice(0,10)))n++;d.setDate(d.getDate()+1);}return n;}
+function sumarDHMetrica(desdeStr,n){let d=new Date(desdeStr+'T00:00:00'),c=0;while(c<n){d.setDate(d.getDate()+1);if(esHabilMetrica(d.toISOString().slice(0,10)))c++;}return d.toISOString().slice(0,10);}
+
+let chartProd=null,chartDesp=null;
 
 function renderMetricas(){
   const hoyStr=hoy();
 
+  // Mostrar/ocultar cards segun rol
+  const cardCoord=document.getElementById('card-coordinadores');
+  const cardSpi=document.getElementById('card-spi');
+  const cardAdmin=document.getElementById('card-admin-metrics');
+  if(cardCoord)cardCoord.style.display=esAutorizado?'block':'none';
+  if(cardSpi)cardSpi.style.display=esAutorizado?'block':'none';
+  if(cardAdmin)cardAdmin.style.display=esAdmin?'block':'none';
+
   // Acumulados reales por fecha
   function acumReal(frente){
     const mapa={};
-    registros.filter(r=>r.frente===frente).forEach(r=>{
-      mapa[r.fecha]=(mapa[r.fecha]||0)+r.unidades;
-    });
+    registros.filter(r=>r.frente===frente).forEach(r=>{mapa[r.fecha]=(mapa[r.fecha]||0)+r.unidades;});
     const fechas=Object.keys(mapa).sort();
     let acum=0;const resultado={};
     fechas.forEach(f=>{acum+=mapa[f];resultado[f]=Math.min(745,acum);});
     return resultado;
   }
-
   const realProd=acumReal('configurados');
   const realDesp=acumReal('solo_item5');
+  const totalRealProd=Object.values(realProd).reduce((a,v)=>Math.max(a,v),0);
+  const totalRealDesp=Object.values(realDesp).reduce((a,v)=>Math.max(a,v),0);
+
+  // DIAS HABILES
+  const dhProdTotal=diasHabilesEntre('2026-07-02','2026-07-25');
+  const dhProdConsumidos=diasHabilesEntre('2026-07-02',hoyStr<='2026-07-25'?hoyStr:'2026-07-25');
+  const dhProdRestantes=Math.max(0,dhProdTotal-dhProdConsumidos);
+  const dhDespTotal=diasHabilesEntre('2026-07-08','2026-09-04');
+  const dhDespConsumidos=diasHabilesEntre('2026-07-08',hoyStr<='2026-09-04'?hoyStr:'2026-09-04');
+  const dhDespRestantes=Math.max(0,dhDespTotal-dhDespConsumidos);
+
+  document.getElementById('dias-habiles-container').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      ${[
+        {lbl:'Produccion NIRQA',total:dhProdTotal,consumidos:dhProdConsumidos,restantes:dhProdRestantes,color:'#0F6E56'},
+        {lbl:'Despliegue TIC+',total:dhDespTotal,consumidos:dhDespConsumidos,restantes:dhDespRestantes,color:'#534AB7'},
+      ].map(x=>`<div style="border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">${x.lbl}</div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:4px">
+          <span>${x.consumidos} dias consumidos</span><span>${x.restantes} restantes</span>
+        </div>
+        <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden">
+          <div style="width:${Math.round(x.consumidos/x.total*100)}%;height:8px;background:${x.color};border-radius:4px;transition:width .4s"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:4px">
+          <span>${Math.round(x.consumidos/x.total*100)}% del tiempo usado</span>
+          <span>Total: ${x.total} días hábiles</span>
+        </div>
+      </div>`).join('')}
+    </div>`;
 
   // SPI
-  function calcSPI(plan, real){
+  function calcSPI(plan,real){
     const hoyPlan=plan.filter(p=>p[0]<=hoyStr);
     if(!hoyPlan.length)return null;
     const planHoy=hoyPlan[hoyPlan.length-1][1];
     const realHoy=Object.entries(real).filter(([f])=>f<=hoyStr).reduce((a,[,v])=>Math.max(a,v),0);
-    return planHoy>0?(realHoy/planHoy):null;
+    return planHoy>0?{spi:realHoy/planHoy,planHoy,realHoy}:null;
   }
-  const spiProd=calcSPI(PROD_PLAN,realProd);
-  const spiDesp=calcSPI(DESP_PLAN,realDesp);
+  const spiProdData=calcSPI(PROD_PLAN,realProd);
+  const spiDespData=calcSPI(DESP_PLAN,realDesp);
 
   function spiColor(v){return v===null?'#888':v>=0.95?'#0F6E56':v>=0.8?'#B07A10':'#A32D2D';}
   function spiLbl(v){return v===null?'Sin datos':v>=0.95?'En tiempo':v>=0.8?'Riesgo medio':'Riesgo critico';}
 
-  document.getElementById('spi-container').innerHTML=`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div style="text-align:center;padding:16px;border:1px solid var(--border);border-radius:10px">
-        <div style="font-size:32px;font-weight:700;color:${spiColor(spiProd)}">${spiProd!==null?spiProd.toFixed(2):'—'}</div>
-        <div style="font-size:12px;font-weight:600;color:${spiColor(spiProd)};margin:4px 0">${spiLbl(spiProd)}</div>
-        <div style="font-size:11px;color:var(--text3)">SPI Produccion</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:4px">SPI ≥1.0 adelantado · =1.0 en tiempo · &lt;1.0 atrasado</div>
-      </div>
-      <div style="text-align:center;padding:16px;border:1px solid var(--border);border-radius:10px">
-        <div style="font-size:32px;font-weight:700;color:${spiColor(spiDesp)}">${spiDesp!==null?spiDesp.toFixed(2):'—'}</div>
-        <div style="font-size:12px;font-weight:600;color:${spiColor(spiDesp)};margin:4px 0">${spiLbl(spiDesp)}</div>
-        <div style="font-size:11px;color:var(--text3)">SPI Despliegue</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:4px">SPI ≥1.0 adelantado · =1.0 en tiempo · &lt;1.0 atrasado</div>
-      </div>
-    </div>`;
+  // Variacion en dias (SV = EV - PV, convertido a dias habiles)
+  function variacionDias(spiData,plan,totalDias){
+    if(!spiData)return null;
+    const sv=spiData.realHoy-spiData.planHoy;
+    const ritmoPlanned=745/totalDias;
+    return Math.round(sv/ritmoPlanned);
+  }
+  // Fecha proyectada basada en SPI
+  function fechaProyectadaSPI(spiData,hoyStr,pendientes,plan){
+    if(!spiData||spiData.spi<=0)return null;
+    const ritmoReal=spiData.realHoy/Math.max(1,diasHabilesEntre(plan[0][0],hoyStr));
+    if(ritmoReal<=0)return null;
+    const diasNec=Math.ceil(pendientes/ritmoReal);
+    return sumarDHMetrica(hoyStr,diasNec);
+  }
 
-  // KPIs por coordinador esta semana
-  const lunes=new Date();lunes.setDate(lunes.getDate()-lunes.getDay()+1);
-  const lunesStr=lunes.toISOString().slice(0,10);
-  const porCoord={};
-  registros.filter(r=>r.fecha>=lunesStr).forEach(r=>{
-    const k=r.coord.split('(')[0].trim();
-    if(!porCoord[k])porCoord[k]={prod:0,campo:0,alta:0};
-    if(r.frente==='configurados')porCoord[k].prod+=r.unidades;
-    else if(['solo_item5','con_enlace'].includes(r.frente))porCoord[k].campo+=r.unidades;
-    else if(r.frente==='alta')porCoord[k].alta+=r.unidades;
+  if(esAutorizado){
+    const varProd=variacionDias(spiProdData,PROD_PLAN,dhProdTotal);
+    const varDesp=variacionDias(spiDespData,DESP_PLAN,dhDespTotal);
+    const fpProd=fechaProyectadaSPI(spiProdData,hoyStr,745-totalRealProd,PROD_PLAN);
+    const fpDesp=fechaProyectadaSPI(spiDespData,hoyStr,745-totalRealDesp,DESP_PLAN);
+
+    document.getElementById('spi-container').innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        ${[
+          {lbl:'SPI Produccion',d:spiProdData,var:varProd,fp:fpProd,meta:'25/07/2026'},
+          {lbl:'SPI Despliegue',d:spiDespData,var:varDesp,fp:fpDesp,meta:'04/09/2026'},
+        ].map(x=>{
+          const v=x.d?x.d.spi:null;
+          return`<div style="border:1px solid var(--border);border-radius:10px;padding:16px">
+            <div style="font-size:28px;font-weight:700;color:${spiColor(v)};text-align:center">${v!==null?v.toFixed(2):'—'}</div>
+            <div style="font-size:12px;font-weight:600;color:${spiColor(v)};text-align:center;margin:4px 0">${spiLbl(v)}</div>
+            <div style="font-size:11px;color:var(--text2);margin-bottom:8px;text-align:center">${x.lbl}</div>
+            <div style="border-top:1px solid var(--border);padding-top:8px;font-size:12px;color:var(--text2);line-height:1.8">
+              Planificado hoy: <strong>${x.d?x.d.planHoy:'—'}</strong> sedes<br>
+              Real hoy: <strong>${x.d?x.d.realHoy:'—'}</strong> sedes<br>
+              Variación: <strong style="color:${x.var>=0?'#0F6E56':'#A32D2D'}">${x.var!==null?(x.var>=0?'+':'')+x.var+' días':'—'}</strong><br>
+              Fecha proyectada: <strong>${x.fp?fmt(x.fp):'Sin datos'}</strong><br>
+              Meta contractual: <strong>${x.meta}</strong>
+            </div>
+          </div>`;}).join('')}
+      </div>`;
+
+    // Avance por coordinador con filtro
+    const periodo=document.getElementById('filtro-periodo')?.value||'7';
+    let fechaDesde;
+    if(periodo==='semana'){const l=new Date();l.setDate(l.getDate()-l.getDay()+1);fechaDesde=l.toISOString().slice(0,10);}
+    else if(periodo==='semana_ant'){const l=new Date();l.setDate(l.getDate()-l.getDay()-6);fechaDesde=l.toISOString().slice(0,10);}
+    else if(periodo==='0'){fechaDesde='2026-01-01';}
+    else{const d=new Date();d.setDate(d.getDate()-parseInt(periodo));fechaDesde=d.toISOString().slice(0,10);}
+
+    const porCoord={};
+    registros.filter(r=>r.fecha>=fechaDesde).forEach(r=>{
+      const k=r.coord.split('(')[0].trim();
+      if(!porCoord[k])porCoord[k]={prod:0,campo:0,alta:0,total:0};
+      if(r.frente==='configurados')porCoord[k].prod+=r.unidades;
+      else if(['solo_item5','con_enlace'].includes(r.frente))porCoord[k].campo+=r.unidades;
+      else if(r.frente==='alta')porCoord[k].alta+=r.unidades;
+      porCoord[k].total+=r.unidades;
+    });
+    const coords=Object.entries(porCoord).sort((a,b)=>b[1].total-a[1].total);
+    const maxTotal=coords.reduce((a,[,v])=>Math.max(a,v.total),1);
+
+    document.getElementById('kpi-coordinadores').innerHTML=coords.length?`
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${coords.map(([k,v])=>`
+        <div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+            <span style="font-weight:600;font-size:13px">${k}</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              ${v.prod?`<span class="badge" style="background:#E1F5EE;color:#085041">Config: ${v.prod}</span>`:''}
+              ${v.campo?`<span class="badge" style="background:#EEEDFE;color:#3C3489">Campo: ${v.campo}</span>`:''}
+              ${v.alta?`<span class="badge" style="background:#E6F1FB;color:#185FA5">Altas: ${v.alta}</span>`:''}
+              <span class="badge" style="background:var(--navy);color:#fff">Total: ${v.total}</span>
+            </div>
+          </div>
+          <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
+            <div style="width:${Math.round(v.total/maxTotal*100)}%;height:6px;background:var(--navy);border-radius:4px"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:3px">${Math.round(v.total/maxTotal*100)}% del líder del período</div>
+        </div>`).join('')}
+      </div>`
+      :`<div style="color:var(--text3);text-align:center;padding:20px">Sin registros en el período seleccionado.</div>`;
+  }
+
+  // Admin metrics
+  if(esAdmin){
+    document.getElementById('admin-metrics-container').innerHTML=`
+      <div style="font-size:13px;color:var(--text2);padding:8px 0;line-height:2">
+        <strong>CPI (Índice de Costo):</strong> Requiere ingresar costo real ejecutado. Funcionalidad disponible próximamente.<br>
+        <strong>Variación cronograma Producción:</strong> <span style="font-weight:600;color:${(variacionDias(spiProdData,PROD_PLAN,dhProdTotal)||0)>=0?'#0F6E56':'#A32D2D'}">${variacionDias(spiProdData,PROD_PLAN,dhProdTotal)!==null?(variacionDias(spiProdData,PROD_PLAN,dhProdTotal)>=0?'+':'')+variacionDias(spiProdData,PROD_PLAN,dhProdTotal)+' días':'Sin datos'}</span><br>
+        <strong>Variación cronograma Despliegue:</strong> <span style="font-weight:600;color:${(variacionDias(spiDespData,DESP_PLAN,dhDespTotal)||0)>=0?'#0F6E56':'#A32D2D'}">${variacionDias(spiDespData,DESP_PLAN,dhDespTotal)!==null?(variacionDias(spiDespData,DESP_PLAN,dhDespTotal)>=0?'+':'')+variacionDias(spiDespData,DESP_PLAN,dhDespTotal)+' días':'Sin datos'}</span>
+      </div>`;
+  }
+
+  // CURVA S con línea de hoy y % en tooltip
+  function buildDatasets(plan,real,hoyStr){
+    const planFechas=plan.map(p=>p[0]);
+    const planVals=plan.map(p=>p[1]);
+    const realVals=plan.map(p=>real[p[0]]??null);
+    // Hoy vertical line data
+    const hoyIdx=planFechas.findIndex(f=>f>=hoyStr);
+    return{planFechas,planVals,realVals,hoyIdx};
+  }
+
+  const pd=buildDatasets(PROD_PLAN,realProd,hoyStr);
+  const dd=buildDatasets(DESP_PLAN,realDesp,hoyStr);
+
+  const chartOpts=(hoyIdx,total)=>({
+    responsive:true,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{position:'top'},
+      tooltip:{callbacks:{
+        label:ctx=>{
+          if(ctx.parsed.y===null)return null;
+          const pct=Math.round(ctx.parsed.y/total*100);
+          return`${ctx.dataset.label}: ${ctx.parsed.y} sedes (${pct}%)`;
+        }
+      }},
+      annotation:hoyIdx>=0?{annotations:{hoy:{type:'line',xMin:hoyIdx,xMax:hoyIdx,borderColor:'rgba(200,50,50,0.6)',borderWidth:2,borderDash:[5,4],label:{content:'Hoy',enabled:true,position:'start',font:{size:10}}}}}:{}
+    },
+    scales:{
+      y:{min:0,max:total,title:{display:true,text:'Sedes acumuladas'},ticks:{callback:v=>`${v} (${Math.round(v/total*100)}%)`}},
+      x:{title:{display:true,text:'Fecha'},ticks:{maxTicksLimit:14}}
+    }
   });
-  const coords=Object.entries(porCoord);
-  document.getElementById('kpi-coordinadores').innerHTML=coords.length?`
-    <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead><tr style="background:var(--navy);color:#fff">
-        <th style="padding:8px 12px;text-align:left;font-weight:500">Coordinador</th>
-        <th style="padding:8px 12px;text-align:center;font-weight:500">Configuradas</th>
-        <th style="padding:8px 12px;text-align:center;font-weight:500">Instaladas</th>
-        <th style="padding:8px 12px;text-align:center;font-weight:500">Altas</th>
-        <th style="padding:8px 12px;text-align:center;font-weight:500">Total</th>
-      </tr></thead>
-      <tbody>${coords.map(([k,v],i)=>`<tr style="background:${i%2===0?'#fff':'#f8f9fc'}">
-        <td style="padding:8px 12px;font-weight:500">${k}</td>
-        <td style="padding:8px 12px;text-align:center">${v.prod}</td>
-        <td style="padding:8px 12px;text-align:center">${v.campo}</td>
-        <td style="padding:8px 12px;text-align:center">${v.alta}</td>
-        <td style="padding:8px 12px;text-align:center;font-weight:700">${v.prod+v.campo+v.alta}</td>
-      </tr>`).join('')}</tbody>
-    </table></div>`
-    :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros esta semana.</div>';
-
-  // Curva S Produccion
-  const prodPlanFechas=PROD_PLAN.map(p=>p[0]);
-  const prodPlanVals=PROD_PLAN.map(p=>p[1]);
-  const prodRealVals=PROD_PLAN.map(p=>realProd[p[0]]??null);
 
   if(chartProd)chartProd.destroy();
   chartProd=new Chart(document.getElementById('chart-prod'),{
     type:'line',
     data:{
-      labels:prodPlanFechas.map(f=>{const d=new Date(f+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'});}),
+      labels:pd.planFechas.map(f=>{const d=new Date(f+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'});}),
       datasets:[
-        {label:'Planificado',data:prodPlanVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:true},
-        {label:'Real',data:prodRealVals,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.10)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:true,spanGaps:false},
+        {label:'Planificado',data:pd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:true},
+        {label:'Real',data:pd.realVals,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.10)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:true,spanGaps:false},
       ]
     },
-    options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top'},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y??'—'} sedes`}}},scales:{y:{min:0,max:745,title:{display:true,text:'Sedes acumuladas'}},x:{title:{display:true,text:'Fecha'}}}}
+    options:chartOpts(pd.hoyIdx,745)
   });
-
-  // Curva S Despliegue
-  const despPlanFechas=DESP_PLAN.map(p=>p[0]);
-  const despPlanVals=DESP_PLAN.map(p=>p[1]);
-  const despRealVals=DESP_PLAN.map(p=>realDesp[p[0]]??null);
 
   if(chartDesp)chartDesp.destroy();
   chartDesp=new Chart(document.getElementById('chart-desp'),{
     type:'line',
     data:{
-      labels:despPlanFechas.map(f=>{const d=new Date(f+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'});}),
+      labels:dd.planFechas.map(f=>{const d=new Date(f+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'});}),
       datasets:[
-        {label:'Planificado',data:despPlanVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:true},
-        {label:'Real',data:despRealVals,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.10)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:true,spanGaps:false},
+        {label:'Planificado',data:dd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:true},
+        {label:'Real',data:dd.realVals,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.10)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:true,spanGaps:false},
       ]
     },
-    options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top'},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y??'—'} sedes`}}},scales:{y:{min:0,max:745,title:{display:true,text:'Sedes acumuladas'}},x:{title:{display:true,text:'Fecha'},ticks:{maxTicksLimit:12}}}}
+    options:chartOpts(dd.hoyIdx,745)
   });
 }
 </script>
