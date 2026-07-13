@@ -1285,7 +1285,7 @@ window.confirmarBorrar=async function(){
 window.showTab=function(name){
   ['dashboard','registro','carga','hitos','metricas','historial'].forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
   document.querySelectorAll('.tabs .tab').forEach((b,i)=>b.classList.toggle('active',['dashboard','registro','carga','hitos','metricas','historial'][i]===name));
-  if(name==='metricas')renderMetricas();
+  if(name==='metricas')try{renderMetricas();}catch(e){console.error('renderMetricas error:',e);}
 };
 window.showSubTab=function(name){
   ['plantilla','subir','seguimiento'].forEach(t=>{const el=document.getElementById('subtab-'+t);if(el)el.style.display=t===name?'block':'none';});
