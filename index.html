@@ -1682,10 +1682,12 @@ window.handleFileSeg=function(file){
 window.confirmarSeg=async function(){
   if(!window._segData)return;
   try{
+    // Convert nested arrays to objects (Firestore doesn't support nested arrays)
+    const toObj=arr=>arr.reduce((o,[f,v])=>{o[f.replace(/-/g,'_')]=v;return o;},{});
     await setDoc(doc(db,'config','items_externos'),{
-      item1:window._segData.item1,
-      item2:window._segData.item2,
-      item5:window._segData.item5,
+      item1:toObj(window._segData.item1),
+      item2:toObj(window._segData.item2),
+      item5:toObj(window._segData.item5),
       actualizadoPor:usuarioActual?.email||'',
       ts:Date.now()
     });
@@ -1707,9 +1709,11 @@ async function cargarItemsExternos(){
     snap.forEach(d=>{
       if(d.id==='items_externos'){
         const data=d.data();
-        if(data.item1)window.ITEM1_ACUM=data.item1;
-        if(data.item2)window.ITEM2_ACUM=data.item2;
-        if(data.item5)window.ITEM5_ACUM=data.item5;
+        // Convert objects back to sorted arrays [[fecha,val],...]
+        const toArr=obj=>Object.entries(obj).map(([k,v])=>[k.replace(/_/g,'-'),v]).sort((a,b)=>a[0].localeCompare(b[0]));
+        if(data.item1)window.ITEM1_ACUM=toArr(data.item1);
+        if(data.item2)window.ITEM2_ACUM=toArr(data.item2);
+        if(data.item5)window.ITEM5_ACUM=toArr(data.item5);
         renderTodo();
         if(document.getElementById('tab-metricas')?.style.display!=='none')renderMetricas();
       }
