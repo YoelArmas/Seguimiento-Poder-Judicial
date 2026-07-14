@@ -681,6 +681,14 @@ const app=initializeApp(firebaseConfig),db=getFirestore(app),auth=getAuth(app),p
 const rtdb=getDatabase(app);
 const TOTAL=745,FIN=new Date('2026-09-06');
 const FERIADOS=['2026-07-23','2026-07-28','2026-07-29','2026-08-06','2026-08-30'];
+// ZONA_UNIVERSO movido aquí (antes era declarado al final del script) para garantizar que
+// esté disponible ANTES de que cualquier listener de Firestore (onSnapshot) pueda invocar renderTodo().
+const ZONA_UNIVERSO={
+  'Zona Centro':{total:242,t1:22,t2:213,t3:7,coord:'Rodrigo Romero'},
+  'Zona Norte':{total:166,t1:8,t2:143,t3:15,coord:'Noemi Rivera'},
+  'Zona Oriente':{total:124,t1:7,t2:92,t3:25,coord:'Miguel Pando'},
+  'Zona Sur':{total:213,t1:8,t2:192,t3:13,coord:'Angel Cruz'},
+};
 let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[];
 
 function esHabil(d){const s=d.toISOString().slice(0,10);return d.getDay()!==0&&!FERIADOS.includes(s)}
@@ -853,9 +861,6 @@ function renderPresencia(usuarios){
     </div>`;
 }
 
-const q=query(collection(db,'registros'),orderBy('fecha','desc'),orderBy('ts','desc'));
-onSnapshot(q,snap=>{registros=snap.docs.map(d=>({id:d.id,...d.data()}));renderTodo();},err=>{console.error(err);});
-
 // Semaforo items listener
 const ITEMS_DEFAULT=[
   {orden:1,lbl:'Produccion — equipos configurados',r:'critico',nota:'20/745 — Fecha límite culminación: 26/07/2026'},
@@ -868,6 +873,9 @@ const ITEMS_DEFAULT=[
   {orden:8,lbl:'Item 5 — Gabinetes',r:'alerta',nota:'Culminación instalación gabinetes antes del 30/08'},
   {orden:9,lbl:'Poder Judicial — Puesta en Marcha',r:'critico',nota:'Culminación puesta en marcha sedes Callao para afinación de plantillas'},
 ];
+
+const q=query(collection(db,'registros'),orderBy('fecha','desc'),orderBy('ts','desc'));
+onSnapshot(q,snap=>{registros=snap.docs.map(d=>({id:d.id,...d.data()}));renderTodo();},err=>{console.error(err);});
 
 async function inicializarSemaforo(){
   try{
@@ -1219,7 +1227,7 @@ window.handleFile=function(file){
         const fechaUsar=fechaGlobal||nirqaFecha||ticFecha||hoy();
         // Determine coordinator from zona if not specified globally
         const zonaRow=String(r[6]||'').trim(); // sector col approximation
-        const coordPorZona=window.ZONA_COORD||{};
+        const coordPorZona=ZONA_COORD||{};
         const coordUsar=coordGlobal||(zonaRow&&coordPorZona[zonaRow])||'Sin especificar';
         if(nirqaEstado==='configurado')
           pendingRows.push({fecha:fechaUsar,coord:coordUsar,frente:'configurados',zona:'',tipo:tipoSede,sedes:codPJ,obs:nirqaObs||sede,unidades:1});
@@ -1419,7 +1427,6 @@ window.renderLogDashboard=function(pagina){
 window.ITEM5_ACUM=[["2026-05-21",1],["2026-06-02",2],["2026-06-15",14],["2026-06-16",24],["2026-06-17",38],["2026-06-18",47],["2026-06-19",56],["2026-06-22",70],["2026-06-23",90],["2026-06-24",100],["2026-06-25",114],["2026-06-26",125],["2026-06-29",127],["2026-06-30",138],["2026-07-01",141],["2026-07-03",142],["2026-07-06",144],["2026-07-07",146],["2026-07-08",148]];
 window.ITEM1_ACUM=[["2026-07-10",2]];
 window.ITEM2_ACUM=[["2026-06-30",1],["2026-07-02",2],["2026-07-03",3],["2026-07-06",5],["2026-07-07",7],["2026-07-08",9]];
-
 const PROD_PLAN=[["2026-07-02",10],["2026-07-03",20],["2026-07-04",30],["2026-07-06",50],["2026-07-07",80],["2026-07-08",110],["2026-07-09",145],["2026-07-10",180],["2026-07-11",215],["2026-07-13",255],["2026-07-14",295],["2026-07-15",340],["2026-07-16",385],["2026-07-17",430],["2026-07-18",475],["2026-07-20",520],["2026-07-21",565],["2026-07-22",610],["2026-07-24",655],["2026-07-25",745]];
 // Planificado actualizado 14/07/2026: acumulado NETO esperado (ya descuenta ~25% de tasa de incumplimiento/reprogramación
 // sobre el volumen bruto que se programa realmente en Lima y provincias). Fuente: forecast de personal de despliegue del JP.
