@@ -579,7 +579,7 @@ select.inp{cursor:pointer}
       <div class="form-grid">
         <div><label class="label">Estado</label>
           <select class="inp" id="si-r">
-            <option value="ok">🟢 Riesgo bajo (verde)</option>
+            <option value="ok">🟢 En tiempo (verde)</option>
             <option value="alerta">🟡 Riesgo medio (amarillo)</option>
             <option value="critico">🔴 Riesgo crítico (rojo)</option>
           </select>
@@ -675,7 +675,7 @@ const ZONA_COORD={
   'Zona Centro':'Rodrigo Romero (Zona Centro)',
   'Zona Oriente':'Miguel Pando (Zona Oriente)',
 };
-const EMAILS_AUTORIZADOS=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com','miguel.del08@gmail.com','rromerom2002@gmail.com','angel.cruz.condori.2@gmail.com','noemi.optical@gmail.com','claudialavado212@gmail.com'];
+const EMAILS_AUTORIZADOS=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com','miguel.del08@gmail.com','rromerom2002@gmail.com','angel.cruz.condori.2@gmail.com','noemi.optical@gmail.com'];
 const EMAILS_ADMIN=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com'];
 const app=initializeApp(firebaseConfig),db=getFirestore(app),auth=getAuth(app),provider=new GoogleAuthProvider();
 const rtdb=getDatabase(app);
@@ -689,7 +689,7 @@ const ZONA_UNIVERSO={
   'Zona Oriente':{total:124,t1:7,t2:92,t3:25,coord:'Miguel Pando'},
   'Zona Sur':{total:213,t1:8,t2:192,t3:13,coord:'Angel Cruz'},
 };
-let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[],eliminados=[],ediciones=[];
+let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[],eliminados=[],ediciones=[],sedesEstado={},sedesEstadoCargado=false,pendingEstados={};
 
 function esHabil(d){const s=d.toISOString().slice(0,10);return d.getDay()!==0&&!FERIADOS.includes(s)}
 function diasHabilesHasta(d1,d2){let n=0,d=new Date(d1);while(d<=d2){if(esHabil(d))n++;d.setDate(d.getDate()+1)}return n}
@@ -732,7 +732,7 @@ function proyectar(completadas,frente){
   return{ok:false,fecha:fp.toISOString().slice(0,10),holgura,riesgo:holgura<0?'critico':holgura<4?'alerta':'ok',ritmo:r};
 }
 function colorR(r){
-  if(r==='ok')return{bg:'#E1F5EE',tx:'#085041',lbl:'Riesgo bajo'};
+  if(r==='ok')return{bg:'#E1F5EE',tx:'#085041',lbl:'En tiempo'};
   if(r==='alerta')return{bg:'#FAEEDA',tx:'#633806',lbl:'Riesgo medio'};
   return{bg:'#FCEBEB',tx:'#791F1F',lbl:'Riesgo critico'};
 }
@@ -884,6 +884,13 @@ onSnapshot(qElim,snap=>{eliminados=snap.docs.map(d=>({id:d.id,...d.data()}));ren
 
 const qEdic=query(collection(db,'registros_ediciones'),orderBy('editadoTs','desc'));
 onSnapshot(qEdic,snap=>{ediciones=snap.docs.map(d=>({id:d.id,...d.data()}));renderEdiciones();},err=>{console.error('ediciones error:',err);});
+
+// Estado maestro por sede (Cod. PJ) — evita duplicar avance ya cargado en subidas anteriores del Excel de 745 filas
+onSnapshot(collection(db,'sedes_estado'),snap=>{
+  sedesEstado={};
+  snap.docs.forEach(d=>{sedesEstado[d.id]=d.data();});
+  sedesEstadoCargado=true;
+},err=>{console.error('sedes_estado error:',err);sedesEstadoCargado=true;});
 
 async function inicializarSemaforo(){
   try{
@@ -1245,7 +1252,10 @@ window.handleFile=function(file){
           if(String(r[ci]).toLowerCase().includes('coordinador')&&r[ci+1])coordGlobal=String(r[ci+1]).trim();
         }
       }
+      if(!sedesEstadoCargado){alert('Aún se están cargando los estados previos de las sedes. Espera unos segundos e intenta de nuevo (evita duplicar avance ya cargado).');return;}
       pendingRows=[];
+      pendingEstados={};
+      let sinCambios=0;
       raw.slice(headerRow+1).forEach(r=>{
         if(!r[2])return;
         const codPJ=String(r[2]).trim(),sede=String(r[3]||'').trim(),tipoSede=String(r[4]||'').trim();
@@ -1259,19 +1269,31 @@ window.handleFile=function(file){
         const zonaRow=String(r[6]||'').trim(); // sector col approximation
         const coordPorZona=ZONA_COORD||{};
         const coordUsar=coordGlobal||(zonaRow&&coordPorZona[zonaRow])||'Sin especificar';
-        if(nirqaEstado==='configurado')
+        const prev=sedesEstado[codPJ]||{};
+        let huboCambio=false;
+        if(nirqaEstado==='configurado'&&prev.nirqa!=='configurado'){
           pendingRows.push({fecha:fechaUsar,coord:coordUsar,frente:'configurados',zona:'',tipo:tipoSede,sedes:codPJ,obs:nirqaObs||sede,unidades:1});
-        if(ticItem5==='si')
+          huboCambio=true;
+        }
+        if(ticItem5==='si'&&prev.item5!=='si'){
           pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'solo_item5',zona:'',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
-        if(ticEnlace==='si')
+          huboCambio=true;
+        }
+        if(ticEnlace==='si'&&prev.enlace!=='si'){
           pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'con_enlace',zona:'',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
+          huboCambio=true;
+        }
+        if(!huboCambio&&(prev.nirqa||prev.item5||prev.enlace))sinCambios++;
+        // Guardamos el estado completo de la fila (haya cambiado o no) para la próxima comparación
+        pendingEstados[codPJ]={nirqa:nirqaEstado||'pendiente',item5:ticItem5||'no',enlace:ticEnlace||'no',sede,tipo:tipoSede};
       });
-      if(!pendingRows.length){alert('No hay sedes con avance registrado. Marca Configurado o Si en las columnas correspondientes.');return;}
+      if(!pendingRows.length){alert(`No hay avance nuevo que registrar (${sinCambios} sedes ya estaban con este mismo estado desde la carga anterior).`);pendingEstados={};return;}
       const resumen={};pendingRows.forEach(r=>{resumen[r.frente]=(resumen[r.frente]||0)+1;});
-      document.getElementById('preview-count').textContent=`${pendingRows.length} registros · ${Object.entries(resumen).map(([k,v])=>`${NOMBRES[k]||k}: ${v}`).join(' · ')}`;
+      document.getElementById('preview-count').textContent=`${pendingRows.length} registros nuevos · ${Object.entries(resumen).map(([k,v])=>`${NOMBRES[k]||k}: ${v}`).join(' · ')} · ${sinCambios} sedes sin cambios (omitidas)`;
       document.getElementById('preview-table').innerHTML='<thead><tr><th>Cód. PJ</th><th>Tipo avance</th><th>Tipo sede</th><th>Fecha</th><th>Coordinador</th><th>Obs.</th></tr></thead><tbody>'+
         pendingRows.map(r=>`<tr><td><strong>${r.sedes}</strong></td><td>${NOMBRES[r.frente]||r.frente}</td><td>${r.tipo||'—'}</td><td>${fmt(r.fecha)}</td><td>${r.coord.split('(')[0].trim()}</td><td>${r.obs||'—'}</td></tr>`).join('')+'</tbody>';
     } else {
+      pendingEstados={};
       const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
       pendingRows=rows.map(r=>({
         fecha:fxl(r['Fecha']||r['fecha']||''),coord:r['Coordinador']||r['coordinador']||'',
@@ -1294,15 +1316,22 @@ window.confirmarCarga=async function(){
   if(!esAutorizado){alert('No tienes permiso.');return;}
   const btn=document.querySelector('#preview-area .btn-primary');btn.textContent='Importando...';btn.disabled=true;
   try{
-    const batch=writeBatch(db);
-    pendingRows.forEach(r=>{batch.set(doc(collection(db,'registros')),{...r,registradoPor:usuarioActual?.email||'',ts:Date.now()});});
-    await batch.commit();
-    const n=pendingRows.length;pendingRows=[];document.getElementById('preview-area').style.display='none';document.getElementById('file-input').value='';
+    // Construir lista de operaciones (registros nuevos + estado maestro por sede) y trocear en lotes de máx. 450
+    const ops=[];
+    pendingRows.forEach(r=>{ops.push(()=>({ref:doc(collection(db,'registros')),data:{...r,registradoPor:usuarioActual?.email||'',ts:Date.now()},merge:false}));});
+    Object.entries(pendingEstados).forEach(([codPJ,estado])=>{ops.push(()=>({ref:doc(db,'sedes_estado',codPJ),data:{...estado,actualizadoPor:usuarioActual?.email||'',actualizadoTs:Date.now()},merge:true}));});
+    const CHUNK=450;
+    for(let i=0;i<ops.length;i+=CHUNK){
+      const batch=writeBatch(db);
+      ops.slice(i,i+CHUNK).forEach(fn=>{const o=fn();o.merge?batch.set(o.ref,o.data,{merge:true}):batch.set(o.ref,o.data);});
+      await batch.commit();
+    }
+    const n=pendingRows.length;pendingRows=[];pendingEstados={};document.getElementById('preview-area').style.display='none';document.getElementById('file-input').value='';
     btn.textContent='Importar todos';btn.disabled=false;
     alert(`✓ ${n} registros importados.`);showTab('dashboard');
   }catch(e){document.getElementById('preview-error').textContent='Error: '+e.message;document.getElementById('preview-error').style.display='block';btn.textContent='Importar todos';btn.disabled=false;}
 };
-window.cancelarCarga=function(){document.getElementById('preview-area').style.display='none';document.getElementById('file-input').value='';pendingRows=[];};
+window.cancelarCarga=function(){document.getElementById('preview-area').style.display='none';document.getElementById('file-input').value='';pendingRows=[];pendingEstados={};};
 window.descargarPlantilla=function(tipo){
   const cols=tipo==='detalle'?['Fecha','Coordinador','Frente','Zona','Codigo_Sede','Tipo_Sede','Observaciones']:['Fecha','Coordinador','Frente','Zona','Total_Unidades','Sedes','Observaciones'];
   const ej=tipo==='detalle'?[['10/07/2026','Ayrton Hipolito (Zona Norte)','solo_item5','Zona Norte','PJ041','Tipo 2','Sin incidencias']]:
@@ -1563,7 +1592,7 @@ function renderMetricas(){
   const spiDespData=calcSPI(DESP_PLAN,realDesp);
 
   function spiColor(v){return v===null?'#888':v>=0.95?'#0F6E56':v>=0.8?'#B07A10':'#A32D2D';}
-  function spiLbl(v){return v===null?'Sin datos':v>=0.95?'Riesgo bajo':v>=0.8?'Riesgo medio':'Riesgo critico';}
+  function spiLbl(v){return v===null?'Sin datos':v>=0.95?'En tiempo':v>=0.8?'Riesgo medio':'Riesgo critico';}
 
   // Variacion en dias (SV = EV - PV, convertido a dias habiles)
   function variacionDias(spiData,plan,totalDias){
