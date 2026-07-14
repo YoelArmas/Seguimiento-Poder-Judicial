@@ -123,12 +123,6 @@ select.inp{cursor:pointer}
 .preview-table td{padding:6px 10px;border-bottom:1px solid var(--border)}
 .sub-tab,.gestion-tab-btn{padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border);color:var(--text2);background:#fff;font-weight:500}
 .sub-tab.active,.gestion-tab-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
-/* Resumen ejecutivo */
-.exec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
-.exec-card{background:linear-gradient(135deg,var(--navy) 0%,#2a3a7a 100%);color:#fff;border-radius:12px;padding:16px 18px}
-.exec-card .exec-val{font-size:26px;font-weight:700;line-height:1}
-.exec-card .exec-lbl{font-size:11px;opacity:.75;margin-top:6px;text-transform:uppercase;letter-spacing:.4px}
-.exec-card .exec-sub{font-size:11px;opacity:.6;margin-top:2px}
 
 #loading{position:fixed;inset:0;background:rgba(255,255,255,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px}
 /* Modal editar */
@@ -183,9 +177,6 @@ select.inp{cursor:pointer}
 <!-- DASHBOARD -->
 <div id="tab-dashboard">
 
-  <!-- RESUMEN EJECUTIVO -->
-  <div class="exec-grid" id="resumen-ejecutivo"></div>
-
   <!-- EMBUDO PRINCIPAL -->
   <div class="card" style="margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
@@ -200,9 +191,6 @@ select.inp{cursor:pointer}
         </select>
         <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
       </div>
-    </div>
-    <div id="zona-info-card" style="display:none;background:#F0F4FF;border:1px solid #C7D0F5;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px">
-      <span id="zona-info-text"></span>
     </div>
 
     <!-- Bloque Produccion -->
@@ -563,6 +551,12 @@ select.inp{cursor:pointer}
     </div>
     <div class="hist-scroll-wrap"><div id="historial-tabla">Cargando...</div></div>
   </div>
+
+  <div class="card" id="card-eliminados" style="display:none">
+    <div class="card-title">🗑️ Registros eliminados (auditoría)</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Cada vez que se borra un registro del historial, queda una copia aquí con quién lo eliminó y cuándo.</div>
+    <div id="eliminados-tabla">Cargando...</div>
+  </div>
 </div>
 
 </div><!-- /content -->
@@ -689,7 +683,7 @@ const ZONA_UNIVERSO={
   'Zona Oriente':{total:124,t1:7,t2:92,t3:25,coord:'Miguel Pando'},
   'Zona Sur':{total:213,t1:8,t2:192,t3:13,coord:'Angel Cruz'},
 };
-let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[];
+let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[],eliminados=[];
 
 function esHabil(d){const s=d.toISOString().slice(0,10);return d.getDay()!==0&&!FERIADOS.includes(s)}
 function diasHabilesHasta(d1,d2){let n=0,d=new Date(d1);while(d<=d2){if(esHabil(d))n++;d.setDate(d.getDate()+1)}return n}
@@ -790,6 +784,7 @@ function actualizarUI(){
   }
   if(registros.length)renderTodo();
   renderSemaforo();
+  renderEliminados();
   // Re-render presencia bar based on new auth state
   const presEl=document.getElementById('presencia-bar');
   if(presEl&&!esAutorizado)presEl.innerHTML='';
@@ -877,6 +872,9 @@ const ITEMS_DEFAULT=[
 const q=query(collection(db,'registros'),orderBy('fecha','desc'),orderBy('ts','desc'));
 onSnapshot(q,snap=>{registros=snap.docs.map(d=>({id:d.id,...d.data()}));renderTodo();},err=>{console.error(err);});
 
+const qElim=query(collection(db,'registros_eliminados'),orderBy('eliminadoTs','desc'));
+onSnapshot(qElim,snap=>{eliminados=snap.docs.map(d=>({id:d.id,...d.data()}));renderEliminados();},err=>{console.error('eliminados error:',err);});
+
 async function inicializarSemaforo(){
   try{
     const snap=await getDocs(collection(db,'semaforo'));
@@ -900,46 +898,12 @@ function renderTodo(){
   const pj=proyectar(t.configurados,'configurados'),aj=proyectar(t.alta,'alta');
 
   // Resumen ejecutivo
-  const itemsSem=itemsRiesgo.length?itemsRiesgo:ITEMS_DEFAULT;
-  const rGenExec=itemsSem.some(i=>i.r==='critico')?'critico':itemsSem.some(i=>i.r==='alerta')?'alerta':'ok';
-  const cgExec=colorR(rGenExec);
-  const pctProdExec=Math.round(t.configurados/TOTAL*100);
-  const pctAltaExec=Math.round(t.alta/TOTAL*100);
-  const diasRestContrato=diasHabilesHasta(new Date(),new Date('2026-09-06T00:00:00'));
-  document.getElementById('resumen-ejecutivo').innerHTML=`
-    <div class="exec-card">
-      <div class="exec-val">${pctProdExec}%</div>
-      <div class="exec-lbl">Producción completada</div>
-      <div class="exec-sub">${t.configurados} / ${TOTAL} sedes configuradas</div>
-    </div>
-    <div class="exec-card">
-      <div class="exec-val">${pctAltaExec}%</div>
-      <div class="exec-lbl">Altas operativas (meta final)</div>
-      <div class="exec-sub">${t.alta} / ${TOTAL} sedes con servicio activo</div>
-    </div>
-    <div class="exec-card">
-      <div class="exec-val">${diasRestContrato}</div>
-      <div class="exec-lbl">Días hábiles al cierre</div>
-      <div class="exec-sub">Plazo contractual: 06/09/2026</div>
-    </div>
-    <div class="exec-card" style="background:${cgExec.tx};display:flex;flex-direction:column;justify-content:center">
-      <div class="exec-val" style="font-size:18px">${cgExec.lbl}</div>
-      <div class="exec-lbl" style="opacity:.9">Estado general del proyecto</div>
-    </div>`;
-
   const zonaFiltro=document.getElementById('filtro-zona-dash')?.value||'';
   const zonaInfo=ZONA_UNIVERSO[zonaFiltro]||null;
   const universo=zonaInfo?zonaInfo.total:TOTAL;
 
   // Embudo
   document.getElementById('fecha-corte').textContent='Corte: '+new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
-  // Zona info banner
-  const zonaCard=document.getElementById('zona-info-card');
-  const zonaText=document.getElementById('zona-info-text');
-  if(zonaInfo&&zonaCard&&zonaText){
-    zonaCard.style.display='block';
-    zonaText.innerHTML=`<strong>${zonaFiltro}</strong> · Coordinador: <strong>${zonaInfo.coord}</strong> · Universo: <strong>${zonaInfo.total} sedes</strong> (Tipo 1: ${zonaInfo.t1} · Tipo 2: ${zonaInfo.t2} · Tipo 3: ${zonaInfo.t3})`;
-  } else if(zonaCard){zonaCard.style.display='none';}
   const bloques=[
     {id:'configurados',val:t.configurados},
     {id:'retirados',val:t.retirados},
@@ -1066,6 +1030,7 @@ const isMobileHist=window.innerWidth<=640;
         <div class="detail-chip"><strong>Tipo sede:</strong> ${r.tipo||'—'}</div>
         <div class="detail-chip"><strong>Obs.:</strong> ${r.obs||'—'}</div>
         <div class="detail-chip"><strong>Registrado por:</strong> ${r.registradoPor||'—'}</div>
+        <div class="detail-chip"><strong>Fecha de carga:</strong> ${r.ts?new Date(r.ts).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}</div>
         ${r.editadoPor?`<div class="detail-chip" style="background:#FFF8E1;border-color:#FFE082;width:100%"><strong>✏️ Editado por:</strong> ${r.editadoPor} · ${r.editadoTs?new Date(r.editadoTs).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}<br><span style="font-size:11px;color:#633806"><strong>Cambios:</strong> ${r.cambios||'Sin detalle de cambios'}</span></div>`:''}
       </div>
     </div>`}).join('')
@@ -1073,14 +1038,14 @@ const isMobileHist=window.innerWidth<=640;
     `<div class="log-row log-head" style="grid-template-columns:85px 160px 120px 40px 110px 1fr"><span>Fecha</span><span>Responsable</span><span>Tipo</span><span>Uds.</span><span>Zona</span><span>Observaciones</span></div>
     ${lista.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`
     <div class="hist-row" id="hrow-${r.id}" style="border-bottom:1px solid var(--border)">
-      <div class="log-row" style="grid-template-columns:85px 160px 120px 40px 110px 1fr;cursor:pointer" onclick="window.toggleRow('${r.id}')">
+      <div class="log-row" style="grid-template-columns:85px 160px 120px 40px 110px 1fr;cursor:pointer;align-items:start" onclick="window.toggleRow('${r.id}')">
         <span style="color:var(--text3)">${fmt(r.fecha)}</span>
         <span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.coord.split('(')[0].trim()}</span>
         <span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span></span>
         <span style="font-weight:600">${r.unidades}</span>
         <span style="color:var(--text3)">${r.zona||'—'}</span>
-        <span style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-          <span style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="${r.obs||''}">${r.obs||'—'}</span>
+        <span style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0">
+          <span style="color:var(--text3);white-space:normal;word-break:break-word;flex:1;min-width:0">${r.obs||'—'}</span>
           ${esAutorizado?`<span style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()"><button onclick="window.abrirEditar('${r.id}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer">✏️</button><input type="checkbox" data-id="${r.id}" onchange="window.toggleSel(this)" style="cursor:pointer"></span>`:'<span style="color:var(--text3);font-size:11px">▾</span>'}
         </span>
       </div>
@@ -1089,6 +1054,7 @@ const isMobileHist=window.innerWidth<=640;
         <div class="detail-chip"><strong>Tipo sede:</strong> ${r.tipo||'—'}</div>
         <div class="detail-chip" style="flex:1;min-width:150px"><strong>Obs.:</strong> ${r.obs||'—'}</div>
         <div class="detail-chip"><strong>Registrado por:</strong> ${r.registradoPor||'—'}</div>
+        <div class="detail-chip"><strong>Fecha de carga:</strong> ${r.ts?new Date(r.ts).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}</div>
         ${r.editadoPor?`<div class="detail-chip" style="background:#FFF8E1;border-color:#FFE082;width:100%"><strong>✏️ Editado por:</strong> ${r.editadoPor} · ${r.editadoTs?new Date(r.editadoTs).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}<br><span style="font-size:11px;color:#633806"><strong>Cambios:</strong> ${r.cambios||'Sin detalle de cambios'}</span></div>`:''}
       </div>
     </div>`}).join('')}`)
@@ -1116,6 +1082,33 @@ function renderSemaforo(){
     </div>`}).join('')}`;
 }
 window.renderSemaforo=renderSemaforo;
+
+function renderEliminados(){
+  const cont=document.getElementById('card-eliminados');
+  if(!cont)return;
+  cont.style.display=esAutorizado?'block':'none';
+  if(!esAutorizado)return;
+  const NOMBRES=window.NOMBRES||{configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
+  const COLORES=window.COLORES||{configurados:['#E1F5EE','#085041'],retirados:['#F1EFE8','#5F5E5A'],solo_item5:['#FAEEDA','#633806'],con_enlace:['#EEEDFE','#3C3489'],alta:['#E1F5EE','#085041']};
+  const el=document.getElementById('eliminados-tabla');
+  if(!el)return;
+  if(!eliminados.length){el.innerHTML='<div style="color:var(--text3);text-align:center;padding:16px">No hay registros eliminados.</div>';return;}
+  el.innerHTML=eliminados.map(r=>{
+    const c=COLORES[r.frente]||['#eee','#333'];
+    return`<div style="border-left:3px solid #A32D2D;background:#FCEBEB;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;font-size:12px">
+        <strong>${fmt(r.fecha)}</strong>
+        <span>${r.coord?r.coord.split('(')[0].trim():'—'}</span>
+        <span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span>
+        <span><strong>${r.unidades}</strong> uds.</span>
+        <span style="color:var(--text3)">${r.zona||'—'}</span>
+      </div>
+      ${r.obs?`<div style="font-size:11px;color:var(--text2);margin-bottom:4px">Obs. original: ${r.obs}</div>`:''}
+      <div style="font-size:11px;color:#791F1F">🗑️ <strong>Eliminado por:</strong> ${r.eliminadoPor||'—'} · ${r.eliminadoTs?new Date(r.eliminadoTs).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}</div>
+    </div>`;
+  }).join('');
+}
+window.renderEliminados=renderEliminados;
 
 window.editarItem=function(id){
   const item=itemsRiesgo.find(x=>x.id===id);
@@ -1342,8 +1335,17 @@ window.guardarEdicion=async function(){
 };
 window.confirmarBorrar=async function(){
   if(!esAutorizado||!seleccionados.size){alert('Selecciona registros primero.');return;}
-  if(!confirm(`Borrar ${seleccionados.size} registro(s)?`))return;
-  for(const id of seleccionados)await deleteDoc(doc(db,'registros',id));
+  if(!confirm(`Borrar ${seleccionados.size} registro(s)?\n\nQuedará evidencia en la sección "Registros eliminados" del Historial.`))return;
+  for(const id of seleccionados){
+    const original=registros.find(r=>r.id===id);
+    if(original){
+      const{id:_omit,...datos}=original;
+      try{
+        await addDoc(collection(db,'registros_eliminados'),{...datos,idOriginal:id,eliminadoPor:usuarioActual?.email||'',eliminadoTs:Date.now()});
+      }catch(e){console.error('Error guardando evidencia de borrado:',e);}
+    }
+    await deleteDoc(doc(db,'registros',id));
+  }
   seleccionados.clear();
 };
 const TABS_ORDEN=['dashboard','gestion','hitos','metricas','historial'];
@@ -1351,6 +1353,7 @@ window.showTab=function(name){
   TABS_ORDEN.forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
   document.querySelectorAll('.tabs .tab').forEach((b,i)=>b.classList.toggle('active',TABS_ORDEN[i]===name));
   if(name==='metricas')renderMetricas();
+  if(name==='historial')renderEliminados();
 };
 window.showSubTab=function(name){
   ['plantilla','subir','seguimiento'].forEach(t=>{const el=document.getElementById('subtab-'+t);if(el)el.style.display=t===name?'block':'none';});
@@ -1366,7 +1369,7 @@ document.getElementById('f-fecha').value=hoy();
 
 // Render log dashboard with filters
 let _logPagina=1;
-const _logPorPagina=20;
+const _logPorPagina=8;
 
 window.renderLogDashboard=function(pagina){
   if(pagina!==undefined)_logPagina=pagina;
