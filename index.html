@@ -579,7 +579,7 @@ select.inp{cursor:pointer}
       <div class="form-grid">
         <div><label class="label">Estado</label>
           <select class="inp" id="si-r">
-            <option value="ok">🟢 En tiempo (verde)</option>
+            <option value="ok">🟢 Riesgo bajo (verde)</option>
             <option value="alerta">🟡 Riesgo medio (amarillo)</option>
             <option value="critico">🔴 Riesgo crítico (rojo)</option>
           </select>
@@ -732,7 +732,7 @@ function proyectar(completadas,frente){
   return{ok:false,fecha:fp.toISOString().slice(0,10),holgura,riesgo:holgura<0?'critico':holgura<4?'alerta':'ok',ritmo:r};
 }
 function colorR(r){
-  if(r==='ok')return{bg:'#E1F5EE',tx:'#085041',lbl:'En tiempo'};
+  if(r==='ok')return{bg:'#E1F5EE',tx:'#085041',lbl:'Riesgo bajo'};
   if(r==='alerta')return{bg:'#FAEEDA',tx:'#633806',lbl:'Riesgo medio'};
   return{bg:'#FCEBEB',tx:'#791F1F',lbl:'Riesgo critico'};
 }
@@ -1563,7 +1563,7 @@ function renderMetricas(){
   const spiDespData=calcSPI(DESP_PLAN,realDesp);
 
   function spiColor(v){return v===null?'#888':v>=0.95?'#0F6E56':v>=0.8?'#B07A10':'#A32D2D';}
-  function spiLbl(v){return v===null?'Sin datos':v>=0.95?'En tiempo':v>=0.8?'Riesgo medio':'Riesgo critico';}
+  function spiLbl(v){return v===null?'Sin datos':v>=0.95?'Riesgo bajo':v>=0.8?'Riesgo medio':'Riesgo critico';}
 
   // Variacion en dias (SV = EV - PV, convertido a dias habiles)
   function variacionDias(spiData,plan,totalDias){
