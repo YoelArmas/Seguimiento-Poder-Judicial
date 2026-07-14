@@ -166,9 +166,9 @@ select.inp{cursor:pointer}
 
 <div class="tabs">
   <button class="tab active" onclick="window.showTab('dashboard')">Dashboard</button>
-  <button class="tab" id="tabbtn-gestion" style="display:none" onclick="window.showTab('gestion')">Registrar y cargar avance</button>
-  <button class="tab" onclick="window.showTab('hitos')">Hitos y proyeccion</button>
   <button class="tab" onclick="window.showTab('metricas')">Métricas</button>
+  <button class="tab" onclick="window.showTab('hitos')">Hitos y proyeccion</button>
+  <button class="tab" id="tabbtn-gestion" style="display:none" onclick="window.showTab('gestion')">Registrar y cargar avance</button>
   <button class="tab" id="tabbtn-historial" style="display:none" onclick="window.showTab('historial')">Historial</button>
 </div>
 
@@ -1348,7 +1348,7 @@ window.confirmarBorrar=async function(){
   }
   seleccionados.clear();
 };
-const TABS_ORDEN=['dashboard','gestion','hitos','metricas','historial'];
+const TABS_ORDEN=['dashboard','metricas','hitos','gestion','historial'];
 window.showTab=function(name){
   TABS_ORDEN.forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
   document.querySelectorAll('.tabs .tab').forEach((b,i)=>b.classList.toggle('active',TABS_ORDEN[i]===name));
