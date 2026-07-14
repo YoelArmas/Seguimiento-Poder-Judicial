@@ -557,6 +557,12 @@ select.inp{cursor:pointer}
     <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Cada vez que se borra un registro del historial, queda una copia aquí con quién lo eliminó y cuándo.</div>
     <div id="eliminados-tabla">Cargando...</div>
   </div>
+
+  <div class="card" id="card-ediciones" style="display:none">
+    <div class="card-title">✏️ Historial de ediciones (auditoría)</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Cada vez que se edita un registro, queda una copia aquí con qué cambió, quién lo editó y cuándo — no se sobrescribe.</div>
+    <div id="ediciones-tabla">Cargando...</div>
+  </div>
 </div>
 
 </div><!-- /content -->
@@ -683,7 +689,7 @@ const ZONA_UNIVERSO={
   'Zona Oriente':{total:124,t1:7,t2:92,t3:25,coord:'Miguel Pando'},
   'Zona Sur':{total:213,t1:8,t2:192,t3:13,coord:'Angel Cruz'},
 };
-let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[],eliminados=[];
+let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[],eliminados=[],ediciones=[];
 
 function esHabil(d){const s=d.toISOString().slice(0,10);return d.getDay()!==0&&!FERIADOS.includes(s)}
 function diasHabilesHasta(d1,d2){let n=0,d=new Date(d1);while(d<=d2){if(esHabil(d))n++;d.setDate(d.getDate()+1)}return n}
@@ -785,6 +791,7 @@ function actualizarUI(){
   if(registros.length)renderTodo();
   renderSemaforo();
   renderEliminados();
+  renderEdiciones();
   // Re-render presencia bar based on new auth state
   const presEl=document.getElementById('presencia-bar');
   if(presEl&&!esAutorizado)presEl.innerHTML='';
@@ -874,6 +881,9 @@ onSnapshot(q,snap=>{registros=snap.docs.map(d=>({id:d.id,...d.data()}));renderTo
 
 const qElim=query(collection(db,'registros_eliminados'),orderBy('eliminadoTs','desc'));
 onSnapshot(qElim,snap=>{eliminados=snap.docs.map(d=>({id:d.id,...d.data()}));renderEliminados();},err=>{console.error('eliminados error:',err);});
+
+const qEdic=query(collection(db,'registros_ediciones'),orderBy('editadoTs','desc'));
+onSnapshot(qEdic,snap=>{ediciones=snap.docs.map(d=>({id:d.id,...d.data()}));renderEdiciones();},err=>{console.error('ediciones error:',err);});
 
 async function inicializarSemaforo(){
   try{
@@ -1110,6 +1120,33 @@ function renderEliminados(){
 }
 window.renderEliminados=renderEliminados;
 
+function renderEdiciones(){
+  const cont=document.getElementById('card-ediciones');
+  if(!cont)return;
+  cont.style.display=esAutorizado?'block':'none';
+  if(!esAutorizado)return;
+  const NOMBRES=window.NOMBRES||{configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
+  const COLORES=window.COLORES||{configurados:['#E1F5EE','#085041'],retirados:['#F1EFE8','#5F5E5A'],solo_item5:['#FAEEDA','#633806'],con_enlace:['#EEEDFE','#3C3489'],alta:['#E1F5EE','#085041']};
+  const el=document.getElementById('ediciones-tabla');
+  if(!el)return;
+  if(!ediciones.length){el.innerHTML='<div style="color:var(--text3);text-align:center;padding:16px">No hay ediciones registradas.</div>';return;}
+  el.innerHTML=ediciones.map(r=>{
+    const c=COLORES[r.frente]||['#eee','#333'];
+    return`<div style="border-left:3px solid #B07A10;background:#FFF8E1;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;font-size:12px">
+        <strong>${fmt(r.fecha)}</strong>
+        <span>${r.coord?r.coord.split('(')[0].trim():'—'}</span>
+        <span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span>
+        <span><strong>${r.unidades}</strong> uds.</span>
+        <span style="color:var(--text3)">${r.zona||'—'}</span>
+      </div>
+      ${r.cambios?`<div style="font-size:11px;color:var(--text2);margin-bottom:4px"><strong>Cambios:</strong> ${r.cambios}</div>`:''}
+      <div style="font-size:11px;color:#633806">✏️ <strong>Editado por:</strong> ${r.editadoPor||'—'} · ${r.editadoTs?new Date(r.editadoTs).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}</div>
+    </div>`;
+  }).join('');
+}
+window.renderEdiciones=renderEdiciones;
+
 window.editarItem=function(id){
   const item=itemsRiesgo.find(x=>x.id===id);
   if(!item){console.log('Item no encontrado:',id,'Items disponibles:',itemsRiesgo.map(x=>x.id));return;}
@@ -1325,10 +1362,20 @@ window.guardarEdicion=async function(){
     });
   }
   try{
+    const editadoPor=usuarioActual?.email||'';
+    const editadoTs=Date.now();
+    const cambiosTxt=cambios.join(' | ');
+    // Guardar el evento de edición como registro permanente de auditoría (no se sobrescribe)
+    if(cambiosTxt){
+      try{
+        await addDoc(collection(db,'registros_ediciones'),{
+          idOriginal:id,fecha,coord,frente,zona,unidades,tipo,sedes,obs,
+          cambios:cambiosTxt,editadoPor,editadoTs
+        });
+      }catch(e){console.error('Error guardando auditoría de edición:',e);}
+    }
     await updateDoc(doc(db,'registros',id),{fecha,coord,frente,zona,unidades,tipo,sedes,obs,
-      editadoPor:usuarioActual?.email||'',
-      editadoTs:Date.now(),
-      cambios:cambios.join(' | ')
+      editadoPor,editadoTs,cambios:cambiosTxt
     });
     window.cerrarModal();
   }catch(e){err.textContent='Error al guardar: '+e.message;err.style.display='block';}
@@ -1353,7 +1400,7 @@ window.showTab=function(name){
   TABS_ORDEN.forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
   document.querySelectorAll('.tabs .tab').forEach((b,i)=>b.classList.toggle('active',TABS_ORDEN[i]===name));
   if(name==='metricas')renderMetricas();
-  if(name==='historial')renderEliminados();
+  if(name==='historial'){renderEliminados();renderEdiciones();}
 };
 window.showSubTab=function(name){
   ['plantilla','subir','seguimiento'].forEach(t=>{const el=document.getElementById('subtab-'+t);if(el)el.style.display=t===name?'block':'none';});
