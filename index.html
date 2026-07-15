@@ -537,7 +537,7 @@ select.inp{cursor:pointer}
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <div class="card-title" style="margin:0">Historial completo</div>
-      <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <select class="inp" id="filtro-frente" style="width:auto" onchange="window.renderTodo()">
           <option value="">Todos</option>
           <option value="configurados">Configurados</option>
@@ -546,6 +546,7 @@ select.inp{cursor:pointer}
           <option value="con_enlace">Con enlace</option>
           <option value="alta">Alta operativa</option>
         </select>
+        <button class="btn" id="btn-sel-excel" style="font-size:12px;display:none" onclick="window.seleccionarPorOrigen('excel')" title="Marca todos los registros visibles que vinieron de una carga masiva Excel (zona vacía)">📊 Seleccionar origen Excel</button>
         <button class="btn btn-danger" id="btn-borrar" style="font-size:12px;display:none" onclick="window.confirmarBorrar()">Borrar seleccionados</button>
       </div>
     </div>
@@ -780,6 +781,7 @@ function actualizarUI(){
   document.getElementById('carga-lock').style.display=esAutorizado?'none':'block';
   document.getElementById('carga-form').style.display=esAutorizado?'block':'none';
   const bb=document.getElementById('btn-borrar');if(bb)bb.style.display=esAutorizado?'inline-flex':'none';
+  const bse=document.getElementById('btn-sel-excel');if(bse)bse.style.display=esAutorizado?'inline-flex':'none';
 
   // Pestañas operativas: solo visibles para coordinadores/admin autorizados
   const tbGestion=document.getElementById('tabbtn-gestion'),tbHistorial=document.getElementById('tabbtn-historial');
@@ -1033,13 +1035,14 @@ const isMobileHist=window.innerWidth<=640;
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
             ${esAutorizado?`<button onclick="window.abrirEditar('${r.id}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer">✏️</button>
-            <input type="checkbox" data-id="${r.id}" onchange="window.toggleSel(this)" style="cursor:pointer">`:'<span style="color:var(--text3);font-size:11px">▾</span>'}
+            <input type="checkbox" data-id="${r.id}" data-origen="${r.zona?'manual':'excel'}" onchange="window.toggleSel(this)" style="cursor:pointer">`:'<span style="color:var(--text3);font-size:11px">▾</span>'}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span>
           <span style="font-size:12px;color:var(--text2)"><strong>${r.unidades}</strong> uds.</span>
           <span style="font-size:12px;color:var(--text3)">${r.zona||'—'}</span>
+          ${!r.zona?'<span class="badge" style="background:#F0F4FF;color:#3C3489" title="Generado por carga masiva Excel (sin zona asignada)">📊 Excel</span>':''}
         </div>
         ${r.obs?`<div style="font-size:11px;color:var(--text3);width:100%">${r.obs}</div>`:''}
       </div>
@@ -1059,12 +1062,12 @@ const isMobileHist=window.innerWidth<=640;
       <div class="log-row" style="grid-template-columns:85px 160px 120px 40px 110px 1fr;cursor:pointer;align-items:start" onclick="window.toggleRow('${r.id}')">
         <span style="color:var(--text3)">${fmt(r.fecha)}</span>
         <span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.coord.split('(')[0].trim()}</span>
-        <span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span></span>
+        <span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span>${!r.zona?' <span class="badge" style="background:#F0F4FF;color:#3C3489" title="Generado por carga masiva Excel (sin zona asignada)">📊</span>':''}</span>
         <span style="font-weight:600">${r.unidades}</span>
         <span style="color:var(--text3)">${r.zona||'—'}</span>
         <span style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0">
           <span style="color:var(--text3);white-space:normal;word-break:break-word;flex:1;min-width:0">${r.obs||'—'}</span>
-          ${esAutorizado?`<span style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()"><button onclick="window.abrirEditar('${r.id}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer">✏️</button><input type="checkbox" data-id="${r.id}" onchange="window.toggleSel(this)" style="cursor:pointer"></span>`:'<span style="color:var(--text3);font-size:11px">▾</span>'}
+          ${esAutorizado?`<span style="display:flex;gap:4px;flex-shrink:0" onclick="event.stopPropagation()"><button onclick="window.abrirEditar('${r.id}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer">✏️</button><input type="checkbox" data-id="${r.id}" data-origen="${r.zona?'manual':'excel'}" onchange="window.toggleSel(this)" style="cursor:pointer"></span>`:'<span style="color:var(--text3);font-size:11px">▾</span>'}
         </span>
       </div>
       <div class="hist-row-detail" id="hdet-${r.id}">
@@ -1229,7 +1232,16 @@ window.limpiarForm=function(){
 function fxl(v){
   if(!v)return'';
   if(typeof v==='number'){const d=new Date((v-25569)*86400000);return d.toISOString().slice(0,10);}
-  if(typeof v==='string'){const p=v.includes('/')?v.split('/'):v.includes('-')?v.split('-'):null;if(p&&p.length===3){if(p[0].length===4)return v.slice(0,10);return`${p[2].length===4?p[2]:'20'+p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;}}
+  if(typeof v==='string'){
+    const p=v.includes('/')?v.split('/'):v.includes('-')?v.split('-'):null;
+    if(p&&p.length===3){
+      if(p[0].length===4)return v.slice(0,10);
+      let dia=p[0],mes=p[1];const anio=p[2].length===4?p[2]:'20'+p[2];
+      const diaN=parseInt(dia),mesN=parseInt(mes);
+      if(mesN>12&&diaN<=12){const tmp=dia;dia=mes;mes=tmp;} // formato MM/DD detectado (mes>12 imposible) -> intercambiar
+      return`${anio}-${String(mes).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+    }
+  }
   return String(v).slice(0,10);
 }
 window.handleDrop=function(e){e.preventDefault();document.getElementById('drop-zone').classList.remove('drag');window.handleFile(e.dataTransfer.files[0]);};
@@ -1262,9 +1274,10 @@ window.handleFile=function(file){
         const codPJ=String(r[2]).trim(),sede=String(r[3]||'').trim(),tipoSede=String(r[4]||'').trim();
         const nirqaEstado=String(r[9]||'').trim().toLowerCase();
         const nirqaFecha=fxl(r[10]||''),nirqaObs=String(r[11]||'').trim();
-        const ticItem5=String(r[12]||'').trim().toLowerCase();
-        const ticEnlace=String(r[13]||'').trim().toLowerCase();
-        const ticFecha=fxl(r[14]||''),ticObs=String(r[15]||'').trim();
+        // Columna 12 = Fecha Programación (no se usa para el conteo, solo informativa)
+        const ticItem5=String(r[13]||'').trim().toLowerCase();
+        const ticEnlace=String(r[14]||'').trim().toLowerCase();
+        const ticFecha=fxl(r[15]||''),ticObs=String(r[16]||'').trim();
         const fechaUsar=fechaGlobal||nirqaFecha||ticFecha||hoy();
         // Determine coordinator from zona if not specified globally
         const zonaRow=String(r[6]||'').trim(); // sector col approximation
@@ -1342,6 +1355,12 @@ window.descargarPlantilla=function(tipo){
   XLSX.writeFile(wb,`Plantilla_${tipo}_SDWAN.xlsx`);
 };
 window.toggleSel=function(cb){if(cb.checked)seleccionados.add(cb.dataset.id);else seleccionados.delete(cb.dataset.id);};
+window.seleccionarPorOrigen=function(origen){
+  const boxes=document.querySelectorAll(`#historial-tabla input[type="checkbox"][data-origen="${origen}"]`);
+  if(!boxes.length){alert('No hay registros visibles de este origen con los filtros actuales.');return;}
+  boxes.forEach(cb=>{cb.checked=true;seleccionados.add(cb.dataset.id);});
+  alert(`${boxes.length} registro(s) de origen "Carga Excel" seleccionados. Revisa la lista y usa "Borrar seleccionados" si confirmas que están mal.`);
+};
 
 window.toggleRow=function(id){
   const det=document.getElementById('hdet-'+id);
