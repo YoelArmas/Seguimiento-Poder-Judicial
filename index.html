@@ -1282,8 +1282,6 @@ window.handleFile=function(file){
       pendingRows=[];
       pendingEstados={};
       let sinCambios=0;
-      const hoyStr=hoy();
-      let fechaAnteriorOmitida=0;
       raw.slice(headerRow+1).forEach(r=>{
         if(!r[2])return;
         const codPJ=String(r[2]).trim(),sede=String(r[3]||'').trim(),tipoSede=String(r[4]||'').trim();
@@ -1293,41 +1291,41 @@ window.handleFile=function(file){
         const ticItem5=String(r[13]||'').trim().toLowerCase();
         const ticEnlace=String(r[14]||'').trim().toLowerCase();
         const ticFecha=fxl(r[15]||''),ticObs=String(r[16]||'').trim();
-        const fechaUsar=fechaGlobal||nirqaFecha||ticFecha||hoy();
         // Columna 5 = Zona (CENTRO/NORTE/SUR/ORIENTE). Se normaliza a "Zona X" para calzar con ZONA_COORD.
         const zonaRaw=String(r[5]||'').trim();
         const zonaNombre=zonaRaw?`Zona ${zonaRaw.charAt(0).toUpperCase()}${zonaRaw.slice(1).toLowerCase()}`:'';
         const coordPorZona=ZONA_COORD||{};
         const coordUsar=coordGlobal||(zonaNombre&&coordPorZona[zonaNombre])||'Sin especificar';
         const prev=sedesEstado[codPJ]||{};
-        let huboCambio=false,huboCambioFechaVieja=false;
-        // NIRQA: solo cuenta si el cambio de estado trae fecha de HOY (corte actual). Fechas anteriores ya deben haberse contabilizado en su día.
-        if(nirqaEstado==='configurado'&&prev.nirqa!=='configurado'){
-          if(nirqaFecha===hoyStr){
-            pendingRows.push({fecha:fechaUsar,coord:coordUsar,frente:'configurados',zona:zonaNombre,origen:'excel',tipo:tipoSede,sedes:codPJ,obs:nirqaObs||sede,unidades:1});
-            huboCambio=true;
-          } else huboCambioFechaVieja=true;
+        let huboCambio=false;
+        const obsNirqa=`${tipoSede}${sede?' - '+sede:''}${nirqaObs?' · '+nirqaObs:''}`;
+        const obsTic=`${tipoSede}${sede?' - '+sede:''}${ticObs?' · '+ticObs:''}`;
+        // Clave única de control: Cód. PJ + fecha del hito. Si la fecha del hito ya fue procesada antes para esa sede, se omite (sin importar si se sube el histórico completo cada vez).
+        if(nirqaEstado==='configurado'&&nirqaFecha&&prev.fechaConfig!==nirqaFecha){
+          pendingRows.push({fecha:nirqaFecha,coord:coordUsar,frente:'configurados',zona:zonaNombre,origen:'excel',tipo:tipoSede,sedes:codPJ,obs:obsNirqa,unidades:1});
+          huboCambio=true;
         }
-        if(ticItem5==='si'&&prev.item5!=='si'){
-          if(ticFecha===hoyStr){
-            pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'solo_item5',zona:zonaNombre,origen:'excel',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
-            huboCambio=true;
-          } else huboCambioFechaVieja=true;
+        if(ticItem5==='si'&&ticFecha&&prev.fechaItem5!==ticFecha){
+          pendingRows.push({fecha:ticFecha,coord:coordUsar,frente:'solo_item5',zona:zonaNombre,origen:'excel',tipo:tipoSede,sedes:codPJ,obs:obsTic,unidades:1});
+          huboCambio=true;
         }
-        if(ticEnlace==='si'&&prev.enlace!=='si'){
-          if(ticFecha===hoyStr){
-            pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'con_enlace',zona:zonaNombre,origen:'excel',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
-            huboCambio=true;
-          } else huboCambioFechaVieja=true;
+        if(ticEnlace==='si'&&ticFecha&&prev.fechaEnlace!==ticFecha){
+          pendingRows.push({fecha:ticFecha,coord:coordUsar,frente:'con_enlace',zona:zonaNombre,origen:'excel',tipo:tipoSede,sedes:codPJ,obs:obsTic,unidades:1});
+          huboCambio=true;
         }
-        if(!huboCambio&&!huboCambioFechaVieja&&(prev.nirqa||prev.item5||prev.enlace))sinCambios++;
-        if(huboCambioFechaVieja)fechaAnteriorOmitida++;
-        // Guardamos el estado completo de la fila (haya cambiado o no) para la próxima comparación
-        pendingEstados[codPJ]={nirqa:nirqaEstado||'pendiente',item5:ticItem5||'no',enlace:ticEnlace||'no',sede,tipo:tipoSede};
+        if(!huboCambio&&(prev.nirqa||prev.item5||prev.enlace))sinCambios++;
+        // Guardamos el estado y las fechas de cada hito para la próxima comparación (clave: Cód. PJ + fecha)
+        pendingEstados[codPJ]={
+          nirqa:nirqaEstado||'pendiente',item5:ticItem5||'no',enlace:ticEnlace||'no',
+          fechaConfig:nirqaEstado==='configurado'?nirqaFecha:(prev.fechaConfig||''),
+          fechaItem5:ticItem5==='si'?ticFecha:(prev.fechaItem5||''),
+          fechaEnlace:ticEnlace==='si'?ticFecha:(prev.fechaEnlace||''),
+          sede,tipo:tipoSede
+        };
       });
-      if(!pendingRows.length){alert(`No hay avance nuevo que registrar con fecha de hoy (${hoyStr}).\n${sinCambios} sedes sin cambios · ${fechaAnteriorOmitida} sedes con cambio pero fecha anterior (omitidas).`);pendingEstados={};return;}
+      if(!pendingRows.length){alert(`No hay avance nuevo que registrar (${sinCambios} sedes ya estaban procesadas con esa misma fecha de hito).`);pendingEstados={};return;}
       const resumen={};pendingRows.forEach(r=>{resumen[r.frente]=(resumen[r.frente]||0)+1;});
-      document.getElementById('preview-count').textContent=`${pendingRows.length} registros nuevos (fecha ${hoyStr}) · ${Object.entries(resumen).map(([k,v])=>`${NOMBRES[k]||k}: ${v}`).join(' · ')} · ${sinCambios} sin cambios · ${fechaAnteriorOmitida} con fecha anterior (omitidas)`;
+      document.getElementById('preview-count').textContent=`${pendingRows.length} registros nuevos · ${Object.entries(resumen).map(([k,v])=>`${NOMBRES[k]||k}: ${v}`).join(' · ')} · ${sinCambios} sin cambios (omitidas)`;
       document.getElementById('preview-table').innerHTML='<thead><tr><th>Cód. PJ</th><th>Tipo avance</th><th>Tipo sede</th><th>Fecha</th><th>Coordinador</th><th>Obs.</th></tr></thead><tbody>'+
         pendingRows.map(r=>`<tr><td><strong>${r.sedes}</strong></td><td>${NOMBRES[r.frente]||r.frente}</td><td>${r.tipo||'—'}</td><td>${fmt(r.fecha)}</td><td>${r.coord.split('(')[0].trim()}</td><td>${r.obs||'—'}</td></tr>`).join('')+'</tbody>';
     } else {
