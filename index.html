@@ -265,7 +265,10 @@ select.inp{cursor:pointer}
 
   <!-- Semaforo -->
   <div class="card">
-    <div class="card-title">Semaforo de riesgo</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+      <div class="card-title" style="margin:0">Semaforo de riesgo</div>
+      <button id="btn-limpiar-semaforo" style="display:none;font-size:11px;background:#FCEBEB;color:#791F1F;border:1px solid #E8B4B4;border-radius:6px;padding:4px 10px;cursor:pointer" onclick="window.limpiarDuplicadosSemaforo()">🧹 Limpiar duplicados</button>
+    </div>
     <div id="semaforo">Cargando...</div>
   </div>
 
@@ -782,6 +785,7 @@ function actualizarUI(){
   document.getElementById('carga-form').style.display=esAutorizado?'block':'none';
   const bb=document.getElementById('btn-borrar');if(bb)bb.style.display=esAutorizado?'inline-flex':'none';
   const bse=document.getElementById('btn-sel-excel');if(bse)bse.style.display=esAutorizado?'inline-flex':'none';
+  const bls=document.getElementById('btn-limpiar-semaforo');if(bls)bls.style.display=esAdmin?'inline-flex':'none';
 
   // Pestañas operativas: solo visibles para coordinadores/admin autorizados
   const tbGestion=document.getElementById('tabbtn-gestion'),tbHistorial=document.getElementById('tabbtn-historial');
@@ -900,7 +904,8 @@ async function inicializarSemaforo(){
     const snap=await getDocs(collection(db,'semaforo'));
     if(snap.size>0)return; // Ya existen items, no insertar
     const batch=writeBatch(db);
-    ITEMS_DEFAULT.forEach(item=>{batch.set(doc(collection(db,'semaforo')),item);});
+    // IDs fijos y deterministas (no auto-generados): si dos sesiones inicializan a la vez, escriben al mismo documento en vez de duplicar.
+    ITEMS_DEFAULT.forEach(item=>{batch.set(doc(db,'semaforo','item-'+item.orden),item);});
     await batch.commit();
   }catch(e){console.error('init semaforo:',e);}
 }
@@ -1389,6 +1394,30 @@ window.descargarPlantilla=function(tipo){
 };
 
 window.toggleSel=function(cb){if(cb.checked)seleccionados.add(cb.dataset.id);else seleccionados.delete(cb.dataset.id);};
+
+window.limpiarDuplicadosSemaforo=async function(){
+  if(!esAdmin)return;
+  if(!confirm('Esto revisará la colección "semaforo" y borrará los ítems duplicados (mismo texto), dejando solo uno de cada uno. ¿Continuar?'))return;
+  try{
+    const snap=await getDocs(collection(db,'semaforo'));
+    const vistos=new Map(); // lbl -> doc conservado
+    const aBorrar=[];
+    snap.docs.forEach(d=>{
+      const data=d.data();
+      const clave=(data.lbl||'').trim().toLowerCase();
+      if(vistos.has(clave)){
+        aBorrar.push(d.id);
+      }else{
+        vistos.set(clave,d.id);
+      }
+    });
+    if(!aBorrar.length){alert('No se encontraron duplicados.');return;}
+    const batch=writeBatch(db);
+    aBorrar.forEach(id=>batch.delete(doc(db,'semaforo',id)));
+    await batch.commit();
+    alert(`✓ Se eliminaron ${aBorrar.length} ítem(s) duplicado(s). Quedaron ${vistos.size} ítems únicos.`);
+  }catch(e){alert('Error al limpiar: '+e.message);}
+};
 window.seleccionarPorOrigen=function(origen){
   const boxes=document.querySelectorAll(`#historial-tabla input[type="checkbox"][data-origen="${origen}"]`);
   if(!boxes.length){alert('No hay registros visibles de este origen con los filtros actuales.');return;}
