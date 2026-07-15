@@ -1250,9 +1250,17 @@ window.handleFile=function(file){
   const reader=new FileReader();
   reader.onload=e=>{
     const wb=XLSX.read(e.target.result,{type:'array'});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const raw=XLSX.utils.sheet_to_json(ws,{defval:'',header:1});
-    const esPlantilla=raw.slice(0,5).some(r=>Array.isArray(r)&&r.some(c=>String(c).includes('ESTADO')||String(c).includes('Cód. PJ')));
+    // Buscar la hoja correcta entre TODAS las del libro (algunos archivos traen hojas extra como "Dashboard" o "Leyenda" antes de la de datos)
+    let ws=null,raw=null,esPlantilla=false;
+    for(const nombre of wb.SheetNames){
+      const wsTest=wb.Sheets[nombre];
+      const rawTest=XLSX.utils.sheet_to_json(wsTest,{defval:'',header:1});
+      const esPlantillaTest=rawTest.slice(0,6).some(r=>Array.isArray(r)&&r.some(c=>String(c).includes('ESTADO')||String(c).includes('Cód. PJ')));
+      const esClasicaTest=rawTest.length&&Object.keys(XLSX.utils.sheet_to_json(wsTest,{defval:''})[0]||{}).some(k=>['Fecha','fecha','Coordinador','coordinador'].includes(k));
+      if(esPlantillaTest){ws=wsTest;raw=rawTest;esPlantilla=true;break;}
+      if(esClasicaTest&&!ws){ws=wsTest;raw=rawTest;}
+    }
+    if(!ws){ws=wb.Sheets[wb.SheetNames[0]];raw=XLSX.utils.sheet_to_json(ws,{defval:'',header:1});}
     if(esPlantilla){
       let headerRow=-1;
       raw.forEach((r,i)=>{if(Array.isArray(r)&&r.some(c=>String(c).trim()==='ESTADO'))headerRow=i;});
@@ -1269,6 +1277,8 @@ window.handleFile=function(file){
       pendingRows=[];
       pendingEstados={};
       let sinCambios=0;
+      const hoyStr=hoy();
+      let fechaAnteriorOmitida=0;
       raw.slice(headerRow+1).forEach(r=>{
         if(!r[2])return;
         const codPJ=String(r[2]).trim(),sede=String(r[3]||'').trim(),tipoSede=String(r[4]||'').trim();
@@ -1284,26 +1294,34 @@ window.handleFile=function(file){
         const coordPorZona=ZONA_COORD||{};
         const coordUsar=coordGlobal||(zonaRow&&coordPorZona[zonaRow])||'Sin especificar';
         const prev=sedesEstado[codPJ]||{};
-        let huboCambio=false;
+        let huboCambio=false,huboCambioFechaVieja=false;
+        // NIRQA: solo cuenta si el cambio de estado trae fecha de HOY (corte actual). Fechas anteriores ya deben haberse contabilizado en su día.
         if(nirqaEstado==='configurado'&&prev.nirqa!=='configurado'){
-          pendingRows.push({fecha:fechaUsar,coord:coordUsar,frente:'configurados',zona:'',tipo:tipoSede,sedes:codPJ,obs:nirqaObs||sede,unidades:1});
-          huboCambio=true;
+          if(nirqaFecha===hoyStr){
+            pendingRows.push({fecha:fechaUsar,coord:coordUsar,frente:'configurados',zona:'',tipo:tipoSede,sedes:codPJ,obs:nirqaObs||sede,unidades:1});
+            huboCambio=true;
+          } else huboCambioFechaVieja=true;
         }
         if(ticItem5==='si'&&prev.item5!=='si'){
-          pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'solo_item5',zona:'',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
-          huboCambio=true;
+          if(ticFecha===hoyStr){
+            pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'solo_item5',zona:'',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
+            huboCambio=true;
+          } else huboCambioFechaVieja=true;
         }
         if(ticEnlace==='si'&&prev.enlace!=='si'){
-          pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'con_enlace',zona:'',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
-          huboCambio=true;
+          if(ticFecha===hoyStr){
+            pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'con_enlace',zona:'',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
+            huboCambio=true;
+          } else huboCambioFechaVieja=true;
         }
-        if(!huboCambio&&(prev.nirqa||prev.item5||prev.enlace))sinCambios++;
+        if(!huboCambio&&!huboCambioFechaVieja&&(prev.nirqa||prev.item5||prev.enlace))sinCambios++;
+        if(huboCambioFechaVieja)fechaAnteriorOmitida++;
         // Guardamos el estado completo de la fila (haya cambiado o no) para la próxima comparación
         pendingEstados[codPJ]={nirqa:nirqaEstado||'pendiente',item5:ticItem5||'no',enlace:ticEnlace||'no',sede,tipo:tipoSede};
       });
-      if(!pendingRows.length){alert(`No hay avance nuevo que registrar (${sinCambios} sedes ya estaban con este mismo estado desde la carga anterior).`);pendingEstados={};return;}
+      if(!pendingRows.length){alert(`No hay avance nuevo que registrar con fecha de hoy (${hoyStr}).\n${sinCambios} sedes sin cambios · ${fechaAnteriorOmitida} sedes con cambio pero fecha anterior (omitidas).`);pendingEstados={};return;}
       const resumen={};pendingRows.forEach(r=>{resumen[r.frente]=(resumen[r.frente]||0)+1;});
-      document.getElementById('preview-count').textContent=`${pendingRows.length} registros nuevos · ${Object.entries(resumen).map(([k,v])=>`${NOMBRES[k]||k}: ${v}`).join(' · ')} · ${sinCambios} sedes sin cambios (omitidas)`;
+      document.getElementById('preview-count').textContent=`${pendingRows.length} registros nuevos (fecha ${hoyStr}) · ${Object.entries(resumen).map(([k,v])=>`${NOMBRES[k]||k}: ${v}`).join(' · ')} · ${sinCambios} sin cambios · ${fechaAnteriorOmitida} con fecha anterior (omitidas)`;
       document.getElementById('preview-table').innerHTML='<thead><tr><th>Cód. PJ</th><th>Tipo avance</th><th>Tipo sede</th><th>Fecha</th><th>Coordinador</th><th>Obs.</th></tr></thead><tbody>'+
         pendingRows.map(r=>`<tr><td><strong>${r.sedes}</strong></td><td>${NOMBRES[r.frente]||r.frente}</td><td>${r.tipo||'—'}</td><td>${fmt(r.fecha)}</td><td>${r.coord.split('(')[0].trim()}</td><td>${r.obs||'—'}</td></tr>`).join('')+'</tbody>';
     } else {
