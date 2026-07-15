@@ -1040,14 +1040,14 @@ const isMobileHist=window.innerWidth<=640;
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
             ${esAutorizado?`<button onclick="window.abrirEditar('${r.id}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer">✏️</button>
-            <input type="checkbox" data-id="${r.id}" data-origen="${r.zona?'manual':'excel'}" onchange="window.toggleSel(this)" style="cursor:pointer">`:'<span style="color:var(--text3);font-size:11px">▾</span>'}
+            <input type="checkbox" data-id="${r.id}" data-origen="${(r.origen==='excel'||!r.zona)?'excel':'manual'}" onchange="window.toggleSel(this)" style="cursor:pointer">`:'<span style="color:var(--text3);font-size:11px">▾</span>'}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span>
           <span style="font-size:12px;color:var(--text2)"><strong>${r.unidades}</strong> uds.</span>
           <span style="font-size:12px;color:var(--text3)">${r.zona||'—'}</span>
-          ${!r.zona?'<span class="badge" style="background:#F0F4FF;color:#3C3489" title="Generado por carga masiva Excel (sin zona asignada)">📊 Excel</span>':''}
+          ${(r.origen==='excel'||!r.zona)?'<span class="badge" style="background:#F0F4FF;color:#3C3489" title="Generado por carga masiva Excel">📊 Excel</span>':''}
         </div>
         ${r.obs?`<div style="font-size:11px;color:var(--text3);width:100%">${r.obs}</div>`:''}
       </div>
@@ -1067,7 +1067,7 @@ const isMobileHist=window.innerWidth<=640;
       <div class="log-row" style="grid-template-columns:85px 160px 120px 40px 110px 1fr;cursor:pointer;align-items:start" onclick="window.toggleRow('${r.id}')">
         <span style="color:var(--text3)">${fmt(r.fecha)}</span>
         <span style="font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.coord.split('(')[0].trim()}</span>
-        <span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span>${!r.zona?' <span class="badge" style="background:#F0F4FF;color:#3C3489" title="Generado por carga masiva Excel (sin zona asignada)">📊</span>':''}</span>
+        <span><span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span>${(r.origen==='excel'||!r.zona)?' <span class="badge" style="background:#F0F4FF;color:#3C3489" title="Generado por carga masiva Excel">📊</span>':''}</span>
         <span style="font-weight:600">${r.unidades}</span>
         <span style="color:var(--text3)">${r.zona||'—'}</span>
         <span style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0">
@@ -1294,28 +1294,29 @@ window.handleFile=function(file){
         const ticEnlace=String(r[14]||'').trim().toLowerCase();
         const ticFecha=fxl(r[15]||''),ticObs=String(r[16]||'').trim();
         const fechaUsar=fechaGlobal||nirqaFecha||ticFecha||hoy();
-        // Determine coordinator from zona if not specified globally
-        const zonaRow=String(r[6]||'').trim(); // sector col approximation
+        // Columna 5 = Zona (CENTRO/NORTE/SUR/ORIENTE). Se normaliza a "Zona X" para calzar con ZONA_COORD.
+        const zonaRaw=String(r[5]||'').trim();
+        const zonaNombre=zonaRaw?`Zona ${zonaRaw.charAt(0).toUpperCase()}${zonaRaw.slice(1).toLowerCase()}`:'';
         const coordPorZona=ZONA_COORD||{};
-        const coordUsar=coordGlobal||(zonaRow&&coordPorZona[zonaRow])||'Sin especificar';
+        const coordUsar=coordGlobal||(zonaNombre&&coordPorZona[zonaNombre])||'Sin especificar';
         const prev=sedesEstado[codPJ]||{};
         let huboCambio=false,huboCambioFechaVieja=false;
         // NIRQA: solo cuenta si el cambio de estado trae fecha de HOY (corte actual). Fechas anteriores ya deben haberse contabilizado en su día.
         if(nirqaEstado==='configurado'&&prev.nirqa!=='configurado'){
           if(nirqaFecha===hoyStr){
-            pendingRows.push({fecha:fechaUsar,coord:coordUsar,frente:'configurados',zona:'',tipo:tipoSede,sedes:codPJ,obs:nirqaObs||sede,unidades:1});
+            pendingRows.push({fecha:fechaUsar,coord:coordUsar,frente:'configurados',zona:zonaNombre,origen:'excel',tipo:tipoSede,sedes:codPJ,obs:nirqaObs||sede,unidades:1});
             huboCambio=true;
           } else huboCambioFechaVieja=true;
         }
         if(ticItem5==='si'&&prev.item5!=='si'){
           if(ticFecha===hoyStr){
-            pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'solo_item5',zona:'',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
+            pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'solo_item5',zona:zonaNombre,origen:'excel',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
             huboCambio=true;
           } else huboCambioFechaVieja=true;
         }
         if(ticEnlace==='si'&&prev.enlace!=='si'){
           if(ticFecha===hoyStr){
-            pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'con_enlace',zona:'',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
+            pendingRows.push({fecha:ticFecha||fechaUsar,coord:coordUsar,frente:'con_enlace',zona:zonaNombre,origen:'excel',tipo:tipoSede,sedes:codPJ,obs:ticObs||sede,unidades:1});
             huboCambio=true;
           } else huboCambioFechaVieja=true;
         }
