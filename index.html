@@ -428,6 +428,7 @@ select.inp{cursor:pointer}
           <div style="font-weight:600;color:var(--navy);margin-bottom:4px">Arrastra tu Excel aqui o haz clic</div>
           <div style="font-size:12px;color:var(--text3)">Acepta .xlsx — plantilla detalle o resumen</div>
         </div>
+        <button id="btn-deshacer-carga" style="display:none;margin-top:12px;font-size:12px;background:#FCEBEB;color:#791F1F;border:1px solid #E8B4B4;border-radius:8px;padding:8px 14px;cursor:pointer" onclick="window.deshacerUltimaCarga()">↩️ Deshacer última carga</button>
         <div id="preview-area" style="display:none;margin-top:16px">
           <div style="display:flex;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
             <div><strong>Vista previa</strong> <span id="preview-count" style="font-size:12px;color:var(--text2);margin-left:8px"></span></div>
@@ -668,7 +669,7 @@ select.inp{cursor:pointer}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, writeBatch, getDocs, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, writeBatch, getDocs, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getDatabase, ref, set, onValue, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
@@ -693,7 +694,7 @@ const ZONA_UNIVERSO={
   'Zona Oriente':{total:124,t1:7,t2:92,t3:25,coord:'Miguel Pando'},
   'Zona Sur':{total:213,t1:8,t2:192,t3:13,coord:'Angel Cruz'},
 };
-let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[],eliminados=[],ediciones=[],sedesEstado={},sedesEstadoCargado=false,pendingEstados={};
+let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[],eliminados=[],ediciones=[],sedesEstado={},sedesEstadoCargado=false,pendingEstados={},ultimoLoteId=null;
 
 function esHabil(d){const s=fmtLocalYMD(d);return d.getDay()!==0&&!FERIADOS.includes(s)}
 function diasHabilesHasta(d1,d2){let n=0,d=new Date(d1);while(d<=d2){if(esHabil(d))n++;d.setDate(d.getDate()+1)}return n}
@@ -1352,9 +1353,17 @@ window.confirmarCarga=async function(){
   if(!esAutorizado){alert('No tienes permiso.');return;}
   const btn=document.querySelector('#preview-area .btn-primary');btn.textContent='Importando...';btn.disabled=true;
   try{
+    const loteId='lote_'+Date.now();
+    const estadosAnteriores={}; // snapshot de sedes_estado ANTES de esta carga, para poder deshacer
+    Object.keys(pendingEstados).forEach(codPJ=>{estadosAnteriores[codPJ]=sedesEstado[codPJ]||null;});
     // Construir lista de operaciones (registros nuevos + estado maestro por sede) y trocear en lotes de máx. 450
     const ops=[];
-    pendingRows.forEach(r=>{ops.push(()=>({ref:doc(collection(db,'registros')),data:{...r,registradoPor:usuarioActual?.email||'',ts:Date.now()},merge:false}));});
+    const registroIds=[];
+    pendingRows.forEach(r=>{
+      const ref=doc(collection(db,'registros'));
+      registroIds.push(ref.id);
+      ops.push(()=>({ref,data:{...r,loteId,registradoPor:usuarioActual?.email||'',ts:Date.now()},merge:false}));
+    });
     Object.entries(pendingEstados).forEach(([codPJ,estado])=>{ops.push(()=>({ref:doc(db,'sedes_estado',codPJ),data:{...estado,actualizadoPor:usuarioActual?.email||'',actualizadoTs:Date.now()},merge:true}));});
     const CHUNK=450;
     for(let i=0;i<ops.length;i+=CHUNK){
@@ -1362,10 +1371,44 @@ window.confirmarCarga=async function(){
       ops.slice(i,i+CHUNK).forEach(fn=>{const o=fn();o.merge?batch.set(o.ref,o.data,{merge:true}):batch.set(o.ref,o.data);});
       await batch.commit();
     }
+    // Guardar el lote para poder deshacerlo (registros creados + estado previo de cada sede)
+    try{await setDoc(doc(db,'lotes_carga',loteId),{registroIds,estadosAnteriores,creadoPor:usuarioActual?.email||'',creadoTs:Date.now(),cantidad:pendingRows.length});}catch(e){console.error('No se pudo guardar el lote para deshacer:',e);}
+    ultimoLoteId=loteId;
     const n=pendingRows.length;pendingRows=[];pendingEstados={};document.getElementById('preview-area').style.display='none';document.getElementById('file-input').value='';
     btn.textContent='Importar todos';btn.disabled=false;
-    alert(`✓ ${n} registros importados.`);showTab('dashboard');
+    const btnDeshacer=document.getElementById('btn-deshacer-carga');if(btnDeshacer)btnDeshacer.style.display='inline-flex';
+    alert(`✓ ${n} registros importados.\n\nSi este archivo era incorrecto, puedes usar "↩️ Deshacer última carga" (abajo del recuadro de subida) para revertirlo — funciona mientras no cierres o recargues esta página.`);showTab('dashboard');
   }catch(e){document.getElementById('preview-error').textContent='Error: '+e.message;document.getElementById('preview-error').style.display='block';btn.textContent='Importar todos';btn.disabled=false;}
+};
+window.deshacerUltimaCarga=async function(){
+  if(!esAutorizado)return;
+  if(!ultimoLoteId){alert('No hay ninguna carga reciente en esta sesión para deshacer (esta función solo funciona justo después de importar, sin recargar la página).');return;}
+  if(!confirm('Esto borrará todos los registros de la última carga y restaurará el estado de las sedes afectadas a como estaba antes. ¿Continuar?'))return;
+  try{
+    const loteSnap=await getDoc(doc(db,'lotes_carga',ultimoLoteId));
+    if(!loteSnap.exists()){alert('No se encontró el lote (puede que ya haya sido deshecho antes).');return;}
+    const lote=loteSnap.data();
+    // Borrar los registros creados (con evidencia en auditoría, igual que un borrado manual)
+    for(const id of lote.registroIds||[]){
+      const original=registros.find(r=>r.id===id);
+      if(original){
+        const{id:_omit,...datos}=original;
+        try{await addDoc(collection(db,'registros_eliminados'),{...datos,idOriginal:id,eliminadoPor:usuarioActual?.email||'',eliminadoTs:Date.now(),motivo:'Deshacer carga masiva'});}catch(e){console.error(e);}
+      }
+      try{await deleteDoc(doc(db,'registros',id));}catch(e){console.error(e);}
+    }
+    // Restaurar el estado anterior de cada sede afectada
+    const estadosAnteriores=lote.estadosAnteriores||{};
+    for(const codPJ of Object.keys(estadosAnteriores)){
+      const anterior=estadosAnteriores[codPJ];
+      if(anterior){await setDoc(doc(db,'sedes_estado',codPJ),anterior);}
+      else{await deleteDoc(doc(db,'sedes_estado',codPJ));}
+    }
+    await deleteDoc(doc(db,'lotes_carga',ultimoLoteId));
+    alert(`✓ Carga deshecha: se eliminaron ${(lote.registroIds||[]).length} registro(s) y se restauró el estado de ${Object.keys(estadosAnteriores).length} sede(s).`);
+    ultimoLoteId=null;
+    const btnDeshacer=document.getElementById('btn-deshacer-carga');if(btnDeshacer)btnDeshacer.style.display='none';
+  }catch(e){alert('Error al deshacer: '+e.message);}
 };
 window.cancelarCarga=function(){document.getElementById('preview-area').style.display='none';document.getElementById('file-input').value='';pendingRows=[];pendingEstados={};};
 window.descargarPlantilla=function(tipo){
