@@ -691,11 +691,12 @@ const ZONA_UNIVERSO={
 };
 let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[],eliminados=[],ediciones=[],sedesEstado={},sedesEstadoCargado=false,pendingEstados={};
 
-function esHabil(d){const s=d.toISOString().slice(0,10);return d.getDay()!==0&&!FERIADOS.includes(s)}
+function esHabil(d){const s=fmtLocalYMD(d);return d.getDay()!==0&&!FERIADOS.includes(s)}
 function diasHabilesHasta(d1,d2){let n=0,d=new Date(d1);while(d<=d2){if(esHabil(d))n++;d.setDate(d.getDate()+1)}return n}
 function sumarDH(desde,n){let d=new Date(desde),c=0;while(c<n){d.setDate(d.getDate()+1);if(esHabil(d))c++}return d}
 function fmt(s){if(!s)return'—';const d=new Date(s+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'})}
-function hoy(){return new Date().toISOString().slice(0,10)}
+function fmtLocalYMD(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function hoy(){return fmtLocalYMD(new Date());}
 function pct(v){return Math.min(100,Math.round(v/TOTAL*100))}
 
 function totalesPorFrente(){
@@ -1658,7 +1659,7 @@ function renderMetricas(){
       fechaDesde=lf(lunesAnt);fechaHasta=lf(viernesAnt);
     }
     else if(periodo==='0'){fechaDesde='2026-01-01';}
-    else{const d=new Date();d.setDate(d.getDate()-parseInt(periodo));fechaDesde=d.toISOString().slice(0,10);}
+    else{const d=new Date();d.setDate(d.getDate()-parseInt(periodo));fechaDesde=fmtLocalYMD(d);}
 
     const porCoord={};
     registros.filter(r=>r.fecha>=fechaDesde&&(!fechaHasta||r.fecha<=fechaHasta)).forEach(r=>{
