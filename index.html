@@ -402,12 +402,12 @@ select.inp{cursor:pointer}
         <div class="grid2" style="gap:12px">
           <div style="border:1px solid var(--border);border-radius:10px;padding:16px">
             <div style="font-weight:600;font-size:13px;margin-bottom:6px">Plantilla por sede (detalle)</div>
-            <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Una fila por sede. Maxima trazabilidad. Ideal para TIC+ y NIRQA.</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Una fila por sede. Máxima trazabilidad. Ideal para TIC+ y NIRQA. Descarga todo lo ya registrado (o un ejemplo si aún no hay datos) — puedes completar filas nuevas debajo y volver a subir.</div>
             <button class="btn btn-teal" onclick="window.descargarPlantilla('detalle')">Descargar plantilla detalle</button>
           </div>
           <div style="border:1px solid var(--border);border-radius:10px;padding:16px">
             <div style="font-weight:600;font-size:13px;margin-bottom:6px">Plantilla resumen (por coordinador)</div>
-            <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Una fila por coordinador por dia. Registro rapido al cierre de reunion.</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Una fila por coordinador por dia. Registro rapido al cierre de reunion. (Plantilla en blanco con ejemplos — para cargar avance nuevo)</div>
             <button class="btn btn-teal" onclick="window.descargarPlantilla('resumen')">Descargar plantilla resumen</button>
           </div>
         </div>
@@ -518,8 +518,8 @@ select.inp{cursor:pointer}
     <canvas id="chart-coordinadores" style="width:100%;max-height:320px"></canvas>
   </div>
 
-  <!-- SPI - SOLO LOGUEADOS -->
-  <div class="card" id="card-spi" style="display:none">
+  <!-- SPI - VISIBLE PARA TODOS -->
+  <div class="card" id="card-spi">
     <div class="card-title">Índice de desempeño del cronograma (SPI)</div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:12px">SPI = Avance real acumulado ÷ Avance planificado a la fecha. SPI &gt;1 adelantado · =1 en tiempo · &lt;1 atrasado</div>
     <div id="spi-container">Cargando...</div>
@@ -1365,13 +1365,29 @@ window.confirmarCarga=async function(){
 };
 window.cancelarCarga=function(){document.getElementById('preview-area').style.display='none';document.getElementById('file-input').value='';pendingRows=[];pendingEstados={};};
 window.descargarPlantilla=function(tipo){
-  const cols=tipo==='detalle'?['Fecha','Coordinador','Frente','Zona','Codigo_Sede','Tipo_Sede','Observaciones']:['Fecha','Coordinador','Frente','Zona','Total_Unidades','Sedes','Observaciones'];
-  const ej=tipo==='detalle'?[['10/07/2026','Ayrton Hipolito (Zona Norte)','solo_item5','Zona Norte','PJ041','Tipo 2','Sin incidencias']]:
-    [['10/07/2026','NIRQA (Configuracion)','configurados','Lima Metropolis',18,'','Linea Negocios'],['10/07/2026','TIC+ / Carlos Rodriguez (Campo)','retirados','Lima Metropolis',18,'','Recogida de planta'],['10/07/2026','Ayrton Hipolito (Zona Norte)','solo_item5','Zona Norte',15,'PJ041,PJ042','Sin incidencias']];
+  if(tipo==='detalle'){
+    const NOMBRES=window.NOMBRES||{configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
+    const cols=['Fecha','Coordinador','Frente','Zona','Codigo_Sede','Tipo_Sede','Observaciones'];
+    let filas;
+    if(registros.length){
+      filas=registros.slice().sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')).map(r=>[
+        fmt(r.fecha),r.coord||'',r.frente||'',r.zona||'',r.sedes||'',r.tipo||'',r.obs||''
+      ]);
+    } else {
+      filas=[['10/07/2026','Ayrton Hipolito (Zona Norte)','solo_item5','Zona Norte','PJ041','Tipo 2','Sin incidencias']];
+    }
+    const ws=XLSX.utils.aoa_to_sheet([cols,...filas]);ws['!cols']=cols.map(()=>({wch:24}));
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Avance');
+    XLSX.writeFile(wb,`Plantilla_detalle_SDWAN_${hoy()}.xlsx`);
+    return;
+  }
+  const cols=['Fecha','Coordinador','Frente','Zona','Total_Unidades','Sedes','Observaciones'];
+  const ej=[['10/07/2026','NIRQA (Configuracion)','configurados','Lima Metropolis',18,'','Linea Negocios'],['10/07/2026','TIC+ / Carlos Rodriguez (Campo)','retirados','Lima Metropolis',18,'','Recogida de planta'],['10/07/2026','Ayrton Hipolito (Zona Norte)','solo_item5','Zona Norte',15,'PJ041,PJ042','Sin incidencias']];
   const ws=XLSX.utils.aoa_to_sheet([cols,...ej]);ws['!cols']=cols.map(()=>({wch:24}));
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Avance');
   XLSX.writeFile(wb,`Plantilla_${tipo}_SDWAN.xlsx`);
 };
+
 window.toggleSel=function(cb){if(cb.checked)seleccionados.add(cb.dataset.id);else seleccionados.delete(cb.dataset.id);};
 window.seleccionarPorOrigen=function(origen){
   const boxes=document.querySelectorAll(`#historial-tabla input[type="checkbox"][data-origen="${origen}"]`);
@@ -1573,7 +1589,7 @@ function renderMetricas(){
   const cardSpi=document.getElementById('card-spi');
   const cardAdmin=document.getElementById('card-admin-metrics');
   if(cardCoord)cardCoord.style.display=esAutorizado?'block':'none';
-  if(cardSpi)cardSpi.style.display=esAutorizado?'block':'none';
+  if(cardSpi)cardSpi.style.display='block';
   if(cardAdmin)cardAdmin.style.display=esAdmin?'block':'none';
 
   // Acumulados reales por fecha
