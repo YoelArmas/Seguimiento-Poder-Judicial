@@ -1377,7 +1377,7 @@ window.confirmarCarga=async function(){
     const n=pendingRows.length;pendingRows=[];pendingEstados={};document.getElementById('preview-area').style.display='none';document.getElementById('file-input').value='';
     btn.textContent='Importar todos';btn.disabled=false;
     const btnDeshacer=document.getElementById('btn-deshacer-carga');if(btnDeshacer)btnDeshacer.style.display='inline-flex';
-    alert(`✓ ${n} registros importados.\n\nSi este archivo era incorrecto, puedes usar "↩️ Deshacer última carga" (abajo del recuadro de subida) para revertirlo — funciona mientras no cierres o recargues esta página.`);showTab('dashboard');
+    alert(`✓ ${n} registros importados.\n\nSi este archivo era incorrecto, puedes usar el botón "↩️ Deshacer última carga" que aparece abajo del recuadro de subida (justo en esta pantalla) para revertirlo — funciona mientras no cierres o recargues esta página.`);
   }catch(e){document.getElementById('preview-error').textContent='Error: '+e.message;document.getElementById('preview-error').style.display='block';btn.textContent='Importar todos';btn.disabled=false;}
 };
 window.deshacerUltimaCarga=async function(){
