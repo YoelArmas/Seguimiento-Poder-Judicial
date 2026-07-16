@@ -415,6 +415,12 @@ select.inp{cursor:pointer}
           </div>
         </div>
       </div>
+      <div class="card" id="card-reconstruir-estado" style="display:none;background:#FFF8E1;border:1px solid #E8D9A8">
+        <div class="card-title">🔄 Reconstrucción de estado por sede (solo admin)</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Si tu historial tiene mezcla de registros manuales y de Excel, y sospechas que la carga masiva está volviendo a contar sedes que ya estaban registradas, usa esto: reconstruye el estado de las 745 sedes leyendo TODO tu historial ya cargado (manual + Excel), para que la próxima carga Excel compare correctamente y no duplique nada.</div>
+        <button class="btn btn-teal" onclick="window.reconstruirSedesEstado()">Reconstruir estado desde el historial</button>
+        <button class="btn" style="background:#FCEBEB;color:#791F1F;border:1px solid #E8B4B4;margin-left:8px" onclick="window.eliminarRegistrosDuplicados()">🧹 Eliminar registros duplicados exactos</button>
+      </div>
     </div>
     <div id="subtab-subir" style="display:none">
       <div class="card">
@@ -787,6 +793,7 @@ function actualizarUI(){
   const bb=document.getElementById('btn-borrar');if(bb)bb.style.display=esAutorizado?'inline-flex':'none';
   const bse=document.getElementById('btn-sel-excel');if(bse)bse.style.display=esAutorizado?'inline-flex':'none';
   const bls=document.getElementById('btn-limpiar-semaforo');if(bls)bls.style.display=esAdmin?'inline-flex':'none';
+  const crEst=document.getElementById('card-reconstruir-estado');if(crEst)crEst.style.display=esAdmin?'block':'none';
 
   // Pestañas operativas: solo visibles para coordinadores/admin autorizados
   const tbGestion=document.getElementById('tabbtn-gestion'),tbHistorial=document.getElementById('tabbtn-historial');
@@ -1437,6 +1444,63 @@ window.descargarPlantilla=function(tipo){
 
 window.toggleSel=function(cb){if(cb.checked)seleccionados.add(cb.dataset.id);else seleccionados.delete(cb.dataset.id);};
 
+window.eliminarRegistrosDuplicados=async function(){
+  if(!esAdmin)return;
+  if(!registros.length){alert('No hay registros cargados todavía.');return;}
+  const grupos={};
+  registros.forEach(r=>{
+    const codPJ=(r.sedes||'').trim();
+    if(!codPJ)return; // registros sin código de sede no se evalúan por esta vía
+    const clave=`${codPJ}|${r.frente}|${r.fecha}`;
+    (grupos[clave]=grupos[clave]||[]).push(r);
+  });
+  const aBorrar=[];
+  Object.values(grupos).forEach(list=>{
+    if(list.length>1){
+      list.sort((a,b)=>(a.ts||0)-(b.ts||0)); // conservar el más antiguo (el original)
+      aBorrar.push(...list.slice(1));
+    }
+  });
+  if(!aBorrar.length){alert('No se encontraron registros duplicados exactos (mismo Cód. PJ + tipo de avance + fecha).');return;}
+  if(!confirm(`Se encontraron ${aBorrar.length} registro(s) duplicado(s) exactos (misma sede + mismo tipo de avance + misma fecha). Se borrarán dejando solo el más antiguo de cada grupo, con evidencia en la auditoría. ¿Continuar?`))return;
+  try{
+    for(const r of aBorrar){
+      try{
+        const{id:_omit,...datos}=r;
+        await addDoc(collection(db,'registros_eliminados'),{...datos,idOriginal:r.id,eliminadoPor:usuarioActual?.email||'',eliminadoTs:Date.now(),motivo:'Duplicado exacto (mismo Cód.PJ+frente+fecha)'});
+      }catch(e){console.error(e);}
+      try{await deleteDoc(doc(db,'registros',r.id));}catch(e){console.error(e);}
+    }
+    alert(`✓ Se eliminaron ${aBorrar.length} registro(s) duplicado(s). Revisa el Dashboard — los totales deberían bajar a lo real.`);
+  }catch(e){alert('Error al eliminar duplicados: '+e.message);}
+};
+window.reconstruirSedesEstado=async function(){
+  if(!esAdmin)return;
+  if(!registros.length){alert('No hay registros cargados todavía en esta sesión. Espera a que termine de cargar el historial e intenta de nuevo.');return;}
+  if(!confirm(`Esto revisará los ${registros.length} registros de tu historial completo (manuales + Excel) y reconstruirá el estado de cada sede (Cód. PJ) desde cero, para que la próxima carga Excel no vuelva a contar lo que ya está registrado. Esto SOBREESCRIBE el estado actual guardado por sede. ¿Continuar?`))return;
+  try{
+    const nuevoEstado={}; // codPJ -> {nirqa,item5,enlace,fechaConfig,fechaItem5,fechaEnlace,sede,tipo}
+    registros.forEach(r=>{
+      const codPJ=(r.sedes||'').trim();
+      if(!codPJ)return; // registros manuales sin código de sede (ej. cargas por lote/coordinador) no aportan estado por sede
+      if(!nuevoEstado[codPJ])nuevoEstado[codPJ]={nirqa:'pendiente',item5:'no',enlace:'no',fechaConfig:'',fechaItem5:'',fechaEnlace:'',sede:'',tipo:r.tipo||''};
+      const e=nuevoEstado[codPJ];
+      if(r.tipo)e.tipo=r.tipo;
+      if(r.frente==='configurados'){e.nirqa='configurado';if(r.fecha&&r.fecha>e.fechaConfig)e.fechaConfig=r.fecha;}
+      if(r.frente==='solo_item5'){e.item5='si';if(r.fecha&&r.fecha>e.fechaItem5)e.fechaItem5=r.fecha;}
+      if(r.frente==='con_enlace'){e.enlace='si';if(r.fecha&&r.fecha>e.fechaEnlace)e.fechaEnlace=r.fecha;}
+    });
+    const codigos=Object.keys(nuevoEstado);
+    if(!codigos.length){alert('No se encontraron registros con Código de Sede (Cód. PJ) para reconstruir.');return;}
+    const CHUNK=450;
+    for(let i=0;i<codigos.length;i+=CHUNK){
+      const batch=writeBatch(db);
+      codigos.slice(i,i+CHUNK).forEach(codPJ=>{batch.set(doc(db,'sedes_estado',codPJ),{...nuevoEstado[codPJ],actualizadoPor:usuarioActual?.email||'',actualizadoTs:Date.now(),reconstruido:true});});
+      await batch.commit();
+    }
+    alert(`✓ Estado reconstruido para ${codigos.length} sede(s) a partir de ${registros.length} registros del historial. Ahora las próximas cargas de Excel no deberían duplicar nada de lo que ya está reflejado en el Dashboard.`);
+  }catch(e){alert('Error al reconstruir: '+e.message);}
+};
 window.limpiarDuplicadosSemaforo=async function(){
   if(!esAdmin)return;
   if(!confirm('Esto revisará la colección "semaforo" y borrará los ítems duplicados (mismo texto), dejando solo uno de cada uno. ¿Continuar?'))return;
