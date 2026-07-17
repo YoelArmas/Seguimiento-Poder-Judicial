@@ -1588,7 +1588,7 @@ window.eliminarRegistrosDuplicados=async function(){
 window.reconstruirSedesEstado=async function(){
   if(!esAdmin)return;
   if(!registros.length){alert('No hay registros cargados todavía en esta sesión. Espera a que termine de cargar el historial e intenta de nuevo.');return;}
-  if(!confirm(`Esto revisará los ${registros.length} registros de tu historial completo (manuales + Excel) y reconstruirá el estado de cada sede (Cód. PJ) desde cero, para que la próxima carga Excel no vuelva a contar lo que ya está registrado. Esto SOBREESCRIBE el estado actual guardado por sede. ¿Continuar?`))return;
+  if(!confirm(`Esto revisará los ${registros.length} registros de tu historial completo (manuales + Excel), reconstruirá el estado de cada sede que SÍ tiene registro real, y BORRARÁ cualquier estado "fantasma" guardado para sedes que no tienen ningún registro detrás (esto es lo que suele bloquear que una sede se vuelva a importar). ¿Continuar?`))return;
   try{
     const nuevoEstado={}; // codPJ -> {nirqa,item5,enlace,fechaConfig,fechaItem5,fechaEnlace,sede,tipo}
     registros.forEach(r=>{
@@ -1601,15 +1601,25 @@ window.reconstruirSedesEstado=async function(){
       if(r.frente==='solo_item5'){e.item5='si';if(r.fecha&&r.fecha>e.fechaItem5)e.fechaItem5=r.fecha;}
       if(r.frente==='con_enlace'){e.enlace='si';if(r.fecha&&r.fecha>e.fechaEnlace)e.fechaEnlace=r.fecha;}
     });
-    const codigos=Object.keys(nuevoEstado);
-    if(!codigos.length){alert('No se encontraron registros con Código de Sede (Cód. PJ) para reconstruir.');return;}
+    const codigosConRegistro=new Set(Object.keys(nuevoEstado));
+    // Leer TODOS los documentos actuales de sedes_estado, para detectar "fantasmas" (sin registro real detrás)
+    const snapActual=await getDocs(collection(db,'sedes_estado'));
+    const codigosFantasma=[];
+    snapActual.docs.forEach(d=>{if(!codigosConRegistro.has(d.id))codigosFantasma.push(d.id);});
+
     const CHUNK=450;
+    const codigos=Object.keys(nuevoEstado);
     for(let i=0;i<codigos.length;i+=CHUNK){
       const batch=writeBatch(db);
       codigos.slice(i,i+CHUNK).forEach(codPJ=>{batch.set(doc(db,'sedes_estado',codPJ),{...nuevoEstado[codPJ],actualizadoPor:usuarioActual?.email||'',actualizadoTs:Date.now(),reconstruido:true});});
       await batch.commit();
     }
-    alert(`✓ Estado reconstruido para ${codigos.length} sede(s) a partir de ${registros.length} registros del historial. Ahora las próximas cargas de Excel no deberían duplicar nada de lo que ya está reflejado en el Dashboard.`);
+    for(let i=0;i<codigosFantasma.length;i+=CHUNK){
+      const batch=writeBatch(db);
+      codigosFantasma.slice(i,i+CHUNK).forEach(codPJ=>{batch.delete(doc(db,'sedes_estado',codPJ));});
+      await batch.commit();
+    }
+    alert(`✓ Estado reconstruido para ${codigos.length} sede(s) con registro real.\n✓ Se borraron ${codigosFantasma.length} entrada(s) fantasma (sin registro detrás) que estaban bloqueando su importación.\n\nYa puedes volver a subir tu Excel — las sedes fantasma ahora se reconocerán como avance nuevo.`);
   }catch(e){alert('Error al reconstruir: '+e.message);}
 };
 window.limpiarDuplicadosSemaforo=async function(){
