@@ -402,17 +402,10 @@ select.inp{cursor:pointer}
     <div id="subtab-plantilla">
       <div class="card">
         <div class="card-title">Plantillas de carga masiva</div>
-        <div class="grid2" style="gap:12px">
-          <div style="border:1px solid var(--border);border-radius:10px;padding:16px">
-            <div style="font-weight:600;font-size:13px;margin-bottom:6px">Plantilla por sede (detalle)</div>
-            <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Una fila por sede. Máxima trazabilidad. Ideal para TIC+ y NIRQA. Descarga todo lo ya registrado (o un ejemplo si aún no hay datos) — puedes completar filas nuevas debajo y volver a subir.</div>
-            <button class="btn btn-teal" onclick="window.descargarPlantilla('detalle')">Descargar plantilla detalle</button>
-          </div>
-          <div style="border:1px solid var(--border);border-radius:10px;padding:16px">
-            <div style="font-weight:600;font-size:13px;margin-bottom:6px">Plantilla resumen (por coordinador)</div>
-            <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Una fila por coordinador por dia. Registro rapido al cierre de reunion. (Plantilla en blanco con ejemplos — para cargar avance nuevo)</div>
-            <button class="btn btn-teal" onclick="window.descargarPlantilla('resumen')">Descargar plantilla resumen</button>
-          </div>
+        <div style="border:1px solid var(--border);border-radius:10px;padding:16px;max-width:420px">
+          <div style="font-weight:600;font-size:13px;margin-bottom:6px">Plantilla por sede (detalle)</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Una fila por sede. Máxima trazabilidad. Ideal para TIC+ y NIRQA. Descarga todo lo ya registrado (o un ejemplo si aún no hay datos) — puedes completar filas nuevas debajo y volver a subir.</div>
+          <button class="btn btn-teal" onclick="window.descargarPlantilla('detalle')">Descargar plantilla detalle</button>
         </div>
       </div>
       <div class="card" id="card-reconstruir-estado" style="display:none;background:#FFF8E1;border:1px solid #E8D9A8">
@@ -559,7 +552,7 @@ select.inp{cursor:pointer}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <div class="card-title" style="margin:0">Historial completo</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <select class="inp" id="filtro-frente" style="width:auto" onchange="window.renderTodo()">
+        <select class="inp" id="filtro-frente" style="width:auto" onchange="window.filtroHistorialCambio()">
           <option value="">Todos</option>
           <option value="configurados">Configurados</option>
           <option value="retirados">Retirados</option>
@@ -567,17 +560,28 @@ select.inp{cursor:pointer}
           <option value="con_enlace">Con enlace</option>
           <option value="alta">Alta operativa</option>
         </select>
+        <select class="inp" id="filtro-porpagina-hist" style="width:auto" onchange="window.cambiarPorPaginaHist()">
+          <option value="10">10 por página</option>
+          <option value="20">20 por página</option>
+        </select>
+        <button class="btn" id="btn-sel-todo" style="font-size:12px;display:none" onclick="window.seleccionarTodoVisible()">☑️ Seleccionar todo (esta página)</button>
         <button class="btn" id="btn-sel-excel" style="font-size:12px;display:none" onclick="window.seleccionarPorOrigen('excel')" title="Marca todos los registros visibles que vinieron de una carga masiva Excel (zona vacía)">📊 Seleccionar origen Excel</button>
         <button class="btn btn-danger" id="btn-borrar" style="font-size:12px;display:none" onclick="window.confirmarBorrar()">Borrar seleccionados</button>
       </div>
     </div>
     <div class="hist-scroll-wrap"><div id="historial-tabla">Cargando...</div></div>
+    <div id="historial-paginacion" style="display:flex;justify-content:center;gap:4px;margin-top:12px;flex-wrap:wrap"></div>
   </div>
 
   <div class="card" id="card-eliminados" style="display:none">
     <div class="card-title">🗑️ Registros eliminados (auditoría)</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <button id="btn-sel-todo-elim" style="display:none;font-size:12px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer" onclick="window.seleccionarTodoEliminados()">☑️ Seleccionar todo (esta página)</button>
+      <button id="btn-borrar-elim" class="btn btn-danger" style="font-size:12px;display:none" onclick="window.purgarEliminadosSeleccionados()">Borrar definitivamente</button>
+    </div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Cada vez que se borra un registro del historial, queda una copia aquí con quién lo eliminó y cuándo.</div>
     <div id="eliminados-tabla">Cargando...</div>
+    <div id="eliminados-paginacion" style="display:flex;justify-content:center;gap:4px;margin-top:12px;flex-wrap:wrap"></div>
   </div>
 
   <div class="card" id="card-ediciones" style="display:none">
@@ -711,7 +715,7 @@ const ZONA_UNIVERSO={
   'Zona Oriente':{total:124,t1:7,t2:92,t3:25,coord:'Miguel Pando'},
   'Zona Sur':{total:213,t1:8,t2:192,t3:13,coord:'Angel Cruz'},
 };
-let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[],eliminados=[],ediciones=[],sedesEstado={},sedesEstadoCargado=false,pendingEstados={},ultimoLoteId=null;
+let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[],eliminados=[],ediciones=[],sedesEstado={},sedesEstadoCargado=false,pendingEstados={},ultimoLoteId=null,_histPagina=1,_histPorPagina=10,_elimPagina=1,_elimPorPagina=10,seleccionadosElim=new Set();
 
 function esHabil(d){const s=fmtLocalYMD(d);return d.getDay()!==0&&!FERIADOS.includes(s)}
 function diasHabilesHasta(d1,d2){let n=0,d=new Date(d1);while(d<=d2){if(esHabil(d))n++;d.setDate(d.getDate()+1)}return n}
@@ -803,6 +807,7 @@ function actualizarUI(){
   document.getElementById('carga-form').style.display=esAutorizado?'block':'none';
   const bb=document.getElementById('btn-borrar');if(bb)bb.style.display=esAutorizado?'inline-flex':'none';
   const bse=document.getElementById('btn-sel-excel');if(bse)bse.style.display=esAutorizado?'inline-flex':'none';
+  const bst=document.getElementById('btn-sel-todo');if(bst)bst.style.display=esAutorizado?'inline-flex':'none';
   const bls=document.getElementById('btn-limpiar-semaforo');if(bls)bls.style.display=esAdmin?'inline-flex':'none';
   const crEst=document.getElementById('card-reconstruir-estado');if(crEst)crEst.style.display=esAdmin?'block':'none';
 
@@ -1046,10 +1051,15 @@ function renderTodo(){
 
   const filtro=document.getElementById('filtro-frente')?.value||'';
   const lista=filtro?registros.filter(r=>r.frente===filtro):registros;
+  const totalHistPags=Math.max(1,Math.ceil(lista.length/_histPorPagina));
+  if(_histPagina>totalHistPags)_histPagina=totalHistPags;
+  if(_histPagina<1)_histPagina=1;
+  const histInicio=(_histPagina-1)*_histPorPagina;
+  const listaPagina=lista.slice(histInicio,histInicio+_histPorPagina);
 const isMobileHist=window.innerWidth<=640;
-  document.getElementById('historial-tabla').innerHTML=lista.length?
+  document.getElementById('historial-tabla').innerHTML=listaPagina.length?
     (isMobileHist?
-    lista.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`
+    listaPagina.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`
     <div class="hist-row" id="hrow-${r.id}" style="border-bottom:1px solid var(--border)">
       <div onclick="window.toggleRow('${r.id}')" style="padding:10px 4px;cursor:pointer;display:flex;flex-direction:column;gap:6px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
@@ -1081,7 +1091,7 @@ const isMobileHist=window.innerWidth<=640;
     </div>`}).join('')
     :
     `<div class="log-row log-head" style="grid-template-columns:85px 160px 120px 40px 110px 1fr"><span>Fecha</span><span>Responsable</span><span>Tipo</span><span>Uds.</span><span>Zona</span><span>Observaciones</span></div>
-    ${lista.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`
+    ${listaPagina.map(r=>{const c=COLORES[r.frente]||['#eee','#333'];return`
     <div class="hist-row" id="hrow-${r.id}" style="border-bottom:1px solid var(--border)">
       <div class="log-row" style="grid-template-columns:85px 160px 120px 40px 110px 1fr;cursor:pointer;align-items:start" onclick="window.toggleRow('${r.id}')">
         <span style="color:var(--text3)">${fmt(r.fecha)}</span>
@@ -1104,6 +1114,23 @@ const isMobileHist=window.innerWidth<=640;
       </div>
     </div>`}).join('')}`)
     :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros.</div>';
+
+  // Controles de paginación del historial
+  (function(){
+    const cont=document.getElementById('historial-paginacion');
+    if(!cont)return;
+    if(totalHistPags<=1){cont.innerHTML='';}
+    else{
+      let html=`<span style="font-size:12px;color:var(--text3);align-self:center;margin-right:8px">${lista.length} registros · Página ${_histPagina} de ${totalHistPags}</span>`;
+      if(_histPagina>1)html+=`<button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaHist(1)">«</button><button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaHist(${_histPagina-1})">‹</button>`;
+      for(let i=0;i<5;i++){
+        const p=Math.max(1,Math.min(_histPagina-2,totalHistPags-4))+i;
+        if(p>=1&&p<=totalHistPags)html+=`<button class="btn" style="padding:3px 8px;font-size:12px;${p===_histPagina?'background:var(--navy);color:#fff;':''}" onclick="window.irAPaginaHist(${p})">${p}</button>`;
+      }
+      if(_histPagina<totalHistPags)html+=`<button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaHist(${_histPagina+1})">›</button><button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaHist(${totalHistPags})">»</button>`;
+      cont.innerHTML=html;
+    }
+  })();
 
   document.getElementById('last-update').textContent='Actualizado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
 }
@@ -1137,22 +1164,65 @@ function renderEliminados(){
   const COLORES=window.COLORES||{configurados:['#E1F5EE','#085041'],retirados:['#F1EFE8','#5F5E5A'],solo_item5:['#FAEEDA','#633806'],con_enlace:['#EEEDFE','#3C3489'],alta:['#E1F5EE','#085041']};
   const el=document.getElementById('eliminados-tabla');
   if(!el)return;
-  if(!eliminados.length){el.innerHTML='<div style="color:var(--text3);text-align:center;padding:16px">No hay registros eliminados.</div>';return;}
-  el.innerHTML=eliminados.map(r=>{
+  const bst=document.getElementById('btn-sel-todo-elim'),bb=document.getElementById('btn-borrar-elim');
+  if(bst)bst.style.display=esAdmin?'inline-flex':'none';
+  if(bb)bb.style.display=esAdmin?'inline-flex':'none';
+  if(!eliminados.length){el.innerHTML='<div style="color:var(--text3);text-align:center;padding:16px">No hay registros eliminados.</div>';const pg=document.getElementById('eliminados-paginacion');if(pg)pg.innerHTML='';return;}
+  const totalElimPags=Math.max(1,Math.ceil(eliminados.length/_elimPorPagina));
+  if(_elimPagina>totalElimPags)_elimPagina=totalElimPags;
+  if(_elimPagina<1)_elimPagina=1;
+  const inicio=(_elimPagina-1)*_elimPorPagina;
+  const pagina=eliminados.slice(inicio,inicio+_elimPorPagina);
+  el.innerHTML=pagina.map(r=>{
     const c=COLORES[r.frente]||['#eee','#333'];
-    return`<div style="border-left:3px solid #A32D2D;background:#FCEBEB;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;font-size:12px">
-        <strong>${fmt(r.fecha)}</strong>
-        <span>${r.coord?r.coord.split('(')[0].trim():'—'}</span>
-        <span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span>
-        <span><strong>${r.unidades}</strong> uds.</span>
-        <span style="color:var(--text3)">${r.zona||'—'}</span>
+    return`<div style="display:flex;gap:10px;align-items:flex-start;border-left:3px solid #A32D2D;background:#FCEBEB;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px">
+      ${esAdmin?`<input type="checkbox" data-id="${r.id}" onchange="window.toggleSelElim(this)" style="cursor:pointer;margin-top:3px">`:''}
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px;font-size:12px">
+          <strong>${fmt(r.fecha)}</strong>
+          <span>${r.coord?r.coord.split('(')[0].trim():'—'}</span>
+          <span class="badge" style="background:${c[0]};color:${c[1]}">${NOMBRES[r.frente]||r.frente}</span>
+          <span><strong>${r.unidades}</strong> uds.</span>
+          <span style="color:var(--text3)">${r.zona||'—'}</span>
+        </div>
+        ${r.obs?`<div style="font-size:11px;color:var(--text2);margin-bottom:4px">Obs. original: ${r.obs}</div>`:''}
+        <div style="font-size:11px;color:#791F1F">🗑️ <strong>Eliminado por:</strong> ${r.eliminadoPor||'—'} · ${r.eliminadoTs?new Date(r.eliminadoTs).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}${r.motivo?` · <em>${r.motivo}</em>`:''}</div>
       </div>
-      ${r.obs?`<div style="font-size:11px;color:var(--text2);margin-bottom:4px">Obs. original: ${r.obs}</div>`:''}
-      <div style="font-size:11px;color:#791F1F">🗑️ <strong>Eliminado por:</strong> ${r.eliminadoPor||'—'} · ${r.eliminadoTs?new Date(r.eliminadoTs).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}</div>
     </div>`;
   }).join('');
+  const pg=document.getElementById('eliminados-paginacion');
+  if(pg){
+    if(totalElimPags<=1)pg.innerHTML='';
+    else{
+      let html=`<span style="font-size:12px;color:var(--text3);align-self:center;margin-right:8px">${eliminados.length} registros · Página ${_elimPagina} de ${totalElimPags}</span>`;
+      if(_elimPagina>1)html+=`<button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaElim(1)">«</button><button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaElim(${_elimPagina-1})">‹</button>`;
+      for(let i=0;i<5;i++){
+        const p=Math.max(1,Math.min(_elimPagina-2,totalElimPags-4))+i;
+        if(p>=1&&p<=totalElimPags)html+=`<button class="btn" style="padding:3px 8px;font-size:12px;${p===_elimPagina?'background:var(--navy);color:#fff;':''}" onclick="window.irAPaginaElim(${p})">${p}</button>`;
+      }
+      if(_elimPagina<totalElimPags)html+=`<button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaElim(${_elimPagina+1})">›</button><button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaElim(${totalElimPags})">»</button>`;
+      pg.innerHTML=html;
+    }
+  }
 }
+window.irAPaginaElim=function(p){_elimPagina=p;renderEliminados();};
+window.toggleSelElim=function(cb){if(cb.checked)seleccionadosElim.add(cb.dataset.id);else seleccionadosElim.delete(cb.dataset.id);};
+window.seleccionarTodoEliminados=function(){
+  const boxes=document.querySelectorAll('#eliminados-tabla input[type="checkbox"]');
+  if(!boxes.length){alert('No hay registros visibles para seleccionar.');return;}
+  const yaMarcados=[...boxes].every(cb=>cb.checked);
+  boxes.forEach(cb=>{cb.checked=!yaMarcados;if(!yaMarcados)seleccionadosElim.add(cb.dataset.id);else seleccionadosElim.delete(cb.dataset.id);});
+};
+window.purgarEliminadosSeleccionados=async function(){
+  if(!esAdmin)return;
+  if(!seleccionadosElim.size){alert('Selecciona registros primero.');return;}
+  if(!confirm(`Esto borrará PERMANENTEMENTE ${seleccionadosElim.size} registro(s) de la auditoría de eliminados. Esta acción NO se puede deshacer (no hay una segunda auditoría de la auditoría). ¿Continuar?`))return;
+  try{
+    for(const id of seleccionadosElim)await deleteDoc(doc(db,'registros_eliminados',id));
+    seleccionadosElim.clear();
+    alert('✓ Registros de auditoría borrados definitivamente.');
+  }catch(e){alert('Error al borrar: '+e.message);}
+};
 window.renderEliminados=renderEliminados;
 
 function renderEdiciones(){
@@ -1554,6 +1624,15 @@ window.descargarPlantilla=function(tipo){
 };
 
 window.toggleSel=function(cb){if(cb.checked)seleccionados.add(cb.dataset.id);else seleccionados.delete(cb.dataset.id);};
+window.filtroHistorialCambio=function(){_histPagina=1;window.renderTodo();};
+window.cambiarPorPaginaHist=function(){_histPorPagina=parseInt(document.getElementById('filtro-porpagina-hist').value)||10;_histPagina=1;window.renderTodo();};
+window.irAPaginaHist=function(p){_histPagina=p;window.renderTodo();window.scrollTo({top:document.getElementById('tab-historial').offsetTop,behavior:'smooth'});};
+window.seleccionarTodoVisible=function(){
+  const boxes=document.querySelectorAll('#historial-tabla input[type="checkbox"]');
+  if(!boxes.length){alert('No hay registros visibles para seleccionar.');return;}
+  const yaMarcados=[...boxes].every(cb=>cb.checked);
+  boxes.forEach(cb=>{cb.checked=!yaMarcados;if(!yaMarcados)seleccionados.add(cb.dataset.id);else seleccionados.delete(cb.dataset.id);});
+};
 
 window.eliminarRegistrosDuplicados=async function(){
   if(!esAdmin)return;
@@ -1925,33 +2004,33 @@ function renderMetricas(){
     return {fecha:fp, esSoloReferencial: ritmoReal<ritmoMinimo*0.1};
   }
 
+  const varProd=variacionDias(spiProdData,PROD_PLAN,dhProdTotal);
+  const varDesp=variacionDias(spiDespData,DESP_PLAN,dhDespTotal);
+  const fpProd=fechaProyectadaSPI(spiProdData,hoyStr,745-totalRealProd,PROD_PLAN);
+  const fpDesp=fechaProyectadaSPI(spiDespData,hoyStr,745-totalRealDesp,DESP_PLAN);
+
+  document.getElementById('spi-container').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      ${[
+        {lbl:'SPI Produccion',d:spiProdData,var:varProd,fp:fpProd,meta:'25/07/2026'},
+        {lbl:'SPI Despliegue',d:spiDespData,var:varDesp,fp:fpDesp,meta:'31/08/2026'},
+      ].map(x=>{
+        const v=x.d?x.d.spi:null;
+        return`<div style="border:1px solid var(--border);border-radius:10px;padding:16px">
+          <div style="font-size:28px;font-weight:700;color:${spiColor(v)};text-align:center">${v!==null?v.toFixed(2):'—'}</div>
+          <div style="font-size:12px;font-weight:600;color:${spiColor(v)};text-align:center;margin:4px 0">${spiLbl(v)}</div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:8px;text-align:center">${x.lbl}</div>
+          <div style="border-top:1px solid var(--border);padding-top:8px;font-size:12px;color:var(--text2);line-height:1.8">
+            Planificado hoy: <strong>${x.d?x.d.planHoy:'—'}</strong> sedes<br>
+            Real hoy: <strong>${x.d?x.d.realHoy:'—'}</strong> sedes<br>
+            Variación: <strong style="color:${x.var>=0?'#0F6E56':'#A32D2D'}">${x.var!==null?(x.var>=0?'+':'')+x.var+' días':'—'}</strong><br>
+            Fecha proyectada: <strong>${x.fp?fmt(x.fp.fecha||x.fp):'Sin datos'}</strong>${x.fp&&x.fp.esSoloReferencial?' <span style="font-size:10px;color:#B07A10">(referencial — actualiza datos reales)</span>':''}<br>
+            Meta contractual: <strong>${x.meta}</strong>
+          </div>
+        </div>`;}).join('')}
+    </div>`;
+
   if(esAutorizado){
-    const varProd=variacionDias(spiProdData,PROD_PLAN,dhProdTotal);
-    const varDesp=variacionDias(spiDespData,DESP_PLAN,dhDespTotal);
-    const fpProd=fechaProyectadaSPI(spiProdData,hoyStr,745-totalRealProd,PROD_PLAN);
-    const fpDesp=fechaProyectadaSPI(spiDespData,hoyStr,745-totalRealDesp,DESP_PLAN);
-
-    document.getElementById('spi-container').innerHTML=`
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        ${[
-          {lbl:'SPI Produccion',d:spiProdData,var:varProd,fp:fpProd,meta:'25/07/2026'},
-          {lbl:'SPI Despliegue',d:spiDespData,var:varDesp,fp:fpDesp,meta:'31/08/2026'},
-        ].map(x=>{
-          const v=x.d?x.d.spi:null;
-          return`<div style="border:1px solid var(--border);border-radius:10px;padding:16px">
-            <div style="font-size:28px;font-weight:700;color:${spiColor(v)};text-align:center">${v!==null?v.toFixed(2):'—'}</div>
-            <div style="font-size:12px;font-weight:600;color:${spiColor(v)};text-align:center;margin:4px 0">${spiLbl(v)}</div>
-            <div style="font-size:11px;color:var(--text2);margin-bottom:8px;text-align:center">${x.lbl}</div>
-            <div style="border-top:1px solid var(--border);padding-top:8px;font-size:12px;color:var(--text2);line-height:1.8">
-              Planificado hoy: <strong>${x.d?x.d.planHoy:'—'}</strong> sedes<br>
-              Real hoy: <strong>${x.d?x.d.realHoy:'—'}</strong> sedes<br>
-              Variación: <strong style="color:${x.var>=0?'#0F6E56':'#A32D2D'}">${x.var!==null?(x.var>=0?'+':'')+x.var+' días':'—'}</strong><br>
-              Fecha proyectada: <strong>${x.fp?fmt(x.fp.fecha||x.fp):'Sin datos'}</strong>${x.fp&&x.fp.esSoloReferencial?' <span style="font-size:10px;color:#B07A10">(referencial — actualiza datos reales)</span>':''}<br>
-              Meta contractual: <strong>${x.meta}</strong>
-            </div>
-          </div>`;}).join('')}
-      </div>`;
-
     // Avance por coordinador con filtro
     const periodo=document.getElementById('filtro-periodo')?.value||'7';
     let fechaDesde,fechaHasta='';
