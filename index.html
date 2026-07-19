@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="css/layout.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/utilities.css">
 <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
@@ -55,7 +56,7 @@
 
   <!-- EMBUDO PRINCIPAL -->
   <div class="card" style="margin-bottom:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+    <div class="flex-between flex-wrap gap-8 mb-16">
       <div class="card-title" style="margin:0">Flujo de implementacion — 745 sedes</div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <select class="inp" id="filtro-zona-dash" style="width:auto;font-size:12px" onchange="window.renderTodo()">
@@ -150,7 +151,7 @@
 
   <!-- Ultimas entradas -->
   <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <div class="flex-between flex-wrap gap-8 mb-12">
       <div class="card-title" style="margin:0">Entradas registradas</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <input type="date" class="inp" id="filtro-log-fecha" style="width:auto;font-size:12px" onchange="window.renderLogDashboard()">
@@ -289,6 +290,21 @@
         <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Si tu historial tiene mezcla de registros manuales y de Excel, y sospechas que la carga masiva está volviendo a contar sedes que ya estaban registradas, usa esto: reconstruye el estado de las 745 sedes leyendo TODO tu historial ya cargado (manual + Excel), para que la próxima carga Excel compare correctamente y no duplique nada.</div>
         <button class="btn btn-teal" onclick="window.reconstruirSedesEstado()">Reconstruir estado desde el historial</button>
         <button class="btn" style="background:#FCEBEB;color:#791F1F;border:1px solid #E8B4B4;margin-left:8px" onclick="window.eliminarRegistrosDuplicados()">🧹 Eliminar registros duplicados exactos</button>
+        <div style="border-top:1px solid #E8D9A8;margin-top:14px;padding-top:14px">
+          <div style="font-weight:600;font-size:13px;margin-bottom:6px">🔧 Corregir zona en registros ya cargados</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Si una zona quedó mal escrita en el Excel (ej. "Selva" en vez de "Oriente") y ya se cargaron sedes con ese nombre, corregir el Excel y volver a subirlo NO actualiza lo ya guardado — usa esto para corregir en bloque los registros existentes (zona y coordinador).</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="text" class="inp" id="zona-corregir-vieja" placeholder="Zona actual (ej. Zona Selva)" style="width:auto">
+            <span>→</span>
+            <select class="inp" id="zona-corregir-nueva" style="width:auto">
+              <option value="Zona Centro">Zona Centro</option>
+              <option value="Zona Norte">Zona Norte</option>
+              <option value="Zona Oriente">Zona Oriente</option>
+              <option value="Zona Sur">Zona Sur</option>
+            </select>
+            <button class="btn btn-teal" onclick="window.corregirZonaEnRegistros()">Corregir</button>
+          </div>
+        </div>
       </div>
     </div>
     <div id="subtab-subir" style="display:none">
@@ -394,7 +410,7 @@
 
   <!-- Avance por coordinador - SOLO LOGUEADOS -->
   <div class="card" id="card-coordinadores" style="display:none">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <div class="flex-between flex-wrap gap-8 mb-12">
       <div class="card-title" style="margin:0">Avance por coordinador</div>
       <select class="inp" id="filtro-periodo" style="width:auto" onchange="window.renderMetricas()">
         <option value="7">Últimos 7 días</option>
@@ -1046,7 +1062,7 @@ const isMobileHist=window.innerWidth<=640;
         ${r.editadoPor?`<div class="detail-chip" style="background:#FFF8E1;border-color:#FFE082;width:100%"><strong>✏️ Editado por:</strong> ${r.editadoPor} · ${r.editadoTs?new Date(r.editadoTs).toLocaleString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—'}<br><span style="font-size:11px;color:#633806"><strong>Cambios:</strong> ${r.cambios||'Sin detalle de cambios'}</span></div>`:''}
       </div>
     </div>`}).join('')}`)
-    :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros.</div>';
+    :'<div class="text-muted text-center p-20">Sin registros.</div>';
 
   // Controles de paginación del historial
   {
@@ -1066,7 +1082,7 @@ function renderSemaforo(){
   const rGen=items.some(i=>i.r==='critico')?'critico':items.some(i=>i.r==='alerta')?'alerta':'ok';
   const cg=colorR(rGen);
   document.getElementById('semaforo').innerHTML=`
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <div class="flex-between flex-wrap gap-8 mb-12">
       <div style="display:inline-flex;align-items:center;gap:8px;background:${cg.bg};color:${cg.tx};padding:6px 14px;border-radius:20px;font-weight:600;font-size:13px">Estado general: ${cg.lbl}</div>
       ${esAdmin?`<button onclick="window.abrirNuevoItem()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:500">+ Agregar ítem</button>`:''}
     </div>
@@ -1095,7 +1111,7 @@ function renderEliminados(){
   const bst=document.getElementById('btn-sel-todo-elim'),bb=document.getElementById('btn-borrar-elim');
   if(bst)bst.style.display=esAdmin?'inline-flex':'none';
   if(bb)bb.style.display=esAdmin?'inline-flex':'none';
-  if(!eliminados.length){el.innerHTML='<div style="color:var(--text3);text-align:center;padding:16px">No hay registros eliminados.</div>';const pg=document.getElementById('eliminados-paginacion');if(pg)pg.innerHTML='';return;}
+  if(!eliminados.length){el.innerHTML='<div class="text-muted text-center p-16">No hay registros eliminados.</div>';const pg=document.getElementById('eliminados-paginacion');if(pg)pg.innerHTML='';return;}
   const totalElimPags=Math.max(1,Math.ceil(eliminados.length/_elimPorPagina));
   if(_elimPagina>totalElimPags)_elimPagina=totalElimPags;
   if(_elimPagina<1)_elimPagina=1;
@@ -1153,7 +1169,7 @@ function renderEdiciones(){
   if(!esAutorizado)return;
   const el=document.getElementById('ediciones-tabla');
   if(!el)return;
-  if(!ediciones.length){el.innerHTML='<div style="color:var(--text3);text-align:center;padding:16px">No hay ediciones registradas.</div>';return;}
+  if(!ediciones.length){el.innerHTML='<div class="text-muted text-center p-16">No hay ediciones registradas.</div>';return;}
   el.innerHTML=ediciones.map(r=>{
     const c=COLORES[r.frente]||['#eee','#333'];
     return`<div style="border-left:3px solid #B07A10;background:#FFF8E1;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:8px">
@@ -1602,6 +1618,26 @@ window.eliminarRegistrosDuplicados=async function(){
     alert(`✓ Se eliminaron ${aBorrar.length} registro(s) duplicado(s). Revisa el Dashboard — los totales deberían bajar a lo real.`);
   }catch(e){alert('Error al eliminar duplicados: '+e.message);}
 };
+window.corregirZonaEnRegistros=async function(){
+  if(!esAdmin)return;
+  const zonaVieja=(document.getElementById('zona-corregir-vieja')?.value||'').trim();
+  const zonaNueva=document.getElementById('zona-corregir-nueva')?.value||'';
+  if(!zonaVieja){alert('Escribe la zona actual (como está guardada) que quieres corregir.');return;}
+  const afectados=registros.filter(r=>(r.zona||'').trim()===zonaVieja);
+  if(!afectados.length){alert(`No se encontró ningún registro con la zona "${zonaVieja}" exactamente así escrita. Revisa mayúsculas/espacios en Historial.`);return;}
+  const coordPorZona=ZONA_COORD||{};
+  const nuevoCoord=coordPorZona[zonaNueva]||'Sin especificar';
+  if(!confirm(`Se encontraron ${afectados.length} registro(s) con zona "${zonaVieja}".\n\nSe corregirán a: zona="${zonaNueva}", coordinador="${nuevoCoord}".\n\n¿Continuar?`))return;
+  try{
+    const CHUNK=450;
+    for(let i=0;i<afectados.length;i+=CHUNK){
+      const batch=writeBatch(db);
+      afectados.slice(i,i+CHUNK).forEach(r=>{batch.update(doc(db,'registros',r.id),{zona:zonaNueva,coord:nuevoCoord});});
+      await batch.commit();
+    }
+    alert(`✓ ${afectados.length} registro(s) corregido(s) a "${zonaNueva}" / "${nuevoCoord}". El Dashboard debería reflejarlo al instante.`);
+  }catch(e){alert('Error al corregir: '+e.message);}
+};
 window.reconstruirSedesEstado=async function(){
   if(!esAdmin)return;
   if(!registros.length){alert('No hay registros cargados todavía en esta sesión. Espera a que termine de cargar el historial e intenta de nuevo.');return;}
@@ -1796,7 +1832,7 @@ window.renderLogDashboard=function(pagina){
   const isMobile=window.innerWidth<=640;
   const el=document.getElementById('log-dashboard');
   if(!el)return;
-  if(!lista.length){el.innerHTML='<div style="color:var(--text3);text-align:center;padding:20px">Sin registros para los filtros seleccionados.</div>';return;}
+  if(!lista.length){el.innerHTML='<div class="text-muted text-center p-20">Sin registros para los filtros seleccionados.</div>';return;}
 
   // Pagination
   const totalPags=Math.ceil(lista.length/_logPorPagina);
