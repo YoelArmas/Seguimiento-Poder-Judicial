@@ -571,6 +571,9 @@ import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc
 import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getDatabase, ref, set, onValue, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+// ============================================================
+// CONFIG — Datos del proyecto y conexión a Firebase
+// ============================================================
 const firebaseConfig={apiKey:"AIzaSyDdcAGBTp_ekIhSJdelyR4M_gY3HshvDhI",authDomain:"seguimiento-poder-judicial.firebaseapp.com",projectId:"seguimiento-poder-judicial",storageBucket:"seguimiento-poder-judicial.firebasestorage.app",messagingSenderId:"25916877483",appId:"1:25916877483:web:756ffe74263b01b61d65ee",databaseURL:"https://seguimiento-poder-judicial-default-rtdb.firebaseio.com"};
 const ZONA_COORD={
   'Zona Norte':'Noemi Rivera (Zona Norte)',
@@ -594,8 +597,16 @@ const ZONA_UNIVERSO={
   'Zona Oriente':{total:124,t1:7,t2:92,t3:25,coord:'Miguel Pando'},
   'Zona Sur':{total:213,t1:8,t2:192,t3:13,coord:'Angel Cruz'},
 };
+
+// ============================================================
+// ESTADO GLOBAL — variables compartidas por todo el tracker
+// ============================================================
 let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[],eliminados=[],ediciones=[],sedesEstado={},sedesEstadoCargado=false,pendingEstados={},ultimoLoteId=null,_histPagina=1,_histPorPagina=10,_elimPagina=1,_elimPorPagina=10,seleccionadosElim=new Set();
 
+
+// ============================================================
+// HELPERS — fechas, formato, cálculos de ritmo y proyección
+// ============================================================
 function esHabil(d){const s=fmtLocalYMD(d);return d.getDay()!==0&&!FERIADOS.includes(s)}
 function diasHabilesHasta(d1,d2){let n=0,d=new Date(d1);while(d<=d2){if(esHabil(d))n++;d.setDate(d.getDate()+1)}return n}
 function sumarDH(desde,n){let d=new Date(desde),c=0;while(c<n){d.setDate(d.getDate()+1);if(esHabil(d))c++}return d}
@@ -643,6 +654,10 @@ function colorR(r){
   return{bg:'#FCEBEB',tx:'#791F1F',lbl:'Riesgo critico'};
 }
 
+
+// ============================================================
+// AUTH — sesión, roles (autorizado/admin) y presencia en línea
+// ============================================================
 onAuthStateChanged(auth,user=>{
   usuarioActual=user;
   esAutorizado=user&&!user.isAnonymous&&EMAILS_AUTORIZADOS.includes(user.email);
@@ -775,10 +790,18 @@ function renderPresencia(usuarios){
 
 // Semaforo items listener
 // Nombres y colores de cada "frente" de avance — fuente única, usada en todo el archivo (Dashboard, Historial, auditoría, exportaciones)
+
+// ============================================================
+// CONFIG — nombres/colores de cada tipo de avance
+// ============================================================
 const NOMBRES={configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
 const COLORES={configurados:['#E1F5EE','#085041'],retirados:['#F1EFE8','#5F5E5A'],solo_item5:['#FAEEDA','#633806'],con_enlace:['#EEEDFE','#3C3489'],alta:['#E1F5EE','#085041']};
 
 // Genera los botones de paginación (« ‹ 1 2 3 › »). Usado por Historial, Eliminados y Entradas registradas.
+
+// ============================================================
+// UI — componente reutilizable de paginación
+// ============================================================
 function paginacionHTML(totalItems,paginaActual,totalPags,fnName){
   if(totalPags<=1)return'';
   let html=`<span style="font-size:12px;color:var(--text3);align-self:center;margin-right:8px">${totalItems} registros · Página ${paginaActual} de ${totalPags}</span>`;
@@ -791,6 +814,10 @@ function paginacionHTML(totalItems,paginaActual,totalPags,fnName){
   return html;
 }
 
+
+// ============================================================
+// CONFIG — ítems por defecto del semáforo de riesgo
+// ============================================================
 const ITEMS_DEFAULT=[
   {orden:1,lbl:'Produccion — equipos configurados',r:'critico',nota:'20/745 — Fecha límite culminación: 26/07/2026'},
   {orden:2,lbl:'Sedes migradas — altas operativas PJ',r:'critico',nota:'0/745 aprobadas — Fecha límite: 06/09/2026'},
@@ -803,6 +830,10 @@ const ITEMS_DEFAULT=[
   {orden:9,lbl:'Poder Judicial — Puesta en Marcha',r:'critico',nota:'Culminación puesta en marcha sedes Callao para afinación de plantillas'},
 ];
 
+
+// ============================================================
+// FIREBASE — listeners en tiempo real (registros, auditoría, estado por sede, semáforo)
+// ============================================================
 const q=query(collection(db,'registros'),orderBy('fecha','desc'),orderBy('ts','desc'));
 onSnapshot(q,snap=>{registros=snap.docs.map(d=>({id:d.id,...d.data()}));renderTodo();},err=>{console.error(err);});
 
@@ -838,6 +869,10 @@ onSnapshot(qSem,snap=>{
   renderSemaforo();
 },err=>{console.error('semaforo error:',err);});
 
+
+// ============================================================
+// TABLAS — Dashboard principal (embudo, KPIs, hitos, historial)
+// ============================================================
 function renderTodo(){
   const t=totalesPorFrente(),ht=hoyPorFrente();
   const pj=proyectar(t.configurados,'configurados'),aj=proyectar(t.alta,'alta');
@@ -1017,6 +1052,10 @@ const isMobileHist=window.innerWidth<=640;
   document.getElementById('last-update').textContent='Actualizado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
 }
 
+
+// ============================================================
+// TABLAS — Semáforo de riesgo
+// ============================================================
 function renderSemaforo(){
   const items=itemsRiesgo.length?itemsRiesgo:ITEMS_DEFAULT;
   const rGen=items.some(i=>i.r==='critico')?'critico':items.some(i=>i.r==='alerta')?'alerta':'ok';
@@ -1037,6 +1076,10 @@ function renderSemaforo(){
 }
 window.renderSemaforo=renderSemaforo;
 
+
+// ============================================================
+// TABLAS — Auditoría de registros eliminados
+// ============================================================
 function renderEliminados(){
   const cont=document.getElementById('card-eliminados');
   if(!cont)return;
@@ -1093,6 +1136,10 @@ window.purgarEliminadosSeleccionados=async function(){
 };
 window.renderEliminados=renderEliminados;
 
+
+// ============================================================
+// TABLAS — Auditoría de ediciones
+// ============================================================
 function renderEdiciones(){
   const cont=document.getElementById('card-ediciones');
   if(!cont)return;
@@ -1118,6 +1165,10 @@ function renderEdiciones(){
 }
 window.renderEdiciones=renderEdiciones;
 
+
+// ============================================================
+// UI — Modal del semáforo (agregar/editar ítems de riesgo)
+// ============================================================
 window.editarItem=function(id){
   const item=itemsRiesgo.find(x=>x.id===id);
   if(!item){console.log('Item no encontrado:',id,'Items disponibles:',itemsRiesgo.map(x=>x.id));return;}
@@ -1168,6 +1219,10 @@ window.eliminarItem=async function(){
   window.cerrarModalSemaforo();
 };
 
+
+// ============================================================
+// EXCEL/FORMULARIO — Registrar avance manual (una sede a la vez)
+// ============================================================
 window.guardar=async function(){
   if(!esAutorizado){alert('No tienes permiso.');return;}
   const fecha=document.getElementById('f-fecha').value,coord=document.getElementById('f-coord').value,
@@ -1189,6 +1244,10 @@ window.limpiarForm=function(){
   document.getElementById('f-fecha').value=hoy();
 };
 
+
+// ============================================================
+// EXCEL — Carga masiva: utilidades y detección de plantilla
+// ============================================================
 function fxl(v){
   if(!v)return'';
   if(typeof v==='number'){const d=new Date((v-25569)*86400000);return d.toISOString().slice(0,10);}
@@ -1488,6 +1547,10 @@ window.descargarPlantilla=function(tipo){
   XLSX.writeFile(wb,`Plantilla_${tipo}_SDWAN.xlsx`);
 };
 
+
+// ============================================================
+// TABLAS — Historial: selección, filtros y paginación
+// ============================================================
 window.toggleSel=function(cb){if(cb.checked)seleccionados.add(cb.dataset.id);else seleccionados.delete(cb.dataset.id);};
 window.filtroHistorialCambio=function(){_histPagina=1;window.renderTodo();};
 window.cambiarPorPaginaHist=function(){_histPorPagina=parseInt(document.getElementById('filtro-porpagina-hist').value)||10;_histPagina=1;window.renderTodo();};
@@ -1499,6 +1562,10 @@ window.seleccionarTodoVisible=function(){
   boxes.forEach(cb=>{cb.checked=!yaMarcados;if(!yaMarcados)seleccionados.add(cb.dataset.id);else seleccionados.delete(cb.dataset.id);});
 };
 
+
+// ============================================================
+// ADMIN — Herramientas de limpieza y mantenimiento de datos
+// ============================================================
 window.eliminarRegistrosDuplicados=async function(){
   if(!esAdmin)return;
   if(!registros.length){alert('No hay registros cargados todavía.');return;}
@@ -1596,6 +1663,10 @@ window.seleccionarPorOrigen=function(origen){
   alert(`${boxes.length} registro(s) de origen "Carga Excel" seleccionados. Revisa la lista y usa "Borrar seleccionados" si confirmas que están mal.`);
 };
 
+
+// ============================================================
+// TABLAS — Historial: edición y borrado de registros
+// ============================================================
 window.toggleRow=function(id){
   const det=document.getElementById('hdet-'+id);
   if(det)det.classList.toggle('open');
@@ -1678,6 +1749,10 @@ window.confirmarBorrar=async function(){
   }
   seleccionados.clear();
 };
+
+// ============================================================
+// UI — Navegación por pestañas
+// ============================================================
 const TABS_ORDEN=['dashboard','metricas','hitos','gestion','historial'];
 window.showTab=function(name){
   TABS_ORDEN.forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
@@ -1698,6 +1773,10 @@ window.renderMetricas=renderMetricas;
 document.getElementById('f-fecha').value=hoy();
 
 // Render log dashboard with filters
+
+// ============================================================
+// TABLAS — Entradas registradas (Dashboard)
+// ============================================================
 let _logPagina=1;
 const _logPorPagina=8;
 
@@ -1745,6 +1824,10 @@ window.renderLogDashboard=function(pagina){
 };
 
 // ---- METRICAS ----
+
+// ============================================================
+// CONFIG — Curvas S: datos históricos y metas planificadas
+// ============================================================
 window.ITEM5_ACUM=[["2026-05-21",1],["2026-06-02",2],["2026-06-15",14],["2026-06-16",24],["2026-06-17",38],["2026-06-18",47],["2026-06-19",56],["2026-06-22",70],["2026-06-23",90],["2026-06-24",100],["2026-06-25",114],["2026-06-26",125],["2026-06-29",127],["2026-06-30",138],["2026-07-01",141],["2026-07-03",142],["2026-07-06",144],["2026-07-07",146],["2026-07-08",148]];
 window.ITEM1_ACUM=[["2026-07-10",2]];
 window.ITEM2_ACUM=[["2026-06-30",1],["2026-07-02",2],["2026-07-03",3],["2026-07-06",5],["2026-07-07",7],["2026-07-08",9]];
@@ -1767,6 +1850,10 @@ function diasHabilesEntre(d1str,d2str,soloLvs=false){
 }
 function sumarDHMetrica(desdeStr,n){let d=new Date(desdeStr+'T00:00:00'),c=0;while(c<n){d.setDate(d.getDate()+1);if(esHabilMetrica(d.toISOString().slice(0,10)))c++;}return d.toISOString().slice(0,10);}
 
+
+// ============================================================
+// GRÁFICOS — Métricas, curvas S, SPI y avance por coordinador
+// ============================================================
 let chartProd=null,chartDesp=null,chartCoord=null;
 
 function renderMetricas(){
@@ -2040,6 +2127,10 @@ function renderMetricas(){
     options:chartOpts(dd.hoyIdx,745,despLabels)
   });
 }
+
+// ============================================================
+// EXCEL — Actualizar Ítem 1/2/5 (archivo de seguimiento TDR)
+// ============================================================
 window.handleDropSeg=function(e){e.preventDefault();document.getElementById('drop-zone-seg').classList.remove('drag');window.handleFileSeg(e.dataTransfer.files[0]);};
 
 window.handleFileSeg=function(file){
