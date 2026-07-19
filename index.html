@@ -690,6 +690,7 @@ select.inp{cursor:pointer}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app-check.js";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, writeBatch, getDocs, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getDatabase, ref, set, onValue, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
@@ -703,7 +704,9 @@ const ZONA_COORD={
 };
 const EMAILS_AUTORIZADOS=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com','miguel.del08@gmail.com','rromerom2002@gmail.com','angel.cruz.condori.2@gmail.com','noemi.optical@gmail.com'];
 const EMAILS_ADMIN=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com'];
-const app=initializeApp(firebaseConfig),db=getFirestore(app),auth=getAuth(app),provider=new GoogleAuthProvider();
+const app=initializeApp(firebaseConfig);
+initializeAppCheck(app,{provider:new ReCaptchaV3Provider('6LcN-lotAAAAALr5rfOd-NmxQwKrE_zdWKX6AhmQ'),isTokenAutoRefreshEnabled:true});
+const db=getFirestore(app),auth=getAuth(app),provider=new GoogleAuthProvider();
 const rtdb=getDatabase(app);
 const TOTAL=745,FIN=new Date('2026-09-06');
 const FERIADOS=['2026-07-23','2026-07-28','2026-07-29','2026-08-06','2026-08-30'];
