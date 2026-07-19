@@ -898,6 +898,23 @@ function renderPresencia(usuarios){
 }
 
 // Semaforo items listener
+// Nombres y colores de cada "frente" de avance — fuente única, usada en todo el archivo (Dashboard, Historial, auditoría, exportaciones)
+const NOMBRES={configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
+const COLORES={configurados:['#E1F5EE','#085041'],retirados:['#F1EFE8','#5F5E5A'],solo_item5:['#FAEEDA','#633806'],con_enlace:['#EEEDFE','#3C3489'],alta:['#E1F5EE','#085041']};
+
+// Genera los botones de paginación (« ‹ 1 2 3 › »). Usado por Historial, Eliminados y Entradas registradas.
+function paginacionHTML(totalItems,paginaActual,totalPags,fnName){
+  if(totalPags<=1)return'';
+  let html=`<span style="font-size:12px;color:var(--text3);align-self:center;margin-right:8px">${totalItems} registros · Página ${paginaActual} de ${totalPags}</span>`;
+  if(paginaActual>1)html+=`<button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.${fnName}(1)">«</button><button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.${fnName}(${paginaActual-1})">‹</button>`;
+  for(let i=0;i<5;i++){
+    const p=Math.max(1,Math.min(paginaActual-2,totalPags-4))+i;
+    if(p>=1&&p<=totalPags)html+=`<button class="btn" style="padding:3px 8px;font-size:12px;${p===paginaActual?'background:var(--navy);color:#fff;':''}" onclick="window.${fnName}(${p})">${p}</button>`;
+  }
+  if(paginaActual<totalPags)html+=`<button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.${fnName}(${paginaActual+1})">›</button><button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.${fnName}(${totalPags})">»</button>`;
+  return html;
+}
+
 const ITEMS_DEFAULT=[
   {orden:1,lbl:'Produccion — equipos configurados',r:'critico',nota:'20/745 — Fecha límite culminación: 26/07/2026'},
   {orden:2,lbl:'Sedes migradas — altas operativas PJ',r:'critico',nota:'0/745 aprobadas — Fecha límite: 06/09/2026'},
@@ -1007,9 +1024,6 @@ function renderTodo(){
   // Semaforo
   renderSemaforo();
 
-  const NOMBRES={configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
-  const COLORES={configurados:['#E1F5EE','#085041'],retirados:['#F1EFE8','#5F5E5A'],solo_item5:['#FAEEDA','#633806'],con_enlace:['#EEEDFE','#3C3489'],alta:['#E1F5EE','#085041']};
-  window.NOMBRES=NOMBRES;window.COLORES=COLORES;
   window.renderLogDashboard();
 
   // Proyeccion
@@ -1119,21 +1133,10 @@ const isMobileHist=window.innerWidth<=640;
     :'<div style="color:var(--text3);text-align:center;padding:20px">Sin registros.</div>';
 
   // Controles de paginación del historial
-  (function(){
+  {
     const cont=document.getElementById('historial-paginacion');
-    if(!cont)return;
-    if(totalHistPags<=1){cont.innerHTML='';}
-    else{
-      let html=`<span style="font-size:12px;color:var(--text3);align-self:center;margin-right:8px">${lista.length} registros · Página ${_histPagina} de ${totalHistPags}</span>`;
-      if(_histPagina>1)html+=`<button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaHist(1)">«</button><button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaHist(${_histPagina-1})">‹</button>`;
-      for(let i=0;i<5;i++){
-        const p=Math.max(1,Math.min(_histPagina-2,totalHistPags-4))+i;
-        if(p>=1&&p<=totalHistPags)html+=`<button class="btn" style="padding:3px 8px;font-size:12px;${p===_histPagina?'background:var(--navy);color:#fff;':''}" onclick="window.irAPaginaHist(${p})">${p}</button>`;
-      }
-      if(_histPagina<totalHistPags)html+=`<button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaHist(${_histPagina+1})">›</button><button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaHist(${totalHistPags})">»</button>`;
-      cont.innerHTML=html;
-    }
-  })();
+    if(cont)cont.innerHTML=paginacionHTML(lista.length,_histPagina,totalHistPags,'irAPaginaHist');
+  }
 
   document.getElementById('last-update').textContent='Actualizado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
 }
@@ -1163,8 +1166,6 @@ function renderEliminados(){
   if(!cont)return;
   cont.style.display=esAutorizado?'block':'none';
   if(!esAutorizado)return;
-  const NOMBRES=window.NOMBRES||{configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
-  const COLORES=window.COLORES||{configurados:['#E1F5EE','#085041'],retirados:['#F1EFE8','#5F5E5A'],solo_item5:['#FAEEDA','#633806'],con_enlace:['#EEEDFE','#3C3489'],alta:['#E1F5EE','#085041']};
   const el=document.getElementById('eliminados-tabla');
   if(!el)return;
   const bst=document.getElementById('btn-sel-todo-elim'),bb=document.getElementById('btn-borrar-elim');
@@ -1194,19 +1195,7 @@ function renderEliminados(){
     </div>`;
   }).join('');
   const pg=document.getElementById('eliminados-paginacion');
-  if(pg){
-    if(totalElimPags<=1)pg.innerHTML='';
-    else{
-      let html=`<span style="font-size:12px;color:var(--text3);align-self:center;margin-right:8px">${eliminados.length} registros · Página ${_elimPagina} de ${totalElimPags}</span>`;
-      if(_elimPagina>1)html+=`<button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaElim(1)">«</button><button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaElim(${_elimPagina-1})">‹</button>`;
-      for(let i=0;i<5;i++){
-        const p=Math.max(1,Math.min(_elimPagina-2,totalElimPags-4))+i;
-        if(p>=1&&p<=totalElimPags)html+=`<button class="btn" style="padding:3px 8px;font-size:12px;${p===_elimPagina?'background:var(--navy);color:#fff;':''}" onclick="window.irAPaginaElim(${p})">${p}</button>`;
-      }
-      if(_elimPagina<totalElimPags)html+=`<button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaElim(${_elimPagina+1})">›</button><button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.irAPaginaElim(${totalElimPags})">»</button>`;
-      pg.innerHTML=html;
-    }
-  }
+  if(pg)pg.innerHTML=paginacionHTML(eliminados.length,_elimPagina,totalElimPags,'irAPaginaElim');
 }
 window.irAPaginaElim=function(p){_elimPagina=p;renderEliminados();};
 window.toggleSelElim=function(cb){if(cb.checked)seleccionadosElim.add(cb.dataset.id);else seleccionadosElim.delete(cb.dataset.id);};
@@ -1233,8 +1222,6 @@ function renderEdiciones(){
   if(!cont)return;
   cont.style.display=esAutorizado?'block':'none';
   if(!esAutorizado)return;
-  const NOMBRES=window.NOMBRES||{configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
-  const COLORES=window.COLORES||{configurados:['#E1F5EE','#085041'],retirados:['#F1EFE8','#5F5E5A'],solo_item5:['#FAEEDA','#633806'],con_enlace:['#EEEDFE','#3C3489'],alta:['#E1F5EE','#085041']};
   const el=document.getElementById('ediciones-tabla');
   if(!el)return;
   if(!ediciones.length){el.innerHTML='<div style="color:var(--text3);text-align:center;padding:16px">No hay ediciones registradas.</div>';return;}
@@ -1604,7 +1591,6 @@ window.deshacerUltimaCarga=async function(){
 window.cancelarCarga=function(){document.getElementById('preview-area').style.display='none';document.getElementById('file-input').value='';pendingRows=[];pendingEstados={};};
 window.descargarPlantilla=function(tipo){
   if(tipo==='detalle'){
-    const NOMBRES=window.NOMBRES||{configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
     const cols=['Fecha','Coordinador','Frente','Zona','Codigo_Sede','Tipo_Sede','Observaciones'];
     let filas;
     if(registros.length){
@@ -1841,8 +1827,6 @@ const _logPorPagina=8;
 
 window.renderLogDashboard=function(pagina){
   if(pagina!==undefined)_logPagina=pagina;
-  const NOMBRES=window.NOMBRES||{configurados:'Configurado',retirados:'Retirado',solo_item5:'Solo Item 5',con_enlace:'Con enlace',alta:'Alta PJ'};
-  const COLORES=window.COLORES||{configurados:['#E1F5EE','#085041'],retirados:['#F1EFE8','#5F5E5A'],solo_item5:['#FAEEDA','#633806'],con_enlace:['#EEEDFE','#3C3489'],alta:['#E1F5EE','#085041']};
   const fechaFiltro=document.getElementById('filtro-log-fecha')?.value||'';
   const tipoFiltro=document.getElementById('filtro-log-tipo')?.value||'';
   let lista=registros;
@@ -1861,18 +1845,8 @@ window.renderLogDashboard=function(pagina){
 
   // Pagination controls
   const paginador=totalPags>1?`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:6px">
-      <span style="font-size:12px;color:var(--text3)">${lista.length} registros · Página ${_logPagina} de ${totalPags}</span>
-      <div style="display:flex;gap:4px;flex-wrap:wrap">
-        ${_logPagina>1?`<button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.renderLogDashboard(1)">«</button>
-        <button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.renderLogDashboard(${_logPagina-1})">‹</button>`:''}
-        ${Array.from({length:Math.min(5,totalPags)},(_,i)=>{
-          const p=Math.max(1,Math.min(_logPagina-2,totalPags-4))+i;
-          return p>=1&&p<=totalPags?`<button class="btn" style="padding:3px 8px;font-size:12px;${p===_logPagina?'background:var(--navy);color:#fff;':''}" onclick="window.renderLogDashboard(${p})">${p}</button>`:'';
-        }).join('')}
-        ${_logPagina<totalPags?`<button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.renderLogDashboard(${_logPagina+1})">›</button>
-        <button class="btn" style="padding:3px 8px;font-size:12px" onclick="window.renderLogDashboard(${totalPags})">»</button>`:''}
-      </div>
+    <div style="display:flex;justify-content:center;gap:4px;margin-top:12px;flex-wrap:wrap">
+      ${paginacionHTML(lista.length,_logPagina,totalPags,'renderLogDashboard')}
     </div>`:'';
 
   el.innerHTML=(isMobile?
