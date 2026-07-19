@@ -451,7 +451,12 @@
 
   <div class="card" id="card-eliminados" style="display:none">
     <div class="card-title">🗑️ Registros eliminados (auditoría)</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <select class="inp" id="filtro-porpagina-elim" style="width:auto" onchange="window.cambiarPorPaginaElim()">
+        <option value="10">10 por página</option>
+        <option value="20">20 por página</option>
+        <option value="30">30 por página</option>
+      </select>
       <button id="btn-sel-todo-elim" style="display:none;font-size:12px;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer" onclick="window.seleccionarTodoEliminados()">☑️ Seleccionar todo (esta página)</button>
       <button id="btn-borrar-elim" class="btn btn-danger" style="font-size:12px;display:none" onclick="window.purgarEliminadosSeleccionados()">Borrar definitivamente</button>
     </div>
@@ -1117,6 +1122,7 @@ function renderEliminados(){
   if(pg)pg.innerHTML=paginacionHTML(eliminados.length,_elimPagina,totalElimPags,'irAPaginaElim');
 }
 window.irAPaginaElim=function(p){_elimPagina=p;renderEliminados();};
+window.cambiarPorPaginaElim=function(){_elimPorPagina=parseInt(document.getElementById('filtro-porpagina-elim').value)||10;_elimPagina=1;renderEliminados();};
 window.toggleSelElim=function(cb){if(cb.checked)seleccionadosElim.add(cb.dataset.id);else seleccionadosElim.delete(cb.dataset.id);};
 window.seleccionarTodoEliminados=function(){
   const boxes=document.querySelectorAll('#eliminados-tabla input[type="checkbox"]');
