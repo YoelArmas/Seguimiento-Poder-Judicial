@@ -1,0 +1,50 @@
+.dot-live{width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block;margin-right:5px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.btn-login{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:600;margin-bottom:14px;color:var(--text)}
+.section-label{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+
+/* BADGE */
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
+
+/* BTN */
+.btn{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:8px 16px;font-size:13px;color:var(--text);cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--surface)}
+.btn-primary{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn-primary:hover{background:#16204A}
+.btn-teal{background:var(--teal);border-color:var(--teal);color:#fff}
+.btn-danger{border-color:#fca5a5;color:#791F1F}
+
+/* FORM */
+.inp{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:8px 11px;font-size:13px;background:#fff;color:var(--text);font-family:inherit}
+.inp:focus{outline:none;border-color:var(--navy)}
+select.inp{cursor:pointer}
+.label{font-size:12px;color:var(--text2);font-weight:500;display:block;margin-bottom:4px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.error{font-size:12px;color:#791F1F;background:#FCEBEB;padding:6px 10px;border-radius:6px;margin-top:8px;display:none}
+.success-msg{font-size:12px;color:#085041;background:#E1F5EE;padding:6px 10px;border-radius:6px;margin-top:8px;display:none}
+
+/* HITO */
+.hito-row{border-left:3px solid;border-radius:0 8px 8px 0;padding:10px 14px;background:#fff;border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:8px}
+
+/* LOCK */
+.lock-screen{text-align:center;padding:60px 20px;max-width:400px;margin:0 auto}
+.google-btn{display:inline-flex;align-items:center;gap:10px;background:#fff;border:1px solid #dadce0;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:500;color:#3c4043;cursor:pointer}
+.google-btn:hover{box-shadow:0 2px 8px rgba(0,0,0,.15)}
+
+/* UPLOAD */
+.upload-zone{border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:border-color .2s;background:#fafbfc}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--navy);background:#f0f4ff}
+.upload-zone input{display:none}
+.preview-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:12px}
+.preview-table th{background:var(--navy);color:#fff;padding:6px 10px;text-align:left}
+.preview-table td{padding:6px 10px;border-bottom:1px solid var(--border)}
+.sub-tab,.gestion-tab-btn{padding:5px 14px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid var(--border);color:var(--text2);background:#fff;font-weight:500}
+.sub-tab.active,.gestion-tab-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* Modal editar */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-box{background:#fff;border-radius:14px;padding:24px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.18)}
+.modal-title{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:16px}
