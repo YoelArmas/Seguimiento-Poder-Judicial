@@ -360,7 +360,7 @@
         <div class="card-title">Actualizar avance Ítem 1, 2 y 5 desde Excel de seguimiento</div>
         <div style="background:#EAF2FB;border:1px solid #C7D0E0;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px;color:#185FA5">
           📋 Sube el archivo <strong>SEGUIMIENTO_TDR_WAN_2026_IMPLEMENTACIÓN.xlsx</strong>. El sistema leerá automáticamente:<br>
-          <span style="font-size:12px">· Ítem 1 Bitel: columna Q (fecha enlace principal) · Ítem 2 Claro: columnas AC/AE (fecha tipo 1/2 y tipo 3) · Ítem 5 Gabinetes: columna AM (fecha instalación)</span>
+          <span style="font-size:12px">· Ítem 1 Bitel: columna Q (fecha enlace principal) · Ítem 2 Claro: columnas AC/AE (fecha tipo 1/2 y tipo 3) · Ítem 5 Gabinetes: columna AO (fecha instalación; AL/AM/AN son cantidades por tipo de gabinete, no fechas)</span>
         </div>
         <div class="upload-zone" id="drop-zone-seg" onclick="document.getElementById('file-seg').click()"
           ondragover="event.preventDefault();this.classList.add('drag')"
@@ -2259,6 +2259,26 @@ window.handleFileSeg=function(file){
       const wb=XLSX.read(e.target.result,{type:'array'});
       const ws=wb.Sheets[wb.SheetNames[0]];
       const raw=XLSX.utils.sheet_to_json(ws,{defval:'',header:1});
+
+      // --- Verificación de encabezados por posición ---
+      // Cada entrada valida que la celda de encabezado (fila 0) y/o la columna
+      // vecina contengan el texto esperado, para detectar si el Excel movió columnas.
+      const header=raw[0]||[];
+      const norm=s=>String(s||'').toUpperCase();
+      const COLS=[
+        {idx:16, nombre:'Ítem 1 (Q)',      esperado:'FECHA', contexto:norm(header[15]).includes('ENLACE')},
+        {idx:28, nombre:'Ítem 2 (AC)',     esperado:'FECHA', contexto:norm(header[27]).includes('INTERNET')},
+        {idx:30, nombre:'Ítem 2 (AE)',     esperado:'FECHA', contexto:norm(header[29]).includes('INTERNET')},
+        {idx:40, nombre:'Ítem 5 (AO)',     esperado:'FECHA', contexto:norm(header[39]).includes('GABINETE')},
+      ];
+      const avisosHeader=[];
+      COLS.forEach(c=>{
+        const h=norm(header[c.idx]);
+        if(!h.includes(c.esperado)||!c.contexto){
+          avisosHeader.push(`⚠️ ${c.nombre}: encabezado leído = "${header[c.idx]||'(vacío)'}" (columna anterior: "${header[c.idx-1]||'(vacío)'}") — revisar si la columna se movió.`);
+        }
+      });
+
       // Skip header row (row 0)
       const item1=[];const item2=[];const item5=[];
       raw.slice(1).forEach(r=>{
@@ -2275,10 +2295,11 @@ window.handleFileSeg=function(file){
           const d=new Date((claro-25569)*86400000).toISOString().slice(0,10);
           item2.push(d);
         }
-        // Item5: col AM = index 38
-        const am=r[38];
-        if(am&&typeof am==='number'){
-          const d=new Date((am-25569)*86400000).toISOString().slice(0,10);
+        // Item5: col AO = index 40 (FECHA DE INSTALACIÓN del gabinete;
+        // AL/AM/AN=37/38/39 son cantidades por tipo de gabinete 12RU/24RU/42RU, no fechas)
+        const ao=r[40];
+        if(ao&&typeof ao==='number'){
+          const d=new Date((ao-25569)*86400000).toISOString().slice(0,10);
           item5.push(d);
         }
       });
@@ -2290,11 +2311,31 @@ window.handleFileSeg=function(file){
       }
       window._segData={item1:buildCumul(item1),item2:buildCumul(item2),item5:buildCumul(item5)};
       const last=arr=>arr.length?arr[arr.length-1][1]:0;
+
+      // --- Alerta de valores anómalos vs. lo ya guardado ---
+      const avisosSalto=[];
+      const lastValLocal=arr=>(arr&&arr.length)?arr[arr.length-1][1]:0;
+      const checkSalto=(nombre,nuevo,prevArr)=>{
+        const prev=lastValLocal(prevArr||[]);
+        if(prev>0&&(nuevo>prev*2||nuevo-prev>100)){
+          avisosSalto.push(`⚠️ ${nombre} pasó de ${prev} a ${nuevo} en esta carga (salto inusual). Verifica antes de guardar.`);
+        }
+      };
+      checkSalto('Ítem 1',last(window._segData.item1),window.ITEM1_ACUM);
+      checkSalto('Ítem 2',last(window._segData.item2),window.ITEM2_ACUM);
+      checkSalto('Ítem 5',last(window._segData.item5),window.ITEM5_ACUM);
+
+      const bloqueAvisos=(avisosHeader.length||avisosSalto.length)
+        ?`<div style="margin-top:10px;padding:10px;background:#FFF4E5;border:1px solid #E8A33D;border-radius:8px;font-size:12.5px;color:#7A4B00">
+            ${avisosHeader.concat(avisosSalto).join('<br>')}
+          </div>`:'';
+
       document.getElementById('seg-resultado').innerHTML=
         `<strong>Datos encontrados:</strong><br>
         📡 Ítem 1 (Bitel): <strong>${last(window._segData.item1)} sedes</strong> con enlace activo<br>
         🔗 Ítem 2 (Claro): <strong>${last(window._segData.item2)} sedes</strong> con enlace activo<br>
-        🗄️ Ítem 5 (Gabinetes): <strong>${last(window._segData.item5)} gabinetes</strong> instalados`;
+        🗄️ Ítem 5 (Gabinetes): <strong>${last(window._segData.item5)} gabinetes</strong> instalados
+        ${bloqueAvisos}`;
       document.getElementById('seg-preview').style.display='block';
     }catch(ex){
       document.getElementById('seg-error').textContent='Error leyendo el archivo: '+ex.message;
