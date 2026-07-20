@@ -20,4 +20,6 @@
 
 @media(max-width:600px){.grid2{grid-template-columns:1fr}}
 
+@media(max-width:640px){#kpi-coordinadores-charts{grid-template-columns:1fr}}
+
 @media(max-width:500px){.form-grid{grid-template-columns:1fr}}
