@@ -305,6 +305,15 @@
             <button class="btn btn-teal" onclick="window.corregirZonaEnRegistros()">Corregir</button>
           </div>
         </div>
+        <div style="border-top:1px solid #E8D9A8;margin-top:14px;padding-top:14px">
+          <div style="font-weight:600;font-size:13px;margin-bottom:6px">🔍 Diagnosticar una sede puntual</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Si una sede específica no se actualiza al subir el Excel (aunque el archivo esté bien), usa esto para ver exactamente qué tiene guardado el sistema para ella — y, si hace falta, forzar que se vuelva a evaluar como nueva en la próxima carga.</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="text" class="inp" id="sede-diagnostico" placeholder="Cód. PJ (ej. PJ037)" style="width:auto">
+            <button class="btn" onclick="window.diagnosticarSede()">🔍 Diagnosticar</button>
+            <button class="btn" style="background:#FCEBEB;color:#791F1F;border:1px solid #E8B4B4" onclick="window.forzarSedeComoNueva()">⚡ Forzar como nueva</button>
+          </div>
+        </div>
       </div>
     </div>
     <div id="subtab-subir" style="display:none">
@@ -1646,6 +1655,33 @@ window.corregirZonaEnRegistros=async function(){
     }
     alert(`✓ ${afectados.length} registro(s) corregido(s) a "${zonaNueva}" / "${nuevoCoord}". El Dashboard debería reflejarlo al instante.`);
   }catch(e){alert('Error al corregir: '+e.message);}
+};
+window.diagnosticarSede=async function(){
+  if(!esAdmin)return;
+  const codigo=(document.getElementById('sede-diagnostico')?.value||'').trim();
+  if(!codigo){alert('Escribe el Cód. PJ a diagnosticar (ej. PJ037).');return;}
+  try{
+    const snap=await getDoc(doc(db,'sedes_estado',codigo));
+    const estadoGuardado=snap.exists()?snap.data():null;
+    const registrosDeEstaSede=registros.filter(r=>(r.sedes||'').trim()===codigo);
+    let msg=`=== ${codigo} ===\n\n`;
+    msg+=`ESTADO GUARDADO (sedes_estado):\n${estadoGuardado?JSON.stringify(estadoGuardado,null,2):'(no existe ningún documento — nunca se procesó)'}\n\n`;
+    msg+=`REGISTROS REALES en el Dashboard (${registrosDeEstaSede.length}):\n`;
+    if(!registrosDeEstaSede.length)msg+='(ninguno — esta sede no suma nada al Dashboard todavía)';
+    else registrosDeEstaSede.forEach(r=>{msg+=`- ${NOMBRES[r.frente]||r.frente} · fecha ${r.fecha} · registrado por ${r.registradoPor||'?'}\n`;});
+    alert(msg);
+    console.log('Diagnóstico', codigo, {estadoGuardado, registrosDeEstaSede});
+  }catch(e){alert('Error al diagnosticar: '+e.message);}
+};
+window.forzarSedeComoNueva=async function(){
+  if(!esAdmin)return;
+  const codigo=(document.getElementById('sede-diagnostico')?.value||'').trim();
+  if(!codigo){alert('Escribe el Cód. PJ primero (arriba).');return;}
+  if(!confirm(`Esto borra por completo el estado guardado de "${codigo}" en sedes_estado (no toca ningún registro real). La próxima vez que subas el Excel, esta sede se evaluará desde cero, como si nunca se hubiera procesado. ¿Continuar?`))return;
+  try{
+    await deleteDoc(doc(db,'sedes_estado',codigo));
+    alert(`✓ Estado de "${codigo}" borrado. Ahora vuelve a subir tu Excel (o "Cargar el más reciente") — debería detectarla como avance nuevo.`);
+  }catch(e){alert('Error: '+e.message);}
 };
 window.reconstruirSedesEstado=async function(){
   if(!esAdmin)return;
