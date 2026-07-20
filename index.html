@@ -421,7 +421,16 @@
       </select>
     </div>
     <div id="kpi-coordinadores-empty" style="display:none;color:var(--text3);text-align:center;padding:20px">Sin registros en el período seleccionado.</div>
-    <canvas id="chart-coordinadores" style="width:100%;max-height:320px"></canvas>
+    <div id="kpi-coordinadores-charts" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);text-align:center;margin-bottom:6px">Gráfica de Preconfiguración</div>
+        <canvas id="chart-coord-prod" style="width:100%;max-height:320px"></canvas>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text2);text-align:center;margin-bottom:6px">Gráfica de Despliegue</div>
+        <canvas id="chart-coord-desp" style="width:100%;max-height:320px"></canvas>
+      </div>
+    </div>
   </div>
 
   <!-- SPI - VISIBLE PARA TODOS -->
@@ -1896,7 +1905,7 @@ function sumarDHMetrica(desdeStr,n){let d=new Date(desdeStr+'T00:00:00'),c=0;whi
 // ============================================================
 // GRÁFICOS — Métricas, curvas S, SPI y avance por coordinador
 // ============================================================
-let chartProd=null,chartDesp=null,chartCoord=null;
+let chartProd=null,chartDesp=null,chartCoordProd=null,chartCoordDesp=null;
 
 function renderMetricas(){
   const hoyStr=hoy();
@@ -2034,36 +2043,53 @@ function renderMetricas(){
     const porCoord={};
     registros.filter(r=>r.fecha>=fechaDesde&&(!fechaHasta||r.fecha<=fechaHasta)).forEach(r=>{
       const k=r.coord.split('(')[0].trim();
-      if(!porCoord[k])porCoord[k]={prod:0,campo:0,alta:0,total:0};
+      if(!porCoord[k])porCoord[k]={prod:0,item5:0,enlace:0,alta:0,total:0};
       if(r.frente==='configurados')porCoord[k].prod+=r.unidades;
-      else if(['solo_item5','con_enlace'].includes(r.frente))porCoord[k].campo+=r.unidades;
+      else if(r.frente==='solo_item5')porCoord[k].item5+=r.unidades;
+      else if(r.frente==='con_enlace')porCoord[k].enlace+=r.unidades;
       else if(r.frente==='alta')porCoord[k].alta+=r.unidades;
       porCoord[k].total+=r.unidades;
     });
-    const coords=Object.entries(porCoord).sort((a,b)=>a[1].total-b[1].total); // asc para que el mayor quede arriba en barra horizontal
+    const coords=Object.entries(porCoord).sort((a,b)=>b[1].total-a[1].total);
+    const inicialesDe=nombre=>nombre.split(/\s+/).filter(Boolean).map(p=>p[0]).join('').toUpperCase().slice(0,3);
+    const siglas=coords.map(([k])=>inicialesDe(k));
 
     const emptyEl=document.getElementById('kpi-coordinadores-empty');
-    const canvasEl=document.getElementById('chart-coordinadores');
-    if(chartCoord){chartCoord.destroy();chartCoord=null;}
+    const chartsEl=document.getElementById('kpi-coordinadores-charts');
+    const canvasProd=document.getElementById('chart-coord-prod');
+    const canvasDesp=document.getElementById('chart-coord-desp');
+    if(chartCoordProd){chartCoordProd.destroy();chartCoordProd=null;}
+    if(chartCoordDesp){chartCoordDesp.destroy();chartCoordDesp=null;}
     if(!coords.length){
-      emptyEl.style.display='block';canvasEl.style.display='none';
+      emptyEl.style.display='block';chartsEl.style.display='none';
     }else{
-      emptyEl.style.display='none';canvasEl.style.display='block';
-      chartCoord=new Chart(canvasEl,{
+      emptyEl.style.display='none';chartsEl.style.display='grid';
+      chartCoordProd=new Chart(canvasProd,{
         type:'bar',
         data:{
-          labels:coords.map(([k])=>k),
+          labels:siglas,
+          datasets:[{label:'Configurado',data:coords.map(([,v])=>v.prod),backgroundColor:'#0F6E56'}]
+        },
+        options:{
+          responsive:true,
+          plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>coords[items[0].dataIndex][0]}}},
+          scales:{y:{beginAtZero:true,title:{display:true,text:'Unidades'}}}
+        }
+      });
+      chartCoordDesp=new Chart(canvasDesp,{
+        type:'bar',
+        data:{
+          labels:siglas,
           datasets:[
-            {label:'Config.',data:coords.map(([,v])=>v.prod),backgroundColor:'#0F6E56'},
-            {label:'Campo',data:coords.map(([,v])=>v.campo),backgroundColor:'#534AB7'},
-            {label:'Altas PJ',data:coords.map(([,v])=>v.alta),backgroundColor:'#185FA5'},
+            {label:'Solo Item 5',data:coords.map(([,v])=>v.item5),backgroundColor:'#B07A10'},
+            {label:'Con Enlace',data:coords.map(([,v])=>v.enlace),backgroundColor:'#534AB7'},
+            {label:'Alta operativa',data:coords.map(([,v])=>v.alta),backgroundColor:'#185FA5'},
           ]
         },
         options:{
-          indexAxis:'y',
           responsive:true,
-          plugins:{legend:{position:'top'},tooltip:{mode:'index',intersect:false}},
-          scales:{x:{stacked:true,beginAtZero:true,title:{display:true,text:'Unidades'}},y:{stacked:true}}
+          plugins:{legend:{position:'top'},tooltip:{callbacks:{title:items=>coords[items[0].dataIndex][0]}}},
+          scales:{y:{beginAtZero:true,title:{display:true,text:'Unidades'}}}
         }
       });
     }
