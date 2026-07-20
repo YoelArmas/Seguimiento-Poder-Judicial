@@ -658,7 +658,18 @@ function totalesPorFrente(){
   const zonaFiltro=document.getElementById('filtro-zona-dash')?.value||'';
   const regs=zonaFiltro?registros.filter(r=>r.zona===zonaFiltro):registros;
   const t={configurados:0,retirados:0,solo_item5:0,con_enlace:0,alta:0};
-  regs.forEach(r=>{if(t[r.frente]!==undefined)t[r.frente]+=r.unidades});
+  // Configurados y retirados: hitos de la línea de producción, no forman parte del embudo de campo mutuamente excluyente
+  regs.forEach(r=>{if(r.frente==='configurados'||r.frente==='retirados')t[r.frente]+=r.unidades;});
+  // Despliegue en campo (Solo Item5 -> Con Enlace -> Alta): son etapas progresivas de UNA MISMA sede,
+  // así que se cuenta solo la etapa más avanzada alcanzada por cada sede (evita sumarla en más de una tarjeta a la vez).
+  const ordenEtapa={solo_item5:1,con_enlace:2,alta:3};
+  const maxPorSede={};
+  regs.forEach(r=>{
+    if(!ordenEtapa[r.frente])return;
+    const clave=(r.sedes||'').trim()||('__sinCodigo_'+r.id); // sin código de sede: no se puede desduplicar, se cuenta aparte
+    if(!maxPorSede[clave]||ordenEtapa[r.frente]>ordenEtapa[maxPorSede[clave]])maxPorSede[clave]=r.frente;
+  });
+  Object.values(maxPorSede).forEach(etapa=>{t[etapa]++;});
   Object.keys(t).forEach(k=>t[k]=Math.min(t[k],TOTAL));
   return t;
 }
