@@ -1598,7 +1598,10 @@ window.handleFile=function(file){
       window.TIPO_POR_ITEM_PLANTILLA.con_enlace.item2=totalPorTipo.con_enlace_item2;
       window.TIPO_POR_ITEM_PLANTILLA.con_enlace.item1_item2=totalPorTipo.con_enlace_item1_item2;
       
-      if(!pendingRows.length){alert(`No hay avance nuevo que registrar (${sinCambios} sedes ya estaban procesadas con esa misma fecha de hito).`);pendingEstados={};return;}
+      // IMPORTANTE: Actualizar dashboard con los nuevos totales (aunque no haya cambios nuevos)
+      window.renderTodo();
+      
+      if(!pendingRows.length){alert(`Plantilla cargada. Totales actualizados: Solo Item 5: ${Object.values(totalPorTipo.solo_item5).reduce((a,b)=>a+b,0)} | Con Enlace: ${Object.values(totalPorTipo.con_enlace_item1).reduce((a,b)=>a+b,0)+Object.values(totalPorTipo.con_enlace_item2).reduce((a,b)=>a+b,0)+Object.values(totalPorTipo.con_enlace_item1_item2).reduce((a,b)=>a+b,0)}`);pendingEstados={};return;}
       const resumen={};pendingRows.forEach(r=>{resumen[r.frente]=(resumen[r.frente]||0)+1;});
       document.getElementById('preview-count').textContent=`${pendingRows.length} registros nuevos · ${Object.entries(resumen).map(([k,v])=>`${NOMBRES[k]||k}: ${v}`).join(' · ')} · ${sinCambios} sin cambios (omitidas)`;
       document.getElementById('preview-table').innerHTML='<thead><tr><th>Cód. PJ</th><th>Tipo avance</th><th>Tipo sede</th><th>Fecha</th><th>Coordinador</th><th>Obs.</th></tr></thead><tbody>'+
