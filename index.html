@@ -966,7 +966,9 @@ function renderTodo(){
   if(window.TIPO_POR_ITEM_PLANTILLA){
     totalSolo5=Object.values(window.TIPO_POR_ITEM_PLANTILLA.solo_item5||{}).reduce((a,b)=>a+b,0);
     const ce=window.TIPO_POR_ITEM_PLANTILLA.con_enlace||{};
-    totalConEnlace=(ce.item1||0)+(ce.item2||0)+(ce.item1_item2||0);
+    // Cada propiedad (item1, item2, item1_item2) es un objeto {Tipo 1: X, Tipo 2: Y, ...}, necesito sumar
+    const sumObj=o=>typeof o==='object'?Object.values(o).reduce((a,b)=>a+b,0):o;
+    totalConEnlace=sumObj(ce.item1||{})+sumObj(ce.item2||{})+sumObj(ce.item1_item2||{});
   }
   
   const bloques=[
@@ -994,10 +996,14 @@ function renderTodo(){
   (function(){
     const el=document.getElementById('desglose-con-enlace');if(!el)return;
     const pe=window.TIPO_POR_ITEM_PLANTILLA?.con_enlace||t.porEnlace||{item1:0,item2:0,item1_item2:0};
+    
+    // Si pe.item1 es un objeto (dict por tipo), sumar sus valores; si es número, usar directo
+    const sumObj=o=>typeof o==='object'?Object.values(o).reduce((a,b)=>a+b,0):o;
+    
     el.innerHTML=[
-      ['Ítem 5 + Ítem 1',pe.item1||0],
-      ['Ítem 5 + Ítem 2',pe.item2||0],
-      ['Ítem 5 + Ítem 1 + Ítem 2',pe.item1_item2||0],
+      ['Ítem 5 + Ítem 1',sumObj(pe.item1||{})],
+      ['Ítem 5 + Ítem 2',sumObj(pe.item2||{})],
+      ['Ítem 5 + Ítem 1 + Ítem 2',sumObj(pe.item1_item2||{})],
     ].map(([lbl,v])=>`<div style="display:flex;justify-content:space-between"><span>${lbl}</span><strong>${v}</strong></div>`).join('');
   })();
 
