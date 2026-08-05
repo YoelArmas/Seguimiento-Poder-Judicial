@@ -960,11 +960,20 @@ function renderTodo(){
 
   // Embudo
   document.getElementById('fecha-corte').textContent='Corte: '+new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+  
+  // Si se cargó Plantilla_Carga, usa esos totales; sino, usa datos de Firebase
+  let totalSolo5=t.solo_item5,totalConEnlace=t.con_enlace;
+  if(window.TIPO_POR_ITEM_PLANTILLA){
+    totalSolo5=Object.values(window.TIPO_POR_ITEM_PLANTILLA.solo_item5||{}).reduce((a,b)=>a+b,0);
+    const ce=window.TIPO_POR_ITEM_PLANTILLA.con_enlace||{};
+    totalConEnlace=(ce.item1||0)+(ce.item2||0)+(ce.item1_item2||0);
+  }
+  
   const bloques=[
     {id:'configurados',val:t.configurados},
     {id:'retirados',val:t.retirados},
-    {id:'solo5',val:t.solo_item5},
-    {id:'con-enlace',val:t.con_enlace},
+    {id:'solo5',val:totalSolo5},
+    {id:'con-enlace',val:totalConEnlace},
     {id:'alta',val:t.alta},
   ];
   bloques.forEach(b=>{
@@ -980,15 +989,15 @@ function renderTodo(){
     const tipos=['Tipo 1','Tipo 2','Tipo 3'];
     el.innerHTML=`<div style="display:flex;flex-direction:column;gap:4px;font-size:11px;width:100%">${tipos.map(t=>`<div style="display:flex;justify-content:space-between;width:100%"><span>${t}</span><strong>${porTipoEtapa[t]||0}</strong></div>`).join('')}</div>`;
   }
-  renderDesglose('desglose-solo5',t.porTipo?.solo_item5||{});
+  renderDesglose('desglose-solo5',window.TIPO_POR_ITEM_PLANTILLA?.solo_item5||t.porTipo?.solo_item5||{});
   renderDesglose('desglose-alta',t.porTipo?.alta||{});
   (function(){
     const el=document.getElementById('desglose-con-enlace');if(!el)return;
-    const pe=t.porEnlace||{item1:0,item2:0,item1_item2:0};
+    const pe=window.TIPO_POR_ITEM_PLANTILLA?.con_enlace||t.porEnlace||{item1:0,item2:0,item1_item2:0};
     el.innerHTML=[
-      ['Ítem 5 + Ítem 1',pe.item1],
-      ['Ítem 5 + Ítem 2',pe.item2],
-      ['Ítem 5 + Ítem 1 + Ítem 2',pe.item1_item2],
+      ['Ítem 5 + Ítem 1',pe.item1||0],
+      ['Ítem 5 + Ítem 2',pe.item2||0],
+      ['Ítem 5 + Ítem 1 + Ítem 2',pe.item1_item2||0],
     ].map(([lbl,v])=>`<div style="display:flex;justify-content:space-between"><span>${lbl}</span><strong>${v}</strong></div>`).join('');
   })();
 
@@ -1548,6 +1557,47 @@ window.handleFile=function(file){
           sede,tipo:tipoSede
         };
       });
+      
+      // === CÁLCULO DE TOTALES ACUMULADOS POR TIPO DE SEDE ===
+      // Esto alimenta los desgloses en "Solo Item 5", "Con Enlace Activo" y "Alta Operativa"
+      const totalPorTipo={solo_item5:{},con_enlace_item1:{},con_enlace_item2:{},con_enlace_item1_item2:{}};
+      const tiposValidos=['Tipo 1','Tipo 2','Tipo 3'];
+      tiposValidos.forEach(t=>{
+        totalPorTipo.solo_item5[t]=0;
+        totalPorTipo.con_enlace_item1[t]=0;
+        totalPorTipo.con_enlace_item2[t]=0;
+        totalPorTipo.con_enlace_item1_item2[t]=0;
+      });
+      
+      // Recorrer TODOS los registros (sin filtro de cambios) para contar totales
+      raw.slice(headerRow+1).forEach(r=>{
+        if(!r[2])return;
+        const tipoSede=String(r[4]||'').trim();
+        const ticItem5=String(r[13]||'').trim().toLowerCase();
+        const ticEnlace1=String(r[14]||'').trim().toLowerCase();
+        const ticEnlace2=String(r[15]||'').trim().toLowerCase();
+        
+        if(!tiposValidos.includes(tipoSede))return;
+        
+        if(ticItem5==='si'){
+          totalPorTipo.solo_item5[tipoSede]=(totalPorTipo.solo_item5[tipoSede]||0)+1;
+        }
+        
+        if(ticEnlace1==='si'&&ticEnlace2==='si'){
+          totalPorTipo.con_enlace_item1_item2[tipoSede]=(totalPorTipo.con_enlace_item1_item2[tipoSede]||0)+1;
+        } else if(ticEnlace1==='si'){
+          totalPorTipo.con_enlace_item1[tipoSede]=(totalPorTipo.con_enlace_item1[tipoSede]||0)+1;
+        } else if(ticEnlace2==='si'){
+          totalPorTipo.con_enlace_item2[tipoSede]=(totalPorTipo.con_enlace_item2[tipoSede]||0)+1;
+        }
+      });
+      
+      // Guardar en window para que renderDesglose() lo use
+      window.TIPO_POR_ITEM_PLANTILLA={solo_item5:totalPorTipo.solo_item5,con_enlace:{}};
+      window.TIPO_POR_ITEM_PLANTILLA.con_enlace.item1=totalPorTipo.con_enlace_item1;
+      window.TIPO_POR_ITEM_PLANTILLA.con_enlace.item2=totalPorTipo.con_enlace_item2;
+      window.TIPO_POR_ITEM_PLANTILLA.con_enlace.item1_item2=totalPorTipo.con_enlace_item1_item2;
+      
       if(!pendingRows.length){alert(`No hay avance nuevo que registrar (${sinCambios} sedes ya estaban procesadas con esa misma fecha de hito).`);pendingEstados={};return;}
       const resumen={};pendingRows.forEach(r=>{resumen[r.frente]=(resumen[r.frente]||0)+1;});
       document.getElementById('preview-count').textContent=`${pendingRows.length} registros nuevos · ${Object.entries(resumen).map(([k,v])=>`${NOMBRES[k]||k}: ${v}`).join(' · ')} · ${sinCambios} sin cambios (omitidas)`;
