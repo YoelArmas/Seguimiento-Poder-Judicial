@@ -54,7 +54,16 @@
 <!-- DASHBOARD -->
 <div id="tab-dashboard">
 
-  <!-- EMBUDO PRINCIPAL -->
+  <!-- AVANCE ITEM 1, 2 Y 5 (antes estaba después del embudo; ahora va primero) -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div class="card-title" style="margin:0">Avance Ítems de Soporte (1, 2 y 5)</div>
+      <span style="font-size:11px;color:var(--text3)">Fuente: SEGUIMIENTO_TDR_WAN — actualizado al 13/07/2026</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" id="cards-items"></div>
+  </div>
+
+  <!-- DESPLIEGUE EN CAMPO -->
   <div class="card" style="margin-bottom:16px">
     <div class="flex-between flex-wrap gap-8 mb-16">
       <div class="card-title" style="margin:0">Flujo de implementacion — 745 sedes</div>
@@ -70,7 +79,52 @@
       </div>
     </div>
 
-    <!-- Bloque Produccion -->
+    <!-- Bloque Despliegue -->
+    <div class="section-label">Despliegue en campo: Cantidad Sedes Instaladas</div>
+    <div class="desp-grid">
+      <div class="funnel-card" style="border-top:3px solid var(--amber)">
+        <div style="font-size:18px;margin-bottom:4px">🏗️</div>
+        <div class="num" id="f-solo5" style="color:var(--amber)">0</div>
+        <div class="lbl" style="color:var(--amber)">Solo Item 5</div>
+        <div class="sub">Sedes instaladas — sin enlace activo aún</div>
+        <div class="pct-bar"><div class="pct-fill" id="b-solo5" style="background:var(--amber);width:0%"></div></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-solo5">0% del universo</div>
+        <div id="desglose-solo5" style="display:flex;justify-content:center;gap:8px;margin-top:8px;font-size:11px;color:var(--text2)"></div>
+      </div>
+      <div class="funnel-arrow" style="flex-direction:column;gap:2px">
+        <div class="funnel-arrow-label" style="font-size:11px;color:var(--text3);writing-mode:vertical-rl;transform:rotate(180deg)">+Item 1 o 2</div>
+        <div style="font-size:18px">→</div>
+      </div>
+      <div class="funnel-card" style="border-top:3px solid var(--purple)">
+        <div style="font-size:18px;margin-bottom:4px">🔗</div>
+        <div class="num" id="f-con-enlace" style="color:var(--purple)">0</div>
+        <div class="lbl" style="color:var(--purple)">Con enlace activo</div>
+        <div class="sub">Item 5 + Item 1 y/o Item 2 — listo para solicitar alta</div>
+        <div class="pct-bar"><div class="pct-fill" id="b-con-enlace" style="background:var(--purple);width:0%"></div></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-con-enlace">0% del universo</div>
+        <div id="desglose-con-enlace" style="display:flex;flex-direction:column;gap:2px;margin-top:8px;font-size:11px;color:var(--text2)"></div>
+      </div>
+      <div class="funnel-arrow" style="flex-direction:column;gap:2px">
+        <div class="funnel-arrow-label" style="font-size:11px;color:var(--text3);writing-mode:vertical-rl;transform:rotate(180deg)">Aprueba PJ</div>
+        <div style="font-size:18px">→</div>
+      </div>
+      <div class="funnel-card" style="border-top:3px solid var(--teal);background:linear-gradient(135deg,#fff 0%,#f0faf5 100%)">
+        <div style="font-size:18px;margin-bottom:4px">✅</div>
+        <div class="num" id="f-alta" style="color:var(--teal)">0</div>
+        <div class="lbl" style="color:var(--teal)">Alta operativa</div>
+        <div class="sub">Servicio SD-WAN activo — aprobado por PJ</div>
+        <div class="pct-bar"><div class="pct-fill" id="b-alta" style="background:var(--teal);width:0%"></div></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-alta">0% del universo</div>
+        <div id="desglose-alta" style="display:flex;justify-content:center;gap:8px;margin-top:8px;font-size:11px;color:var(--text2)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs rápidos -->
+  <div class="kpi-row" id="kpis-rapidos"></div>
+
+  <!-- LINEA DE PRODUCCION (antes estaba primero; ahora va donde estaba Avance Ítems de Soporte) -->
+  <div class="card" style="margin-bottom:16px">
     <div class="section-label">Linea de produccion 1 y 2 (NIRQA — TIC+)</div>
     <div class="prod-grid">
       <div class="funnel-card" style="border-top:3px solid var(--teal)">
@@ -89,55 +143,6 @@
         <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-retirados">0% del universo</div>
       </div>
     </div>
-
-    <!-- Bloque Despliegue -->
-    <div class="section-label">Despliegue en campo: Cantidad Sedes Instaladas</div>
-    <div class="desp-grid">
-      <div class="funnel-card" style="border-top:3px solid var(--amber)">
-        <div style="font-size:18px;margin-bottom:4px">🏗️</div>
-        <div class="num" id="f-solo5" style="color:var(--amber)">0</div>
-        <div class="lbl" style="color:var(--amber)">Solo Item 5</div>
-        <div class="sub">Sedes instaladas — sin enlace activo aún</div>
-        <div class="pct-bar"><div class="pct-fill" id="b-solo5" style="background:var(--amber);width:0%"></div></div>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-solo5">0% del universo</div>
-      </div>
-      <div class="funnel-arrow" style="flex-direction:column;gap:2px">
-        <div class="funnel-arrow-label" style="font-size:11px;color:var(--text3);writing-mode:vertical-rl;transform:rotate(180deg)">+Item 1 o 2</div>
-        <div style="font-size:18px">→</div>
-      </div>
-      <div class="funnel-card" style="border-top:3px solid var(--purple)">
-        <div style="font-size:18px;margin-bottom:4px">🔗</div>
-        <div class="num" id="f-con-enlace" style="color:var(--purple)">0</div>
-        <div class="lbl" style="color:var(--purple)">Con enlace activo</div>
-        <div class="sub">Item 5 + Item 1 y/o Item 2 — listo para solicitar alta</div>
-        <div class="pct-bar"><div class="pct-fill" id="b-con-enlace" style="background:var(--purple);width:0%"></div></div>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-con-enlace">0% del universo</div>
-      </div>
-      <div class="funnel-arrow" style="flex-direction:column;gap:2px">
-        <div class="funnel-arrow-label" style="font-size:11px;color:var(--text3);writing-mode:vertical-rl;transform:rotate(180deg)">Aprueba PJ</div>
-        <div style="font-size:18px">→</div>
-      </div>
-      <div class="funnel-card" style="border-top:3px solid var(--teal);background:linear-gradient(135deg,#fff 0%,#f0faf5 100%)">
-        <div style="font-size:18px;margin-bottom:4px">✅</div>
-        <div class="num" id="f-alta" style="color:var(--teal)">0</div>
-        <div class="lbl" style="color:var(--teal)">Alta operativa</div>
-        <div class="sub">Servicio SD-WAN activo — aprobado por PJ</div>
-        <div class="pct-bar"><div class="pct-fill" id="b-alta" style="background:var(--teal);width:0%"></div></div>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-alta">0% del universo</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- KPIs rápidos -->
-  <div class="kpi-row" id="kpis-rapidos"></div>
-
-  <!-- AVANCE ITEM 1, 2 Y 5 -->
-  <div class="card" style="margin-bottom:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-      <div class="card-title" style="margin:0">Avance Ítems de Soporte (1, 2 y 5)</div>
-      <span style="font-size:11px;color:var(--text3)">Fuente: SEGUIMIENTO_TDR_WAN — actualizado al 13/07/2026</span>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" id="cards-items"></div>
   </div>
 
   <!-- Semaforo -->
@@ -663,14 +668,35 @@ function totalesPorFrente(){
   // Despliegue en campo (Solo Item5 -> Con Enlace -> Alta): son etapas progresivas de UNA MISMA sede,
   // así que se cuenta solo la etapa más avanzada alcanzada por cada sede (evita sumarla en más de una tarjeta a la vez).
   const ordenEtapa={solo_item5:1,con_enlace:2,alta:3};
-  const maxPorSede={};
+  const maxPorSede={}; // clave -> {etapa, tipo}
   regs.forEach(r=>{
     if(!ordenEtapa[r.frente])return;
     const clave=(r.sedes||'').trim()||('__sinCodigo_'+r.id); // sin código de sede: no se puede desduplicar, se cuenta aparte
-    if(!maxPorSede[clave]||ordenEtapa[r.frente]>ordenEtapa[maxPorSede[clave]])maxPorSede[clave]=r.frente;
+    const actual=maxPorSede[clave];
+    if(!actual||ordenEtapa[r.frente]>ordenEtapa[actual.etapa])maxPorSede[clave]={etapa:r.frente,tipo:(r.tipo||'Sin tipo').trim()||'Sin tipo'};
   });
-  Object.values(maxPorSede).forEach(etapa=>{t[etapa]++;});
+  // Desglose por Tipo de sede (Tipo 1/2/3) para Solo Item5, Con Enlace y Alta operativa
+  const porTipo={solo_item5:{},con_enlace:{},alta:{}};
+  Object.values(maxPorSede).forEach(({etapa,tipo})=>{
+    t[etapa]++;
+    porTipo[etapa][tipo]=(porTipo[etapa][tipo]||0)+1;
+  });
+  // Desglose de "Con Enlace Activo" por combinación (Ítem5+Ítem1 / Ítem5+Ítem2 / Ítem5+Ítem1+Ítem2)
+  const combinacionPorSede={};
+  regs.forEach(r=>{
+    if(r.frente!=='con_enlace'||!r.enlaceCombinacion)return;
+    const clave=(r.sedes||'').trim()||('__sinCodigo_'+r.id);
+    combinacionPorSede[clave]=r.enlaceCombinacion;
+  });
+  const porEnlace={item1:0,item2:0,item1_item2:0};
+  Object.entries(maxPorSede).forEach(([clave,{etapa}])=>{
+    if(etapa!=='con_enlace')return;
+    const c=combinacionPorSede[clave];
+    if(c&&porEnlace[c]!==undefined)porEnlace[c]++;
+  });
   Object.keys(t).forEach(k=>t[k]=Math.min(t[k],TOTAL));
+  t.porTipo=porTipo;
+  t.porEnlace=porEnlace;
   return t;
 }
 function hoyPorFrente(){
@@ -948,14 +974,37 @@ function renderTodo(){
     const bar=document.getElementById('b-'+b.id);if(bar)bar.style.width=p+'%';
     const pctEl=document.getElementById('pct-'+b.id);if(pctEl)pctEl.textContent=p+'% '+(zonaInfo?`(${zonaInfo.total} ${zonaFiltro})`:'del universo (745)');
   });
+  // Desglose por Tipo de sede (Tipo 1/2/3) en Solo Item5 y Alta operativa
+  function renderDesglose(elId,porTipoEtapa){
+    const el=document.getElementById(elId);if(!el)return;
+    const tipos=['Tipo 1','Tipo 2','Tipo 3'];
+    el.innerHTML=`<div style="display:flex;flex-direction:column;gap:4px;font-size:11px;width:100%">${tipos.map(t=>`<div style="display:flex;justify-content:space-between;width:100%"><span>${t}</span><strong>${porTipoEtapa[t]||0}</strong></div>`).join('')}</div>`;
+  }
+  renderDesglose('desglose-solo5',t.porTipo?.solo_item5||{});
+  renderDesglose('desglose-alta',t.porTipo?.alta||{});
+  (function(){
+    const el=document.getElementById('desglose-con-enlace');if(!el)return;
+    const pe=t.porEnlace||{item1:0,item2:0,item1_item2:0};
+    el.innerHTML=[
+      ['Ítem 5 + Ítem 1',pe.item1],
+      ['Ítem 5 + Ítem 2',pe.item2],
+      ['Ítem 5 + Ítem 1 + Ítem 2',pe.item1_item2],
+    ].map(([lbl,v])=>`<div style="display:flex;justify-content:space-between"><span>${lbl}</span><strong>${v}</strong></div>`).join('');
+  })();
 
   // KPIs rapidos
   function getLastVal(series){return series.length?series[series.length-1][1]:0;}
   const it1=getLastVal(window.ITEM1_ACUM),it2=getLastVal(window.ITEM2_ACUM),it5=getLastVal(window.ITEM5_ACUM);
+  const tipoPorItem=window.TIPO_POR_ITEM||{};
+  const tiposCortos=['Tipo 1','Tipo 2','Tipo 3'];
+  const filaTipos=clave=>{
+    const d=tipoPorItem[clave]||{};
+    return `<div style="display:flex;flex-direction:column;gap:4px;width:100%">${tiposCortos.map(t=>`<div style="display:flex;justify-content:space-between;font-size:11px"><span>${t}</span><strong>${d[t]||0}</strong></div>`).join('')}</div>`;
+  };
   document.getElementById('cards-items').innerHTML=[
-    {lbl:'Ítem 5 — Gabinetes',val:it5,color:'#0F6E56',bg:'#E1F5EE',sub:'Instalación en sede',icon:'🗄️'},
-    {lbl:'Ítem 1 — Bitel (enlaces)',val:it1,color:'#534AB7',bg:'#EEEDFE',sub:'Enlace principal activo',icon:'📡'},
-    {lbl:'Ítem 2 — Claro (enlaces)',val:it2,color:'#B07A10',bg:'#FFF8E1',sub:'Enlace activo',icon:'🔗'},
+    {lbl:'Ítem 5 — Gabinetes',val:it5,color:'#0F6E56',bg:'#E1F5EE',sub:'Instalación en sede',icon:'🗄️',claveTipo:'item5'},
+    {lbl:'Ítem 1 — Bitel (enlaces)',val:it1,color:'#534AB7',bg:'#EEEDFE',sub:'Enlace principal activo',icon:'📡',claveTipo:'item1'},
+    {lbl:'Ítem 2 — Claro (enlaces)',val:it2,color:'#B07A10',bg:'#FFF8E1',sub:'Enlace activo',icon:'🔗',claveTipo:'item2'},
   ].map(x=>{
     const pct=Math.round(x.val/TOTAL*100);
     return`<div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:#fff">
@@ -969,9 +1018,10 @@ function renderTodo(){
           <div style="width:${pct}%;height:6px;background:${x.color};border-radius:4px;transition:width .4s"></div>
         </div>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3)">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:8px">
         <span>${pct}% del universo</span><span>${x.sub}</span>
       </div>
+      <div style="display:flex;justify-content:center;gap:8px;font-size:11px;color:var(--text2);border-top:1px solid var(--border);padding-top:8px">${filaTipos(x.claveTipo)}</div>
     </div>`;
   }).join('');
 
@@ -1455,8 +1505,17 @@ window.handleFile=function(file){
         const nirqaFecha=fxl(r[10]||''),nirqaObs=String(r[11]||'').trim();
         // Columna 12 = Fecha Programación (no se usa para el conteo, solo informativa)
         const ticItem5=String(r[13]||'').trim().toLowerCase();
-        const ticEnlace=String(r[14]||'').trim().toLowerCase();
-        const ticFecha=fxl(r[15]||''),ticObs=String(r[16]||'').trim();
+        // Columnas O y P separadas (antes era una sola "Item 1 y/o 2"): O=Enlace Item1, P=Enlace Item2
+        const ticEnlace1=String(r[14]||'').trim().toLowerCase();
+        const ticEnlace2=String(r[15]||'').trim().toLowerCase();
+        const ticEnlace=ticEnlace1==='si'||ticEnlace2==='si'; // bandera combinada, para no romper la lógica existente
+        // Fecha Instalación y Observaciones se corrieron una columna (antes P/Q, ahora Q/R)
+        const ticFecha=fxl(r[16]||''),ticObs=String(r[17]||'').trim();
+        // Combinación exacta de enlace para el desglose de "Con Enlace Activo"
+        let combinacionEnlace='';
+        if(ticEnlace1==='si'&&ticEnlace2==='si')combinacionEnlace='item1_item2';
+        else if(ticEnlace1==='si')combinacionEnlace='item1';
+        else if(ticEnlace2==='si')combinacionEnlace='item2';
         // Columna 5 = Zona (CENTRO/NORTE/SUR/ORIENTE). Se normaliza a "Zona X" para calzar con ZONA_COORD.
         const zonaRaw=String(r[5]||'').trim();
         const zonaNombre=zonaRaw?`Zona ${zonaRaw.charAt(0).toUpperCase()}${zonaRaw.slice(1).toLowerCase()}`:'';
@@ -1475,17 +1534,17 @@ window.handleFile=function(file){
           pendingRows.push({fecha:ticFecha,coord:coordUsar,frente:'solo_item5',zona:zonaNombre,origen:'excel',tipo:tipoSede,sedes:codPJ,obs:obsTic,unidades:1});
           huboCambio=true;
         }
-        if(ticEnlace==='si'&&ticFecha&&prev.fechaEnlace!==ticFecha){
-          pendingRows.push({fecha:ticFecha,coord:coordUsar,frente:'con_enlace',zona:zonaNombre,origen:'excel',tipo:tipoSede,sedes:codPJ,obs:obsTic,unidades:1});
+        if(ticEnlace&&ticFecha&&prev.fechaEnlace!==ticFecha){
+          pendingRows.push({fecha:ticFecha,coord:coordUsar,frente:'con_enlace',zona:zonaNombre,origen:'excel',tipo:tipoSede,sedes:codPJ,obs:obsTic,unidades:1,enlaceCombinacion:combinacionEnlace});
           huboCambio=true;
         }
         if(!huboCambio&&(prev.nirqa||prev.item5||prev.enlace))sinCambios++;
         // Guardamos el estado y las fechas de cada hito para la próxima comparación (clave: Cód. PJ + fecha)
         pendingEstados[codPJ]={
-          nirqa:nirqaEstado||'pendiente',item5:ticItem5||'no',enlace:ticEnlace||'no',
+          nirqa:nirqaEstado||'pendiente',item5:ticItem5||'no',enlace:ticEnlace?'si':'no',enlaceCombinacion:combinacionEnlace,
           fechaConfig:nirqaEstado==='configurado'?nirqaFecha:(prev.fechaConfig||''),
           fechaItem5:ticItem5==='si'?ticFecha:(prev.fechaItem5||''),
-          fechaEnlace:ticEnlace==='si'?ticFecha:(prev.fechaEnlace||''),
+          fechaEnlace:ticEnlace?ticFecha:(prev.fechaEnlace||''),
           sede,tipo:tipoSede
         };
       });
@@ -1493,7 +1552,7 @@ window.handleFile=function(file){
       const resumen={};pendingRows.forEach(r=>{resumen[r.frente]=(resumen[r.frente]||0)+1;});
       document.getElementById('preview-count').textContent=`${pendingRows.length} registros nuevos · ${Object.entries(resumen).map(([k,v])=>`${NOMBRES[k]||k}: ${v}`).join(' · ')} · ${sinCambios} sin cambios (omitidas)`;
       document.getElementById('preview-table').innerHTML='<thead><tr><th>Cód. PJ</th><th>Tipo avance</th><th>Tipo sede</th><th>Fecha</th><th>Coordinador</th><th>Obs.</th></tr></thead><tbody>'+
-        pendingRows.map(r=>`<tr><td><strong>${r.sedes}</strong></td><td>${NOMBRES[r.frente]||r.frente}</td><td>${r.tipo||'—'}</td><td>${fmt(r.fecha)}</td><td>${r.coord.split('(')[0].trim()}</td><td>${r.obs||'—'}</td></tr>`).join('')+'</tbody>';
+        pendingRows.map(r=>`<tr><td><strong>${r.sedes}</strong></td><td>${NOMBRES[r.frente]||r.frente}${r.enlaceCombinacion?' ('+({item1:'Ítem 1',item2:'Ítem 2',item1_item2:'Ítem 1+2'}[r.enlaceCombinacion]||'')+')':''}</td><td>${r.tipo||'—'}</td><td>${fmt(r.fecha)}</td><td>${r.coord.split('(')[0].trim()}</td><td>${r.obs||'—'}</td></tr>`).join('')+'</tbody>';
     } else {
       pendingEstados={};
       const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
@@ -2281,12 +2340,15 @@ window.handleFileSeg=function(file){
 
       // Skip header row (row 0)
       const item1=[];const item2=[];const item5=[];
+      const tipoPorItem={item1:{},item2:{},item5:{}}; // conteo ACTUAL (no acumulado por fecha) por Tipo 1/2/3
       raw.slice(1).forEach(r=>{
+        const tipoSede=String(r[2]||'Sin tipo').trim()||'Sin tipo';
         // Item1: col Q = index 16
         const q=r[16];
         if(q&&typeof q==='number'){
           const d=new Date((q-25569)*86400000).toISOString().slice(0,10);
           item1.push(d);
+          tipoPorItem.item1[tipoSede]=(tipoPorItem.item1[tipoSede]||0)+1;
         }
         // Item2: col AC = index 28, AE = index 30
         const ac=r[28],ae=r[30];
@@ -2294,6 +2356,7 @@ window.handleFileSeg=function(file){
         if(claro){
           const d=new Date((claro-25569)*86400000).toISOString().slice(0,10);
           item2.push(d);
+          tipoPorItem.item2[tipoSede]=(tipoPorItem.item2[tipoSede]||0)+1;
         }
         // Item5: col AO = index 40 (FECHA DE INSTALACIÓN del gabinete;
         // AL/AM/AN=37/38/39 son cantidades por tipo de gabinete 12RU/24RU/42RU, no fechas)
@@ -2301,6 +2364,7 @@ window.handleFileSeg=function(file){
         if(ao&&typeof ao==='number'){
           const d=new Date((ao-25569)*86400000).toISOString().slice(0,10);
           item5.push(d);
+          tipoPorItem.item5[tipoSede]=(tipoPorItem.item5[tipoSede]||0)+1;
         }
       });
 
@@ -2309,7 +2373,7 @@ window.handleFileSeg=function(file){
         const cnt={};dates.forEach(d=>{cnt[d]=(cnt[d]||0)+1;});
         let acc=0;return Object.keys(cnt).sort().map(d=>{acc+=cnt[d];return[d,acc];});
       }
-      window._segData={item1:buildCumul(item1),item2:buildCumul(item2),item5:buildCumul(item5)};
+      window._segData={item1:buildCumul(item1),item2:buildCumul(item2),item5:buildCumul(item5),tipoPorItem};
       const last=arr=>arr.length?arr[arr.length-1][1]:0;
 
       // --- Alerta de valores anómalos vs. lo ya guardado ---
@@ -2330,11 +2394,13 @@ window.handleFileSeg=function(file){
             ${avisosHeader.concat(avisosSalto).join('<br>')}
           </div>`:'';
 
+      const tp=tipoPorItem;
+      const resumenTipo=clave=>['Tipo 1','Tipo 2','Tipo 3'].map(t=>`${t}: ${tp[clave]?.[t]||0}`).join(' · ');
       document.getElementById('seg-resultado').innerHTML=
         `<strong>Datos encontrados:</strong><br>
-        📡 Ítem 1 (Bitel): <strong>${last(window._segData.item1)} sedes</strong> con enlace activo<br>
-        🔗 Ítem 2 (Claro): <strong>${last(window._segData.item2)} sedes</strong> con enlace activo<br>
-        🗄️ Ítem 5 (Gabinetes): <strong>${last(window._segData.item5)} gabinetes</strong> instalados
+        📡 Ítem 1 (Bitel): <strong>${last(window._segData.item1)} sedes</strong> con enlace activo — <span style="color:var(--text3)">${resumenTipo('item1')}</span><br>
+        🔗 Ítem 2 (Claro): <strong>${last(window._segData.item2)} sedes</strong> con enlace activo — <span style="color:var(--text3)">${resumenTipo('item2')}</span><br>
+        🗄️ Ítem 5 (Gabinetes): <strong>${last(window._segData.item5)} gabinetes</strong> instalados — <span style="color:var(--text3)">${resumenTipo('item5')}</span>
         ${bloqueAvisos}`;
       document.getElementById('seg-preview').style.display='block';
     }catch(ex){
@@ -2354,6 +2420,7 @@ window.confirmarSeg=async function(){
       item1:toObj(window._segData.item1),
       item2:toObj(window._segData.item2),
       item5:toObj(window._segData.item5),
+      tipoPorItem:window._segData.tipoPorItem||{},
       actualizadoPor:usuarioActual?.email||'',
       ts:Date.now()
     });
@@ -2380,6 +2447,7 @@ async function cargarItemsExternos(){
         if(data.item1)window.ITEM1_ACUM=toArr(data.item1);
         if(data.item2)window.ITEM2_ACUM=toArr(data.item2);
         if(data.item5)window.ITEM5_ACUM=toArr(data.item5);
+        if(data.tipoPorItem)window.TIPO_POR_ITEM=data.tipoPorItem;
         renderTodo();
         if(document.getElementById('tab-metricas')?.style.display!=='none')renderMetricas();
       }
