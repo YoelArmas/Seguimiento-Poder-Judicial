@@ -77,7 +77,9 @@
         </select>
         <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
       </div>
-    </div>
+    
+<!-- TARJETA: CUMPLIMIENTO DE CRITERIOS -->
+<div id="tarjeta-cumplimiento-criterios" style="grid-column: 1 / -1;"></div></div>
 
     <!-- Bloque Despliegue -->
     <div class="section-label">Despliegue en campo: Cantidad Sedes Instaladas</div>
@@ -1606,6 +1608,41 @@ window.handleFile=function(file){
       
       // IMPORTANTE: Actualizar dashboard con los nuevos totales (aunque no haya cambios nuevos)
       window.renderTodo();
+      
+      
+      // PROCESAR CRITERIOS DE CUMPLIMIENTO
+      window.registrosConCriterio = [];
+      raw.slice(headerRow + 1).forEach(r => {
+        const codPj = String(r[2] || '').trim();
+        if (!codPj) return;
+        
+        const fechaItem5 = r[13] ? new Date(r[13]) : null;
+        const fechaItem1 = r[14] ? new Date(r[14]) : null;
+        const fechaItem2 = r[15] ? new Date(r[15]) : null;
+        const fechaItem3 = r[16] ? new Date(r[16]) : null;
+        const ubicacion = String(r[17] || '').toUpperCase().trim();
+        
+        let cumpleCriterio = 0;
+        if (ubicacion === 'LIMA') {
+          if (fechaItem5) cumpleCriterio = fechaItem3 >= fechaItem5;
+        } else if (ubicacion === 'PROVINCIAS') {
+          if (fechaItem5 && (fechaItem1 || fechaItem2)) {
+            const maxFecha = new Date(Math.max(
+              fechaItem5.getTime(),
+              (fechaItem1 ? fechaItem1.getTime() : 0),
+              (fechaItem2 ? fechaItem2.getTime() : 0)
+            ));
+            cumpleCriterio = fechaItem3 >= maxFecha;
+          }
+        }
+        
+        window.registrosConCriterio.push({codPj, ubicacion, fechaItem5, fechaItem1, fechaItem2, fechaItem3, cumpleCriterio});
+      });
+      
+      if (window.registrosConCriterio.length > 0) {
+        const analisisCumplimiento = calcularCumplimientoCriterios(window.registrosConCriterio);
+        renderTarjetaCumplimiento(analisisCumplimiento);
+      }
       
       if(!pendingRows.length){alert(`Plantilla cargada. Totales actualizados: Solo Item 5: ${Object.values(totalPorTipo.solo_item5).reduce((a,b)=>a+b,0)} | Con Enlace: ${Object.values(totalPorTipo.con_enlace_item1).reduce((a,b)=>a+b,0)+Object.values(totalPorTipo.con_enlace_item2).reduce((a,b)=>a+b,0)+Object.values(totalPorTipo.con_enlace_item1_item2).reduce((a,b)=>a+b,0)}`);pendingEstados={};return;}
       const resumen={};pendingRows.forEach(r=>{resumen[r.frente]=(resumen[r.frente]||0)+1;});
