@@ -948,6 +948,93 @@ onSnapshot(qSem,snap=>{
 },err=>{console.error('semaforo error:',err);});
 
 
+
+// ============================================================
+// FUNCIÓN: Calcular cumplimiento de criterios
+// ============================================================
+function calcularCumplimientoCriterios(registros) {
+  const resultado = {
+    lima: { total: 0, cumple: 0, incumple: 0, sinInfo: 0, pct: 0 },
+    provincias: { total: 0, cumple: 0, incumple: 0, sinInfo: 0, pct: 0 },
+    criticas: { item3_sin_prereq: 0 }
+  };
+  
+  registros.forEach(r => {
+    const ubicacion = String(r.ubicacion || '').toUpperCase().trim();
+    const cumple = r.cumpleCriterio === true;
+    const incumple = r.cumpleCriterio === false;
+    
+    if (ubicacion === 'LIMA') {
+      resultado.lima.total++;
+      if (cumple) resultado.lima.cumple++;
+      else if (incumple) { resultado.lima.incumple++; resultado.criticas.item3_sin_prereq++; }
+      else resultado.lima.sinInfo++;
+    } 
+    else if (ubicacion === 'PROVINCIAS') {
+      resultado.provincias.total++;
+      if (cumple) resultado.provincias.cumple++;
+      else if (incumple) { resultado.provincias.incumple++; resultado.criticas.item3_sin_prereq++; }
+      else resultado.provincias.sinInfo++;
+    }
+  });
+  
+  if (resultado.lima.total > 0) resultado.lima.pct = Math.round((resultado.lima.cumple / resultado.lima.total) * 100);
+  if (resultado.provincias.total > 0) resultado.provincias.pct = Math.round((resultado.provincias.cumple / resultado.provincias.total) * 100);
+  
+  return resultado;
+}
+
+// ============================================================
+// FUNCIÓN: Renderizar tarjeta de cumplimiento
+// ============================================================
+function renderTarjetaCumplimiento(analisis) {
+  const contenedor = document.getElementById('tarjeta-cumplimiento-criterios');
+  if (!contenedor) return;
+  
+  const totalGlobal = analisis.lima.total + analisis.provincias.total;
+  const cumpleGlobal = analisis.lima.cumple + analisis.provincias.cumple;
+  const porcentajeGlobal = totalGlobal > 0 ? Math.round((cumpleGlobal / totalGlobal) * 100) : 0;
+  const colorGlobal = porcentajeGlobal >= 85 ? 'var(--teal)' : porcentajeGlobal >= 70 ? 'var(--amber)' : 'var(--red)';
+  
+  let htmlCriticas = '';
+  if (analisis.criticas.item3_sin_prereq > 0) {
+    htmlCriticas = `<div style="margin-top: 12px; padding: 8px; background: #fff3cd; border-left: 3px solid var(--red); font-size: 11px; color: #333;"><strong>⚠️ Críticas (${analisis.criticas.item3_sin_prereq}):</strong><br>Sedes donde Ítem 3 se instaló sin todos los prerequisitos</div>`;
+  }
+  
+  contenedor.innerHTML = `
+    <div style="background: white; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin: 16px 0;">
+      <h3 style="margin: 0 0 16px; font-size: 14px; color: #1a2e4a; text-transform: uppercase; letter-spacing: 0.5px;">Cumplimiento de Criterios — Implementación Ítem 3</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+        <div style="text-align: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+          <div style="font-size: 28px; font-weight: 700; color: ${colorGlobal};">${cumpleGlobal}</div>
+          <div style="font-size: 12px; color: #666; margin-top: 4px;">Sedes Cumple</div>
+          <div style="font-size: 14px; font-weight: 600; color: #1a2e4a; margin-top: 4px;">${porcentajeGlobal}% de ${totalGlobal}</div>
+        </div>
+        <div style="text-align: center; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+          <div style="font-size: 28px; font-weight: 700; color: var(--red);">${analisis.criticas.item3_sin_prereq}</div>
+          <div style="font-size: 12px; color: #666; margin-top: 4px;">Incumple</div>
+          <div style="font-size: 14px; font-weight: 600; color: #1a2e4a; margin-top: 4px;">${totalGlobal > 0 ? Math.round((analisis.criticas.item3_sin_prereq / totalGlobal) * 100) : 0}%</div>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+        <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px;">
+          <div style="font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 8px;">Lima</div>
+          <div style="display: flex; align-items: baseline; gap: 4px; margin-bottom: 6px;"><span style="font-size: 20px; font-weight: 700; color: var(--teal);">${analisis.lima.cumple}</span><span style="font-size: 11px; color: #999;">/ ${analisis.lima.total} sedes</span></div>
+          <div style="font-size: 13px; font-weight: 600; color: #1a2e4a;">${analisis.lima.pct}% Cumple</div>
+          <div style="font-size: 10px; color: #999; margin-top: 4px;">Criterio: Ítem 5 disponible</div>
+        </div>
+        <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px;">
+          <div style="font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 8px;">Provincias</div>
+          <div style="display: flex; align-items: baseline; gap: 4px; margin-bottom: 6px;"><span style="font-size: 20px; font-weight: 700; color: var(--teal);">${analisis.provincias.cumple}</span><span style="font-size: 11px; color: #999;">/ ${analisis.provincias.total} sedes</span></div>
+          <div style="font-size: 13px; font-weight: 600; color: #1a2e4a;">${analisis.provincias.pct}% Cumple</div>
+          <div style="font-size: 10px; color: #999; margin-top: 4px;">Criterio: Ítem 5 + (1 ó 2)</div>
+        </div>
+      </div>
+      ${htmlCriticas}
+    </div>
+  `;
+}
+
 // ============================================================
 // TABLAS — Dashboard principal (embudo, KPIs, hitos, historial)
 // ============================================================
