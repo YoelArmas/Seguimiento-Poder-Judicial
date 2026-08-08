@@ -84,12 +84,12 @@
       <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
     </div>
   </div>
-  <div id="diagrama-contenido" style="display:flex;align-items:flex-start;gap:0;overflow-x:auto;min-height:200px;width:100%;">
+  <div id="diagrama-contenido" style="display:flex;align-items:flex-start;gap:0;overflow-x:auto;min-height:320px;width:100%;">
     <div style="color:#aaa;font-size:12px;font-style:italic;margin:auto;">Carga la Plantilla_Carga para ver el diagrama</div>
   </div>
 </div>
 <!-- TARJETA: CUMPLIMIENTO DE CRITERIOS -->
-<div id="tarjeta-cumplimiento-criterios"></div>
+<div id="tarjeta-cumplimiento-criterios" style="grid-column: 1 / -1;"></div></div>
 
     <!-- Bloque Despliegue -->
     <div class="section-label">Despliegue en campo: Cantidad Sedes Instaladas</div>
@@ -966,31 +966,128 @@ onSnapshot(qSem,snap=>{
 function renderDiagramaFlujo(datos) {
   const el = document.getElementById('diagrama-contenido');
   if (!el) return;
-  const {totalGabinete, instalados, pendientes, porTipo} = datos;
-  const C = {gabinete:'#7c3aed',instalado:'#0d9488',pendiente:'#d97706'};
-  const nodoGrande = (num, label, color) => `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;min-width:100px;"><div style="width:90px;height:90px;border-radius:50%;border:3px solid ${color};display:flex;flex-direction:column;align-items:center;justify-content:center;background:white;box-shadow:0 2px 8px rgba(0,0,0,0.10);"><div style="font-size:22px;font-weight:700;color:${color};line-height:1">${num}</div></div><div style="font-size:10px;font-weight:600;color:${color};text-align:center;max-width:90px;text-transform:uppercase;letter-spacing:0.3px">${label}</div></div>`;
-  const nodoTipo = (tipo, num, d) => `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;"><div style="width:64px;height:64px;border-radius:50%;border:2px solid #0d9488;display:flex;align-items:center;justify-content:center;background:white;box-shadow:0 1px 4px rgba(0,0,0,0.08);"><div style="font-size:16px;font-weight:700;color:#0d9488">${num}</div></div><div style="font-size:9px;font-weight:600;color:#0d9488;text-align:center">${tipo}</div>${num>0?`<div style="background:#f8fafc;border-radius:8px;padding:6px 10px;font-size:9px;color:#475569;min-width:130px;border:1px solid #e2e8f0;"><div style="font-weight:600;color:#0d9488;margin-bottom:3px;">Con Enlace:</div><div style="display:flex;justify-content:space-between;"><span>Item5+Item1</span><strong>${d.con1}</strong></div><div style="display:flex;justify-content:space-between;"><span>Item5+Item2</span><strong>${d.con2}</strong></div><div style="display:flex;justify-content:space-between;"><span>Item5+1+2</span><strong>${d.con12}</strong></div><div style="border-top:1px solid #e2e8f0;margin-top:3px;padding-top:3px;display:flex;justify-content:space-between;"><span>Solo Item5</span><strong>${d.solo5}</strong></div></div>`:''}`;
-  const flecha = () => `<div style="font-size:20px;color:#94a3b8;padding:0 4px;margin-top:-20px;">→</div>`;
-  const tipos = ['Tipo 1','Tipo 2','Tipo 3'].map(t=>{
-    const d=porTipo[t];
-    const tot=d.solo5+d.con1+d.con2+d.con12;
-    return nodoTipo(t,tot,d);
-  }).join('<div style="width:1px;background:#e2e8f0;margin:0 4px;align-self:stretch;margin-top:16px;"></div>');
-  el.innerHTML = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;justify-content:flex-start;">
-    ${nodoGrande(totalGabinete,'Sedes con Gabinete',C.gabinete)}
-    ${flecha()}
-    <div style="display:flex;flex-direction:column;gap:16px;">
-      <div style="display:flex;align-items:flex-start;gap:4px;">
-        ${nodoGrande(instalados,'Instalados Item3',C.instalado)}
-        ${flecha()}
-        <div style="display:flex;gap:8px;align-items:flex-start;">${tipos}</div>
+  const {totalGabinete, instalados, conEnlace, sinEnlace, pendientes, porTipo} = datos;
+  const L = '#cbd5e1';
+
+  const nodo = (num, lbl, color, w=80, fs=22, sub='') =>
+    `<div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;">
+      <div style="width:${w}px;height:${w}px;border-radius:50%;border:3px solid ${color};display:flex;flex-direction:column;align-items:center;justify-content:center;background:white;box-shadow:0 3px 10px rgba(0,0,0,0.09);">
+        <div style="font-size:${fs}px;font-weight:700;color:${color};line-height:1">${num}</div>
+        ${sub?`<div style="font-size:8px;color:${color};margin-top:1px;">${sub}</div>`:''}
       </div>
-      <div style="display:flex;align-items:center;gap:4px;">
-        ${nodoGrande(pendientes.total,'Pendientes',C.pendiente)}
-        ${flecha()}
-        <div style="background:#fffbeb;border-radius:8px;padding:8px 12px;font-size:9px;color:#92400e;border:1px solid #fde68a;min-width:120px;"><div style="font-weight:600;margin-bottom:4px;">Sin Item3 instalado</div><div style="display:flex;justify-content:space-between;"><span>Tipo 1</span><strong>${pendientes.t1}</strong></div><div style="display:flex;justify-content:space-between;"><span>Tipo 2</span><strong>${pendientes.t2}</strong></div><div style="display:flex;justify-content:space-between;"><span>Tipo 3</span><strong>${pendientes.t3}</strong></div></div>
+      <div style="font-size:9px;font-weight:700;color:${color};text-align:center;text-transform:uppercase;letter-spacing:0.4px;max-width:${w+16}px;">${lbl}</div>
+    </div>`;
+
+  const hline = (w=24,color=L) =>
+    `<div style="display:flex;align-items:center;flex-shrink:0;margin-top:-14px;">
+      <div style="height:2px;width:${w}px;background:${color};"></div>
+      <div style="border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid ${color};"></div>
+    </div>`;
+
+  const vbranch = (items) => {
+    const n = items.length;
+    const gap = 8;
+    const itemH = 80;
+    const totalH = n*itemH + (n-1)*gap;
+    const midY = totalH/2;
+    return `<div style="display:flex;align-items:flex-start;gap:0;">
+      <svg width="28" height="${totalH}" style="flex-shrink:0;overflow:visible;">
+        <line x1="0" y1="${midY}" x2="14" y2="${midY}" stroke="${L}" stroke-width="2"/>
+        ${items.map((_,i)=>{
+          const y = i*(itemH+gap)+itemH/2;
+          return `<line x1="14" y1="${midY}" x2="14" y2="${y}" stroke="${L}" stroke-width="2"/>
+                  <line x1="14" y1="${y}" x2="28" y2="${y}" stroke="${L}" stroke-width="2"/>`;
+        }).join('')}
+      </svg>
+      <div style="display:flex;flex-direction:column;gap:${gap}px;">${items.join('')}</div>
+    </div>`;
+  };
+
+  const cardEnlace = (d, color) => {
+    const tot = d.con1+d.con2+d.con12;
+    return `<div style="background:#f8fafc;border-radius:8px;padding:7px 10px;border:1px solid #e2e8f0;min-width:148px;font-size:9px;margin-top:4px;">
+      <div style="font-weight:700;color:${color};margin-bottom:4px;font-size:9px;text-transform:uppercase;">Con Enlace</div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #f1f5f9;"><span style="color:#64748b;">Ítem 5 + Ítem 1</span><strong style="color:#1e40af;">${d.con1}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #f1f5f9;"><span style="color:#64748b;">Ítem 5 + Ítem 2</span><strong style="color:#059669;">${d.con2}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0;"><span style="color:#64748b;">Ítem 5 + 1 + 2</span><strong style="color:#0891b2;">${d.con12}</strong></div>
+    </div>`;
+  };
+
+  // Nodos de tipos (con enlace)
+  const tipoNodos = ['Tipo 1','Tipo 2','Tipo 3'].map(t => {
+    const d = porTipo[t]||{con1:0,con2:0,con12:0};
+    const tot = d.con1+d.con2+d.con12;
+    return `<div style="display:flex;flex-direction:column;align-items:center;gap:0;">
+      ${nodo(tot, t, '#1e40af', 58, 16)}
+      ${cardEnlace(d,'#1e40af')}
+    </div>`;
+  });
+
+  el.innerHTML = `
+  <div style="display:flex;align-items:flex-start;width:100%;gap:0;padding:12px 0 8px 0;">
+
+    <!-- COL 1: GABINETE -->
+    <div style="display:flex;flex-direction:column;align-items:center;padding-top:60px;flex-shrink:0;">
+      ${nodo(totalGabinete,'Sedes con Gabinete','#7c3aed',96,26)}
+    </div>
+
+    <!-- BIFURCACIÓN PRINCIPAL -->
+    <svg width="32" height="320" style="flex-shrink:0;margin-top:0;overflow:visible;">
+      <line x1="0" y1="108" x2="16" y2="108" stroke="${L}" stroke-width="2"/>
+      <line x1="16" y1="60" x2="16" y2="280" stroke="${L}" stroke-width="2"/>
+      <line x1="16" y1="60"  x2="32" y2="60"  stroke="${L}" stroke-width="2"/>
+      <line x1="16" y1="280" x2="32" y2="280" stroke="${L}" stroke-width="2"/>
+    </svg>
+
+    <!-- COL 2: INSTALADOS + PENDIENTES -->
+    <div style="display:flex;flex-direction:column;gap:0;flex-shrink:0;padding-top:0;">
+      <div style="margin-top:12px;">${nodo(instalados,'Instalados Ítem 3','#0d9488',76,20)}</div>
+      <div style="height:180px;"></div>
+      ${nodo(pendientes.total,'Pendientes','#d97706',66,18)}
+      <div style="background:#fffbeb;border-radius:8px;padding:7px 10px;border:1px solid #fde68a;font-size:9px;margin-top:4px;min-width:110px;">
+        <div style="font-weight:700;color:#92400e;margin-bottom:3px;text-transform:uppercase;">Sin Ítem 3</div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#92400e;">Tipo 1</span><strong>${pendientes.t1}</strong></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#92400e;">Tipo 2</span><strong>${pendientes.t2}</strong></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#92400e;">Tipo 3</span><strong>${pendientes.t3}</strong></div>
       </div>
     </div>
+
+    <!-- BIFURCACIÓN INSTALADOS -->
+    <svg width="32" height="180" style="flex-shrink:0;margin-top:12px;overflow:visible;">
+      <line x1="0"  y1="38"  x2="16" y2="38"  stroke="${L}" stroke-width="2"/>
+      <line x1="16" y1="20"  x2="16" y2="140" stroke="${L}" stroke-width="2"/>
+      <line x1="16" y1="20"  x2="32" y2="20"  stroke="${L}" stroke-width="2"/>
+      <line x1="16" y1="100" x2="32" y2="100" stroke="${L}" stroke-width="2"/>
+      <line x1="16" y1="140" x2="32" y2="140" stroke="${L}" stroke-width="2"/>
+    </svg>
+
+    <!-- COL 3: CON ENLACE + SIN ENLACE -->
+    <div style="display:flex;flex-direction:column;gap:0;flex-shrink:0;">
+      <div style="margin-top:0;">${nodo(conEnlace,'Con Enlace','#2563eb',62,17,'(Ít.1 ó 2)')}</div>
+      <div style="height:12px;"></div>
+      ${nodo(sinEnlace,'Sin Enlace','#64748b',58,16,'(solo Ít.5)')}
+      <div style="background:#f1f5f9;border-radius:8px;padding:7px 10px;border:1px solid #e2e8f0;font-size:9px;margin-top:4px;min-width:110px;">
+        <div style="font-weight:700;color:#475569;margin-bottom:3px;text-transform:uppercase;">Solo Ítem 5</div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#475569;">Tipo 1</span><strong>${pendientes.sin1||0}</strong></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#475569;">Tipo 2</span><strong>${pendientes.sin2||0}</strong></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#475569;">Tipo 3</span><strong>${pendientes.sin3||0}</strong></div>
+      </div>
+    </div>
+
+    <!-- BIFURCACIÓN CON ENLACE → TIPOS -->
+    <svg width="32" height="280" style="flex-shrink:0;margin-top:0;overflow:visible;">
+      <line x1="0"  y1="30"  x2="16" y2="30"  stroke="${L}" stroke-width="2"/>
+      <line x1="16" y1="0"   x2="16" y2="240" stroke="${L}" stroke-width="2"/>
+      <line x1="16" y1="0"   x2="32" y2="0"   stroke="${L}" stroke-width="2"/>
+      <line x1="16" y1="120" x2="32" y2="120" stroke="${L}" stroke-width="2"/>
+      <line x1="16" y1="240" x2="32" y2="240" stroke="${L}" stroke-width="2"/>
+    </svg>
+
+    <!-- COL 4: TIPOS -->
+    <div style="display:flex;flex-direction:column;gap:20px;flex:1;">
+      ${tipoNodos.join('')}
+    </div>
+
   </div>`;
 }
 
@@ -1755,10 +1852,11 @@ window.handleFile=function(file){
         // G(7)=Región, N(14)=Fecha Item5, O(15)=Fecha Item1, P(16)=Fecha Item2, Q(17)=Fecha Item3
         const region = String(r[6] || '').toUpperCase().trim();  // G = índice 6
         const ubicacion = region === 'LIMA' ? 'LIMA' : 'PROVINCIAS';  // Cualquier cosa que NO sea LIMA = PROVINCIAS
-        const fechaItem5 = r[13] ? new Date(r[13]) : null;  // N = índice 13
-        const fechaItem1 = r[14] ? new Date(r[14]) : null;  // O = índice 14
-        const fechaItem2 = r[15] ? new Date(r[15]) : null;  // P = índice 15
-        const fechaItem3 = r[16] ? new Date(r[16]) : null;  // Q = índice 16
+        const esFechaVal = v => v !== null && v !== undefined && String(v).trim() !== '';
+        const fechaItem5 = esFechaVal(r[13]) ? new Date(r[13]) : null;  // N = índice 13
+        const fechaItem1 = esFechaVal(r[14]) ? new Date(r[14]) : null;  // O = índice 14
+        const fechaItem2 = esFechaVal(r[15]) ? new Date(r[15]) : null;  // P = índice 15
+        const fechaItem3 = esFechaVal(r[16]) ? new Date(r[16]) : null;  // Q = índice 16
         
         let cumpleCriterio = 0;
         if (ubicacion === 'LIMA') {
@@ -1782,33 +1880,51 @@ window.handleFile=function(file){
         renderTarjetaCumplimiento(analisisCumplimiento);
       }
       
-      // DIAGRAMA FLUJO: calcular datos desde registros
+      // DIAGRAMA FLUJO: calcular datos con nueva lógica
       (function(){
+        // porTipo: solo sedes con Item3 instalado + con enlace (Item1 o Item2)
         const porTipo = {
-          'Tipo 1':{solo5:0,con1:0,con2:0,con12:0},
-          'Tipo 2':{solo5:0,con1:0,con2:0,con12:0},
-          'Tipo 3':{solo5:0,con1:0,con2:0,con12:0}
+          'Tipo 1':{con1:0,con2:0,con12:0},
+          'Tipo 2':{con1:0,con2:0,con12:0},
+          'Tipo 3':{con1:0,con2:0,con12:0}
         };
+        // pendientes: Item5 pero sin Item3
         const pendientes = {total:0,t1:0,t2:0,t3:0};
-        let totalGabinete=0, instalados=0;
+        // sinEnlace por tipo: Item3 instalado pero sin Item1 ni Item2
+        const sinEnlaceTipo = {'Tipo 1':0,'Tipo 2':0,'Tipo 3':0};
+        let totalGabinete=0, instalados=0, conEnlace=0, sinEnlace=0;
         
         raw.slice(headerRow+1).forEach(r=>{
           if(!r[2]) return;
           const tipo = String(r[4]||'').trim();
-          const fn5 = r[13] ? true : false;
-          const fn1 = r[14] ? true : false;
-          const fn2 = r[15] ? true : false;
-          const fn3 = r[16] ? true : false;
-          if(!fn5) return; // Solo sedes con gabinete
+          // Ignorar strings vacíos - solo contar fechas reales
+          const esFecha = v => v !== null && v !== undefined && String(v).trim() !== '';
+          const fn5 = esFecha(r[13]);  // Col N = Item5
+          const fn1 = esFecha(r[14]);  // Col O = Item1
+          const fn2 = esFecha(r[15]);  // Col P = Item2
+          const fn3 = esFecha(r[16]);  // Col Q = Item3 instalado
+          
+          if(!fn5) return; // Sin gabinete = no cuenta
           totalGabinete++;
+          
           if(fn3){
+            // Item3 ya instalado
             instalados++;
-            if(!porTipo[tipo]) return;
-            if(fn1&&fn2) porTipo[tipo].con12++;
-            else if(fn1) porTipo[tipo].con1++;
-            else if(fn2) porTipo[tipo].con2++;
-            else porTipo[tipo].solo5++;
+            if(fn1||fn2){
+              // Con al menos un enlace
+              conEnlace++;
+              if(porTipo[tipo]){
+                if(fn1&&fn2) porTipo[tipo].con12++;
+                else if(fn1) porTipo[tipo].con1++;
+                else porTipo[tipo].con2++;
+              }
+            } else {
+              // Sin ningún enlace (instalado bajo criterio anterior)
+              sinEnlace++;
+              if(sinEnlaceTipo[tipo]!==undefined) sinEnlaceTipo[tipo]++;
+            }
           } else {
+            // Sin Item3: pendiente de instalación
             pendientes.total++;
             if(tipo==='Tipo 1') pendientes.t1++;
             else if(tipo==='Tipo 2') pendientes.t2++;
@@ -1816,7 +1932,12 @@ window.handleFile=function(file){
           }
         });
         
-        renderDiagramaFlujo({totalGabinete, instalados, pendientes, porTipo});
+        // Pasar sin_enlace por tipo al objeto pendientes para reutilizar en render
+        pendientes.sin1 = sinEnlaceTipo['Tipo 1'];
+        pendientes.sin2 = sinEnlaceTipo['Tipo 2'];
+        pendientes.sin3 = sinEnlaceTipo['Tipo 3'];
+        
+        renderDiagramaFlujo({totalGabinete, instalados, conEnlace, sinEnlace, pendientes, porTipo});
       })();
       
       if(!pendingRows.length){alert(`Plantilla cargada. Totales actualizados: Solo Item 5: ${Object.values(totalPorTipo.solo_item5).reduce((a,b)=>a+b,0)} | Con Enlace: ${Object.values(totalPorTipo.con_enlace_item1).reduce((a,b)=>a+b,0)+Object.values(totalPorTipo.con_enlace_item2).reduce((a,b)=>a+b,0)+Object.values(totalPorTipo.con_enlace_item1_item2).reduce((a,b)=>a+b,0)}`);pendingEstados={};return;}
