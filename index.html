@@ -65,21 +65,29 @@
 
   <!-- DESPLIEGUE EN CAMPO -->
   <div class="card" style="margin-bottom:16px">
-    <div class="flex-between flex-wrap gap-8 mb-16">
+
+<!-- DIAGRAMA FLUJO: header integrado con título izq + filtros der -->
+<div id="diagrama-flujo-item3" style="margin-bottom:8px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+    <div>
       <div class="card-title" style="margin:0">Flujo de implementacion — 745 sedes</div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <select class="inp" id="filtro-zona-dash" style="width:auto;font-size:12px" onchange="window.renderTodo()">
-          <option value="">Todas las zonas</option>
-          <option value="Zona Norte">Zona Norte</option>
-          <option value="Zona Sur">Zona Sur</option>
-          <option value="Zona Centro">Zona Centro</option>
-          <option value="Zona Oriente">Zona Oriente</option>
-        </select>
-        <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
-      </div>
-    
-<!-- DIAGRAMA FLUJO -->
-<div id="diagrama-flujo-item3" style="grid-column: 1 / -1; background:white; border-radius:12px; padding:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-bottom:8px;"><div style="font-size:13px;font-weight:700;color:#1a2e4a;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px;">Flujo Gabinetes → Instalación Ítem 3 <span style="font-size:10px;font-weight:400;color:#888;text-transform:none;margin-left:8px;">Carga Plantilla_Carga para actualizar</span></div><div id="diagrama-contenido" style="display:flex;align-items:flex-start;gap:0;overflow-x:auto;min-height:200px;"><div style="color:#aaa;font-size:12px;font-style:italic;margin:auto;">Carga la Plantilla_Carga para ver el diagrama</div></div></div>
+      <div style="font-size:10px;color:#888;margin-top:2px;">Carga Plantilla_Carga para actualizar el diagrama</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <select class="inp" id="filtro-zona-dash" style="width:auto;font-size:12px" onchange="window.renderTodo()">
+        <option value="">Todas las zonas</option>
+        <option value="Zona Norte">Zona Norte</option>
+        <option value="Zona Sur">Zona Sur</option>
+        <option value="Zona Centro">Zona Centro</option>
+        <option value="Zona Oriente">Zona Oriente</option>
+      </select>
+      <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
+    </div>
+  </div>
+  <div id="diagrama-contenido" style="display:flex;align-items:flex-start;gap:0;overflow-x:auto;min-height:200px;width:100%;">
+    <div style="color:#aaa;font-size:12px;font-style:italic;margin:auto;">Carga la Plantilla_Carga para ver el diagrama</div>
+  </div>
+</div>
 <!-- TARJETA: CUMPLIMIENTO DE CRITERIOS -->
 <div id="tarjeta-cumplimiento-criterios" style="grid-column: 1 / -1;"></div></div>
 
@@ -968,7 +976,7 @@ function renderDiagramaFlujo(datos) {
     const tot=d.solo5+d.con1+d.con2+d.con12;
     return nodoTipo(t,tot,d);
   }).join('<div style="width:1px;background:#e2e8f0;margin:0 4px;align-self:stretch;margin-top:16px;"></div>');
-  el.innerHTML = `<div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;">
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;justify-content:flex-start;">
     ${nodoGrande(totalGabinete,'Sedes con Gabinete',C.gabinete)}
     ${flecha()}
     <div style="display:flex;flex-direction:column;gap:16px;">
