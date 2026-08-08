@@ -2311,10 +2311,18 @@ window.confirmarBorrar=async function(){
 // ============================================================
 // UI — Navegación por pestañas
 // ============================================================
-const TABS_ORDEN=['dashboard','gestion','hitos','metricas','historial'];
+const TABS_ORDEN=['dashboard','metricas','hitos','gestion','historial'];
 window.showTab=function(name){
-  TABS_ORDEN.forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
-  document.querySelectorAll('.tabs .tab').forEach((b,i)=>b.classList.toggle('active',TABS_ORDEN[i]===name));
+  // Usar IDs reales de los divs (orden diferente a los botones)
+  ['dashboard','gestion','hitos','metricas','historial'].forEach(t=>{
+    const el=document.getElementById('tab-'+t);
+    if(el)el.style.display=t===name?'block':'none';
+  });
+  // Marcar botón activo por onclick, no por índice
+  document.querySelectorAll('.tabs .tab').forEach(b=>{
+    const m=(b.getAttribute('onclick')||'').match(/showTab\('(\w+)'\)/);
+    if(m)b.classList.toggle('active',m[1]===name);
+  });
   if(name==='metricas')renderMetricas();
   if(name==='historial'){renderEliminados();renderEdiciones();}
 };
