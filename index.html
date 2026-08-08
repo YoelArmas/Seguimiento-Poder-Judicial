@@ -2323,6 +2323,7 @@ window.showTab=function(name){
   });
   if(name==='metricas')renderMetricas();
   if(name==='historial'){renderEliminados();renderEdiciones();}
+  if(name==='gestion')window.showGestionSub('carga');
 };
 window.showSubTab=function(name){
   ['plantilla','subir','seguimiento'].forEach(t=>{const el=document.getElementById('subtab-'+t);if(el)el.style.display=t===name?'block':'none';});
