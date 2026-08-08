@@ -89,7 +89,7 @@
   </div>
 </div>
 <!-- TARJETA: CUMPLIMIENTO DE CRITERIOS -->
-<div id="tarjeta-cumplimiento-criterios" style="grid-column: 1 / -1;"></div></div>
+<div id="tarjeta-cumplimiento-criterios" style="grid-column: 1 / -1;"></div>
 
     <!-- Bloque Despliegue -->
     <div class="section-label">Despliegue en campo: Cantidad Sedes Instaladas</div>
@@ -134,6 +134,7 @@
 
   <!-- KPIs rápidos -->
   <div class="kpi-row" id="kpis-rapidos"></div>
+  </div><!-- cierre card Despliegue -->
 
   <!-- LINEA DE PRODUCCION (antes estaba primero; ahora va donde estaba Avance Ítems de Soporte) -->
   <div class="card" style="margin-bottom:16px">
@@ -1937,7 +1938,16 @@ window.handleFile=function(file){
         pendientes.sin2 = sinEnlaceTipo['Tipo 2'];
         pendientes.sin3 = sinEnlaceTipo['Tipo 3'];
         
-        renderDiagramaFlujo({totalGabinete, instalados, conEnlace, sinEnlace, pendientes, porTipo});
+        const datosDiagrama = {totalGabinete, instalados, conEnlace, sinEnlace, pendientes, porTipo};
+        renderDiagramaFlujo(datosDiagrama);
+        
+        // PERSISTIR en Firebase para que sobreviva el refresh
+        try {
+          await setDoc(doc(db,'config','diagrama_flujo'), {
+            datos: JSON.stringify(datosDiagrama),
+            actualizadoTs: new Date().toISOString()
+          });
+        } catch(e){ console.warn('No se pudo guardar diagrama:', e); }
       })();
       
       if(!pendingRows.length){alert(`Plantilla cargada. Totales actualizados: Solo Item 5: ${Object.values(totalPorTipo.solo_item5).reduce((a,b)=>a+b,0)} | Con Enlace: ${Object.values(totalPorTipo.con_enlace_item1).reduce((a,b)=>a+b,0)+Object.values(totalPorTipo.con_enlace_item2).reduce((a,b)=>a+b,0)+Object.values(totalPorTipo.con_enlace_item1_item2).reduce((a,b)=>a+b,0)}`);pendingEstados={};return;}
@@ -2842,6 +2852,13 @@ async function cargarItemsExternos(){
         if(data.tipoPorItem)window.TIPO_POR_ITEM=data.tipoPorItem;
         renderTodo();
         if(document.getElementById('tab-metricas')?.style.display!=='none')renderMetricas();
+      }
+      // Recuperar diagrama flujo guardado
+      if(d.id==='diagrama_flujo'){
+        try {
+          const datosDiagrama = JSON.parse(d.data().datos||'null');
+          if(datosDiagrama) renderDiagramaFlujo(datosDiagrama);
+        } catch(e){ console.warn('No se pudo recuperar diagrama:', e); }
       }
     });
   }catch(e){console.error('cargarItemsExternos:',e);}
