@@ -65,31 +65,19 @@
 
   <!-- DESPLIEGUE EN CAMPO -->
   <div class="card" style="margin-bottom:16px">
-
-<!-- DIAGRAMA FLUJO: header integrado con título izq + filtros der -->
-<div id="diagrama-flujo-item3" style="margin-bottom:8px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-    <div>
+    <div class="flex-between flex-wrap gap-8 mb-16">
       <div class="card-title" style="margin:0">Flujo de implementacion — 745 sedes</div>
-      <div style="font-size:10px;color:#888;margin-top:2px;">Carga Plantilla_Carga para actualizar el diagrama</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <select class="inp" id="filtro-zona-dash" style="width:auto;font-size:12px" onchange="window.renderTodo()">
+          <option value="">Todas las zonas</option>
+          <option value="Zona Norte">Zona Norte</option>
+          <option value="Zona Sur">Zona Sur</option>
+          <option value="Zona Centro">Zona Centro</option>
+          <option value="Zona Oriente">Zona Oriente</option>
+        </select>
+        <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
+      </div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <select class="inp" id="filtro-zona-dash" style="width:auto;font-size:12px" onchange="window.renderTodo()">
-        <option value="">Todas las zonas</option>
-        <option value="Zona Norte">Zona Norte</option>
-        <option value="Zona Sur">Zona Sur</option>
-        <option value="Zona Centro">Zona Centro</option>
-        <option value="Zona Oriente">Zona Oriente</option>
-      </select>
-      <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
-    </div>
-  </div>
-  <div id="diagrama-contenido" style="display:flex;align-items:flex-start;gap:0;overflow-x:auto;min-height:320px;width:100%;">
-    <div style="color:#aaa;font-size:12px;font-style:italic;margin:auto;">Carga la Plantilla_Carga para ver el diagrama</div>
-  </div>
-</div>
-<!-- TARJETA: CUMPLIMIENTO DE CRITERIOS -->
-<div id="tarjeta-cumplimiento-criterios" style="grid-column: 1 / -1;"></div>
 
     <!-- Bloque Despliegue -->
     <div class="section-label">Despliegue en campo: Cantidad Sedes Instaladas</div>
