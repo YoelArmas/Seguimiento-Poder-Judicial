@@ -1942,12 +1942,10 @@ window.handleFile=function(file){
         renderDiagramaFlujo(datosDiagrama);
         
         // PERSISTIR en Firebase para que sobreviva el refresh
-        try {
-          await setDoc(doc(db,'config','diagrama_flujo'), {
-            datos: JSON.stringify(datosDiagrama),
-            actualizadoTs: new Date().toISOString()
-          });
-        } catch(e){ console.warn('No se pudo guardar diagrama:', e); }
+        setDoc(doc(db,'config','diagrama_flujo'), {
+          datos: JSON.stringify(datosDiagrama),
+          actualizadoTs: new Date().toISOString()
+        }).catch(e=> console.warn('No se pudo guardar diagrama:', e));
       })();
       
       if(!pendingRows.length){alert(`Plantilla cargada. Totales actualizados: Solo Item 5: ${Object.values(totalPorTipo.solo_item5).reduce((a,b)=>a+b,0)} | Con Enlace: ${Object.values(totalPorTipo.con_enlace_item1).reduce((a,b)=>a+b,0)+Object.values(totalPorTipo.con_enlace_item2).reduce((a,b)=>a+b,0)+Object.values(totalPorTipo.con_enlace_item1_item2).reduce((a,b)=>a+b,0)}`);pendingEstados={};return;}
