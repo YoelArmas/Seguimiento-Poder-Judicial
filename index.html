@@ -2311,7 +2311,7 @@ window.confirmarBorrar=async function(){
 // ============================================================
 // UI — Navegación por pestañas
 // ============================================================
-const TABS_ORDEN=['dashboard','metricas','hitos','gestion','historial'];
+const TABS_ORDEN=['dashboard','gestion','hitos','metricas','historial'];
 window.showTab=function(name){
   TABS_ORDEN.forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
   document.querySelectorAll('.tabs .tab').forEach((b,i)=>b.classList.toggle('active',TABS_ORDEN[i]===name));
