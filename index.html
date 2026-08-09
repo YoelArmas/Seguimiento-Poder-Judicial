@@ -1613,7 +1613,10 @@ window.handleFile=function(file){
       window.TIPO_POR_ITEM_PLANTILLA.con_enlace.item1=totalPorTipo.con_enlace_item1;
       window.TIPO_POR_ITEM_PLANTILLA.con_enlace.item2=totalPorTipo.con_enlace_item2;
       window.TIPO_POR_ITEM_PLANTILLA.con_enlace.item1_item2=totalPorTipo.con_enlace_item1_item2;
-      
+
+      // PERSISTENCIA: guardar para que el diagrama sobreviva al refrescar (web y celular)
+      guardarPlantillaTipos(window.TIPO_POR_ITEM_PLANTILLA);
+
       // IMPORTANTE: Actualizar dashboard con los nuevos totales (aunque no haya cambios nuevos)
       window.renderTodo();
       
@@ -2505,10 +2508,45 @@ window.confirmarSeg=async function(){
   }
 };
 
+// ============================================================
+// PERSISTENCIA DE LA PLANTILLA (para que el diagrama no se pierda al refrescar)
+// ============================================================
+const CLAVE_PLANTILLA='plantilla_tipos_v1';
+
+function guardarPlantillaTipos(datos){
+  if(!datos)return;
+  // Caché local: reaparece al instante al refrescar, incluso sin red
+  try{localStorage.setItem(CLAVE_PLANTILLA,JSON.stringify(datos));}catch(e){}
+  // Firestore: se comparte entre navegador y celular
+  try{
+    setDoc(doc(db,'config','plantilla_tipos'),{
+      solo_item5:datos.solo_item5||{},
+      con_enlace:datos.con_enlace||{},
+      actualizado:Date.now()
+    }).catch(e=>console.error('guardarPlantillaTipos:',e));
+  }catch(e){console.error('guardarPlantillaTipos:',e);}
+}
+
+function restaurarPlantillaLocal(){
+  if(window.TIPO_POR_ITEM_PLANTILLA)return;
+  try{
+    const raw=localStorage.getItem(CLAVE_PLANTILLA);
+    if(raw)window.TIPO_POR_ITEM_PLANTILLA=JSON.parse(raw);
+  }catch(e){}
+}
+
 async function cargarItemsExternos(){
   try{
     const snap=await getDocs(collection(db,'config'));
+    let hayItems=false;
     snap.forEach(d=>{
+      if(d.id==='plantilla_tipos'){
+        const p=d.data();
+        if(p&&p.solo_item5){
+          window.TIPO_POR_ITEM_PLANTILLA={solo_item5:p.solo_item5||{},con_enlace:p.con_enlace||{}};
+          try{localStorage.setItem(CLAVE_PLANTILLA,JSON.stringify(window.TIPO_POR_ITEM_PLANTILLA));}catch(e){}
+        }
+      }
       if(d.id==='items_externos'){
         const data=d.data();
         // Convert objects back to sorted arrays [[fecha,val],...]
@@ -2517,10 +2555,11 @@ async function cargarItemsExternos(){
         if(data.item2)window.ITEM2_ACUM=toArr(data.item2);
         if(data.item5)window.ITEM5_ACUM=toArr(data.item5);
         if(data.tipoPorItem)window.TIPO_POR_ITEM=data.tipoPorItem;
-        renderTodo();
-        if(document.getElementById('tab-metricas')?.style.display!=='none')renderMetricas();
+        hayItems=true;
       }
     });
+    renderTodo();
+    if(hayItems&&document.getElementById('tab-metricas')?.style.display!=='none')renderMetricas();
   }catch(e){console.error('cargarItemsExternos:',e);}
 }
 // ============================================================
@@ -2667,6 +2706,8 @@ function renderDiagramaFlujoCompleto() {
 window.renderDiagramaFlujoCompleto = renderDiagramaFlujoCompleto;
 
 // Load on startup
+restaurarPlantillaLocal();
+if(window.TIPO_POR_ITEM_PLANTILLA)renderDiagramaFlujoCompleto();
 cargarItemsExternos();
 
 </script>
