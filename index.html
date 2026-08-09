@@ -90,8 +90,8 @@
       <div class="funnel-card" style="border-top:3px solid var(--amber)">
         <div style="font-size:18px;margin-bottom:4px">🏗️</div>
         <div class="num" id="f-solo5" style="color:var(--amber)">0</div>
-        <div class="lbl" style="color:var(--amber)">Solo Item 5</div>
-        <div class="sub">Sedes instaladas — sin enlace activo aún</div>
+        <div class="lbl" style="color:var(--amber)">Instaladas sin enlace</div>
+        <div class="sub">Ítem 3 ya instaló equipo — espera Ítem 1/2</div>
         <div class="pct-bar"><div class="pct-fill" id="b-solo5" style="background:var(--amber);width:0%"></div></div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-solo5">0% del universo</div>
         <div id="desglose-solo5" style="display:flex;justify-content:center;gap:8px;margin-top:8px;font-size:11px;color:var(--text2)"></div>
@@ -104,7 +104,7 @@
         <div style="font-size:18px;margin-bottom:4px">🔗</div>
         <div class="num" id="f-con-enlace" style="color:var(--purple)">0</div>
         <div class="lbl" style="color:var(--purple)">Con enlace activo</div>
-        <div class="sub">Item 5 + Item 1 y/o Item 2 — listo para solicitar alta</div>
+        <div class="sub">Ítem 3 instalado + enlace activo — en pruebas</div>
         <div class="pct-bar"><div class="pct-fill" id="b-con-enlace" style="background:var(--purple);width:0%"></div></div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-con-enlace">0% del universo</div>
         <div id="desglose-con-enlace" style="display:flex;flex-direction:column;gap:2px;margin-top:8px;font-size:11px;color:var(--text2)"></div>
@@ -117,7 +117,7 @@
         <div style="font-size:18px;margin-bottom:4px">✅</div>
         <div class="num" id="f-alta" style="color:var(--teal)">0</div>
         <div class="lbl" style="color:var(--teal)">Alta operativa</div>
-        <div class="sub">Servicio SD-WAN activo — aprobado por PJ</div>
+        <div class="sub">Migrada y cargada en plataforma de gestión</div>
         <div class="pct-bar"><div class="pct-fill" id="b-alta" style="background:var(--teal);width:0%"></div></div>
         <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-alta">0% del universo</div>
         <div id="desglose-alta" style="display:flex;justify-content:center;gap:8px;margin-top:8px;font-size:11px;color:var(--text2)"></div>
@@ -968,8 +968,16 @@ function renderTodo(){
   document.getElementById('fecha-corte').textContent='Corte: '+new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
   
   // Si se cargó Plantilla_Carga, usa esos totales; sino, usa datos de Firebase
-  let totalSolo5=t.solo_item5,totalConEnlace=t.con_enlace;
-  if(window.TIPO_POR_ITEM_PLANTILLA){
+  let totalSolo5=t.solo_item5,totalConEnlace=t.con_enlace,totalAltaOp=t.alta;
+  const _dd=typeof datosDiagramaActivos==='function'?datosDiagramaActivos():null;
+  const _sumT=o=>['Tipo 1','Tipo 2','Tipo 3'].reduce((a,k)=>a+(Number((o||{})[k])||0),0);
+  if(_dd&&_dd.item3){
+    // Embudo del Ítem 3: instaladas sin enlace -> con enlace (pruebas) -> alta operativa (migración)
+    totalSolo5=_sumT(_dd.item3_sin_enlace);
+    const ce=_dd.item3_con_enlace||{};
+    totalConEnlace=_sumT(ce.item1)+_sumT(ce.item2)+_sumT(ce.item1_item2);
+    totalAltaOp=_sumT(_dd.alta);
+  } else if(window.TIPO_POR_ITEM_PLANTILLA){
     totalSolo5=Object.values(window.TIPO_POR_ITEM_PLANTILLA.solo_item5||{}).reduce((a,b)=>a+b,0);
     const ce=window.TIPO_POR_ITEM_PLANTILLA.con_enlace||{};
     // Cada propiedad (item1, item2, item1_item2) es un objeto {Tipo 1: X, Tipo 2: Y, ...}, necesito sumar
@@ -982,7 +990,7 @@ function renderTodo(){
     {id:'retirados',val:t.retirados},
     {id:'solo5',val:totalSolo5},
     {id:'con-enlace',val:totalConEnlace},
-    {id:'alta',val:t.alta},
+    {id:'alta',val:totalAltaOp},
   ];
   bloques.forEach(b=>{
     const universoZona=zonaInfo?zonaInfo.total:TOTAL;
@@ -997,11 +1005,11 @@ function renderTodo(){
     const tipos=['Tipo 1','Tipo 2','Tipo 3'];
     el.innerHTML=`<div style="display:flex;flex-direction:column;gap:4px;font-size:11px;width:100%">${tipos.map(t=>`<div style="display:flex;justify-content:space-between;width:100%"><span>${t}</span><strong>${porTipoEtapa[t]||0}</strong></div>`).join('')}</div>`;
   }
-  renderDesglose('desglose-solo5',window.TIPO_POR_ITEM_PLANTILLA?.solo_item5||t.porTipo?.solo_item5||{});
-  renderDesglose('desglose-alta',t.porTipo?.alta||{});
+  renderDesglose('desglose-solo5',(_dd&&_dd.item3_sin_enlace)||window.TIPO_POR_ITEM_PLANTILLA?.solo_item5||t.porTipo?.solo_item5||{});
+  renderDesglose('desglose-alta',(_dd&&_dd.alta)||t.porTipo?.alta||{});
   (function(){
     const el=document.getElementById('desglose-con-enlace');if(!el)return;
-    const pe=window.TIPO_POR_ITEM_PLANTILLA?.con_enlace||t.porEnlace||{item1:0,item2:0,item1_item2:0};
+    const pe=(_dd&&_dd.item3_con_enlace)||window.TIPO_POR_ITEM_PLANTILLA?.con_enlace||t.porEnlace||{item1:0,item2:0,item1_item2:0};
     
     // Si pe.item1 es un objeto (dict por tipo), sumar sus valores; si es número, usar directo
     const sumObj=o=>typeof o==='object'?Object.values(o).reduce((a,b)=>a+b,0):o;
@@ -1624,32 +1632,48 @@ window.handleFile=function(file){
         const pres=v=>{const s=String(v==null?'':v).trim().toLowerCase();return s!==''&&s!=='no'&&s!=='n/a'&&s!=='-'&&s!=='pendiente'&&s!=='false';};
         const tv=['Tipo 1','Tipo 2','Tipo 3'];
         const z=()=>{const o={};tv.forEach(t=>o[t]=0);return o;};
-        // Detecta por nombre de cabecera una columna de Migración / Alta operativa (si aún no existe, queda en 0)
+        const nuevoBucket=()=>({universo:z(),gabinete:z(),item3:z(),item3_sin_enlace:z(),pendientes:z(),
+          pendientes_programables:z(),pendientes_en_espera:z(),alta:z(),
+          item3_con_enlace:{item1:z(),item2:z(),item1_item2:z()}});
+        // Detecta por nombre de cabecera la columna de Migración / Alta operativa (si aún no existe, queda en 0)
         const cab=raw[headerRow]||[];
         let colAlta=-1;
         cab.forEach((c,i)=>{const s=String(c||'').toLowerCase();if(colAlta<0&&(s.includes('migraci')||s.includes('alta operativa')||s.includes('fecha alta')))colAlta=i;});
-        const D={universo:z(),gabinete:z(),item3:z(),item3_sin_enlace:z(),pendientes:z(),pendientes_programables:z(),
-                 pendientes_en_espera:z(),alta:z(),item3_con_enlace:{item1:z(),item2:z(),item1_item2:z()},colAlta:colAlta};
+
+        const D=nuevoBucket();
+        D.colAlta=colAlta;
+        D.porZona={};
+
+        const acumular=(B,tipo,gab,e1,e2,inst,alta)=>{
+          B.universo[tipo]++;
+          if(gab)B.gabinete[tipo]++;
+          if(alta)B.alta[tipo]++;
+          if(inst){
+            B.item3[tipo]++;
+            if(e1&&e2)B.item3_con_enlace.item1_item2[tipo]++;
+            else if(e1)B.item3_con_enlace.item1[tipo]++;
+            else if(e2)B.item3_con_enlace.item2[tipo]++;
+            else B.item3_sin_enlace[tipo]++;
+          }
+          if(gab&&!inst){
+            B.pendientes[tipo]++;
+            if(e1||e2)B.pendientes_programables[tipo]++;
+            else B.pendientes_en_espera[tipo]++;
+          }
+        };
+
         raw.slice(headerRow+1).forEach(r=>{
           if(!r[2])return;
           const tipo=String(r[4]||'').trim();
           if(!tv.includes(tipo))return;
-          D.universo[tipo]++;
+          const zr=String(r[5]||'').trim();
+          const zona=zr?('Zona '+zr.charAt(0).toUpperCase()+zr.slice(1).toLowerCase()):'';
           const gab=pres(r[13]),e1=pres(r[14]),e2=pres(r[15]),inst=pres(r[16]);
           const alta=colAlta>=0?pres(r[colAlta]):false;
-          if(gab)D.gabinete[tipo]++;
-          if(alta)D.alta[tipo]++;
-          if(inst){
-            D.item3[tipo]++;
-            if(e1&&e2)D.item3_con_enlace.item1_item2[tipo]++;
-            else if(e1)D.item3_con_enlace.item1[tipo]++;
-            else if(e2)D.item3_con_enlace.item2[tipo]++;
-            else D.item3_sin_enlace[tipo]++;
-          }
-          if(gab&&!inst){
-            D.pendientes[tipo]++;
-            if(e1||e2)D.pendientes_programables[tipo]++;
-            else D.pendientes_en_espera[tipo]++;
+          acumular(D,tipo,gab,e1,e2,inst,alta);
+          if(zona){
+            if(!D.porZona[zona])D.porZona[zona]=nuevoBucket();
+            acumular(D.porZona[zona],tipo,gab,e1,e2,inst,alta);
           }
         });
         window.DIAGRAMA_DATOS=D;
@@ -2688,16 +2712,28 @@ function totalDatosDiagrama(d){
   return s(d.solo_item5)+s(d.con_enlace?.item1)+s(d.con_enlace?.item2)+s(d.con_enlace?.item1_item2);
 }
 
+// Devuelve el bloque de datos del diagrama según el filtro de zona activo
+function datosDiagramaActivos(){
+  const D=window.DIAGRAMA_DATOS;
+  if(!D)return null;
+  const zona=document.getElementById('filtro-zona-dash')?.value||'';
+  if(zona&&D.porZona&&D.porZona[zona])return D.porZona[zona];
+  if(zona&&D.porZona)return null; // zona sin datos en la plantilla
+  return D;
+}
+
 function renderDiagramaFlujoCompleto() {
   const el = document.getElementById('diagrama-contenido');
   if (!el) return;
 
-  const D = window.DIAGRAMA_DATOS;
+  const D = datosDiagramaActivos();
   const TV = ['Tipo 1','Tipo 2','Tipo 3'];
   const sum = o => TV.reduce((a,t) => a + (Number((o||{})[t]) || 0), 0);
+  const zonaSel = document.getElementById('filtro-zona-dash')?.value || '';
 
   if (!D || !D.gabinete || sum(D.gabinete) === 0) {
-    el.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:36px 20px;font-size:14px">Carga la Plantilla_Carga para ver el diagrama de flujo</div>';
+    el.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:36px 20px;font-size:14px">'+
+      (window.DIAGRAMA_DATOS && zonaSel ? 'Sin sedes con gabinete en '+zonaSel : 'Carga la Plantilla_Carga para ver el diagrama de flujo')+'</div>';
     return;
   }
 
@@ -2845,7 +2881,7 @@ function renderDiagramaFlujoCompleto() {
     '</div>'+
 
     '<div class="dfx-foot">'+
-      '<div style="text-align:center"><div style="font-size:9px;font-weight:800;color:#64748b;letter-spacing:.5px">UNIVERSO TOTAL</div><div style="font-size:24px;font-weight:900;color:'+C.texto+';line-height:1.2">'+totalUniverso+'</div><div style="font-size:9px;color:#94a3b8">SEDES</div></div>'+
+      '<div style="text-align:center"><div style="font-size:9px;font-weight:800;color:#64748b;letter-spacing:.5px">'+(zonaSel?zonaSel.toUpperCase():'UNIVERSO TOTAL')+'</div><div style="font-size:24px;font-weight:900;color:'+C.texto+';line-height:1.2">'+totalUniverso+'</div><div style="font-size:9px;color:#94a3b8">SEDES</div></div>'+
       '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.morado+'">'+totalGabinete+' con gabinete (Ítem 5)</div><div style="font-size:9px;color:#64748b;margin-top:2px">Avanza hasta las '+totalUniverso+' sedes del universo.</div></div>'+
       '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.verde+'">'+totalItem3+' intervenidas por Ítem 3</div><div style="font-size:9px;color:#64748b;margin-top:2px">'+totalConEnlace+' en pruebas + '+totalSinEnlace+' esperando enlace. Las '+totalSinEnlace+' no son pérdida: se regularizan.</div></div>'+
       '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.ambar+'">Criterio vigente: '+totalCriterio+'</div><div style="font-size:9px;color:#64748b;margin-top:2px">Ítem 5 + enlace = '+totalConEnlace+' ya intervenidas + '+totalProgramables+' listas para agendar.</div></div>'+
