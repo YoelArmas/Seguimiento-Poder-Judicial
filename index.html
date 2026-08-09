@@ -929,6 +929,7 @@ onSnapshot(collection(db,'sedes_estado'),snap=>{
   sedesEstado={};
   snap.docs.forEach(d=>{sedesEstado[d.id]=d.data();});
   sedesEstadoCargado=true;
+  if(typeof renderDiagramaFlujoCompleto==='function')renderDiagramaFlujoCompleto();
 },err=>{console.error('sedes_estado error:',err);sedesEstadoCargado=true;});
 
 async function inicializarSemaforo(){
@@ -1169,8 +1170,8 @@ const isMobileHist=window.innerWidth<=640;
     if(cont)cont.innerHTML=paginacionHTML(lista.length,_histPagina,totalHistPags,'irAPaginaHist');
   }
 
-  // Renderizar diagrama si hay datos de plantilla
-  if(window.TIPO_POR_ITEM_PLANTILLA && document.getElementById('diagrama-contenido')){
+  // Renderizar diagrama (usa plantilla en sesión o, si no hay, los estados de Firestore)
+  if(document.getElementById('diagrama-contenido')){
     window.renderDiagramaFlujoCompleto();
   }
 
@@ -2565,12 +2566,48 @@ async function cargarItemsExternos(){
 // ============================================================
 // FUNCIÓN: Renderizar diagrama flujo jerárquico
 // ============================================================
+// Calcula los mismos totales del diagrama a partir de sedes_estado (persistente en Firestore).
+// Usa exactamente los mismos criterios que la carga de plantilla: item5==='si' y enlaceCombinacion.
+function calcularTiposDesdeSedesEstado(){
+  const tiposValidos=['Tipo 1','Tipo 2','Tipo 3'];
+  const base={solo_item5:{},con_enlace:{item1:{},item2:{},item1_item2:{}}};
+  tiposValidos.forEach(t=>{base.solo_item5[t]=0;base.con_enlace.item1[t]=0;base.con_enlace.item2[t]=0;base.con_enlace.item1_item2[t]=0;});
+  Object.values(sedesEstado||{}).forEach(e=>{
+    const tipo=String(e.tipo||'').trim();
+    if(!tiposValidos.includes(tipo))return;
+    if(String(e.item5||'').toLowerCase()==='si')base.solo_item5[tipo]++;
+    const comb=e.enlaceCombinacion||'';
+    if(comb==='item1_item2')base.con_enlace.item1_item2[tipo]++;
+    else if(comb==='item1')base.con_enlace.item1[tipo]++;
+    else if(comb==='item2')base.con_enlace.item2[tipo]++;
+  });
+  return base;
+}
+
+function totalDatosDiagrama(d){
+  if(!d)return 0;
+  const s=o=>Object.values(o||{}).reduce((a,b)=>a+(Number(b)||0),0);
+  return s(d.solo_item5)+s(d.con_enlace?.item1)+s(d.con_enlace?.item2)+s(d.con_enlace?.item1_item2);
+}
+
 function renderDiagramaFlujoCompleto() {
   const el = document.getElementById('diagrama-contenido');
   if (!el) return;
 
-  const soloItem5 = window.TIPO_POR_ITEM_PLANTILLA?.solo_item5 || {};
-  const conEnlace = window.TIPO_POR_ITEM_PLANTILLA?.con_enlace || {};
+  // Fuente 1: plantilla recién cargada en esta sesión. Fuente 2: sedes_estado de Firestore (sobrevive al refrescar).
+  let datos = window.TIPO_POR_ITEM_PLANTILLA;
+  if (totalDatosDiagrama(datos) === 0) {
+    const desdeEstado = calcularTiposDesdeSedesEstado();
+    if (totalDatosDiagrama(desdeEstado) > 0) datos = desdeEstado;
+  }
+
+  if (totalDatosDiagrama(datos) === 0) {
+    el.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:40px;font-size:14px">Carga la Plantilla_Carga para ver el diagrama de flujo</div>';
+    return;
+  }
+
+  const soloItem5 = datos.solo_item5 || {};
+  const conEnlace = datos.con_enlace || {};
   const sumarObj = obj => Object.values(obj || {}).reduce((a,b) => a+b, 0);
 
   const totalItem5 = (soloItem5['Tipo 1']||0) + (soloItem5['Tipo 2']||0) + (soloItem5['Tipo 3']||0);
@@ -2707,7 +2744,7 @@ window.renderDiagramaFlujoCompleto = renderDiagramaFlujoCompleto;
 
 // Load on startup
 restaurarPlantillaLocal();
-if(window.TIPO_POR_ITEM_PLANTILLA)renderDiagramaFlujoCompleto();
+renderDiagramaFlujoCompleto();
 cargarItemsExternos();
 
 </script>
