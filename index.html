@@ -1624,15 +1624,21 @@ window.handleFile=function(file){
         const pres=v=>{const s=String(v==null?'':v).trim().toLowerCase();return s!==''&&s!=='no'&&s!=='n/a'&&s!=='-'&&s!=='pendiente'&&s!=='false';};
         const tv=['Tipo 1','Tipo 2','Tipo 3'];
         const z=()=>{const o={};tv.forEach(t=>o[t]=0);return o;};
+        // Detecta por nombre de cabecera una columna de Migración / Alta operativa (si aún no existe, queda en 0)
+        const cab=raw[headerRow]||[];
+        let colAlta=-1;
+        cab.forEach((c,i)=>{const s=String(c||'').toLowerCase();if(colAlta<0&&(s.includes('migraci')||s.includes('alta operativa')||s.includes('fecha alta')))colAlta=i;});
         const D={universo:z(),gabinete:z(),item3:z(),item3_sin_enlace:z(),pendientes:z(),pendientes_programables:z(),
-                 item3_con_enlace:{item1:z(),item2:z(),item1_item2:z()}};
+                 pendientes_en_espera:z(),alta:z(),item3_con_enlace:{item1:z(),item2:z(),item1_item2:z()},colAlta:colAlta};
         raw.slice(headerRow+1).forEach(r=>{
           if(!r[2])return;
           const tipo=String(r[4]||'').trim();
           if(!tv.includes(tipo))return;
           D.universo[tipo]++;
           const gab=pres(r[13]),e1=pres(r[14]),e2=pres(r[15]),inst=pres(r[16]);
+          const alta=colAlta>=0?pres(r[colAlta]):false;
           if(gab)D.gabinete[tipo]++;
+          if(alta)D.alta[tipo]++;
           if(inst){
             D.item3[tipo]++;
             if(e1&&e2)D.item3_con_enlace.item1_item2[tipo]++;
@@ -1643,6 +1649,7 @@ window.handleFile=function(file){
           if(gab&&!inst){
             D.pendientes[tipo]++;
             if(e1||e2)D.pendientes_programables[tipo]++;
+            else D.pendientes_en_espera[tipo]++;
           }
         });
         window.DIAGRAMA_DATOS=D;
@@ -2696,127 +2703,153 @@ function renderDiagramaFlujoCompleto() {
 
   const ce = D.item3_con_enlace || {item1:{},item2:{},item1_item2:{}};
   const ceTipo = t => (ce.item1?.[t]||0) + (ce.item2?.[t]||0) + (ce.item1_item2?.[t]||0);
+  const enEspera = D.pendientes_en_espera || TV.reduce((o,t)=>{o[t]=(D.pendientes?.[t]||0)-(D.pendientes_programables?.[t]||0);return o;},{});
 
-  const totalUniverso   = sum(D.universo) || 745;
-  const totalGabinete   = sum(D.gabinete);
-  const totalItem3      = sum(D.item3);
-  const totalConEnlace  = TV.reduce((a,t) => a + ceTipo(t), 0);
-  const totalSinEnlace  = sum(D.item3_sin_enlace);
-  const totalPendientes = sum(D.pendientes);
-  const totalProgramables = sum(D.pendientes_programables);
-  const totalCriterioNuevo = totalConEnlace + totalProgramables;
+  const totalUniverso    = sum(D.universo) || 745;
+  const totalGabinete    = sum(D.gabinete);
+  const totalItem3       = sum(D.item3);
+  const totalConEnlace   = TV.reduce((a,t) => a + ceTipo(t), 0);
+  const totalSinEnlace   = sum(D.item3_sin_enlace);
+  const totalPendientes  = sum(D.pendientes);
+  const totalProgramables= sum(D.pendientes_programables);
+  const totalEspera      = sum(enEspera);
+  const totalAlta        = sum(D.alta);
+  const totalCriterio    = totalConEnlace + totalProgramables;
 
-  const C = { morado:'#7c3aed', verde:'#0d9488', azul:'#2563eb', gris:'#94a3b8', naranja:'#ea580c', linea:'#cbd5e1', texto:'#334155' };
+  const C = { morado:'#7c3aed', verde:'#0d9488', azul:'#2563eb', gris:'#94a3b8', naranja:'#ea580c', ambar:'#d97706', linea:'#cbd5e1', texto:'#334155' };
 
-  const circulo = (valor, titulo, sub, color, size, fs) =>
-    '<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;border:3px solid '+color+';background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.06)">'+
+  const circulo = (valor,titulo,sub,color,size,fs) =>
+    '<div class="dfx-c" style="width:'+size+'px;height:'+size+'px;border-color:'+color+'">'+
       '<div style="font-size:'+fs+'px;font-weight:800;color:'+color+';line-height:1">'+valor+'</div>'+
-      '<div style="font-size:10px;font-weight:700;color:'+color+';text-align:center;margin-top:3px;line-height:1.15">'+titulo+'</div>'+
-      (sub ? '<div style="font-size:9px;color:'+color+';opacity:.7;text-align:center;line-height:1.15">'+sub+'</div>' : '')+
+      '<div style="font-size:9.5px;font-weight:700;color:'+color+';text-align:center;margin-top:2px;line-height:1.1">'+titulo+'</div>'+
+      (sub?'<div style="font-size:8.5px;color:'+color+';opacity:.7;text-align:center;line-height:1.1">'+sub+'</div>':'')+
     '</div>';
 
-  const conector = (positions, width) => {
-    const ln = 'position:absolute;background:'+C.linea+';';
-    let h = '<div style="position:relative;width:'+width+'px;align-self:stretch;flex-shrink:0;min-height:70px">';
-    h += '<div style="'+ln+'left:0;top:50%;width:52%;height:1.5px"></div>';
-    if (positions.length > 1) {
-      const mn = Math.min.apply(null,positions), mx = Math.max.apply(null,positions);
-      h += '<div style="'+ln+'left:50%;top:'+mn+'%;height:'+(mx-mn)+'%;width:1.5px"></div>';
+  const conector = (positions,width) => {
+    const ln='position:absolute;background:'+C.linea+';';
+    let h='<div class="dfx-con" style="width:'+width+'px">';
+    h+='<div style="'+ln+'left:0;top:50%;width:52%;height:1.5px"></div>';
+    if(positions.length>1){
+      const mn=Math.min.apply(null,positions),mx=Math.max.apply(null,positions);
+      h+='<div style="'+ln+'left:50%;top:'+mn+'%;height:'+(mx-mn)+'%;width:1.5px"></div>';
     }
     positions.forEach(function(p){
-      h += '<div style="'+ln+'left:50%;top:'+p+'%;width:44%;height:1.5px"></div>';
-      h += '<div style="position:absolute;right:0;top:'+p+'%;transform:translateY(-50%);width:0;height:0;border-left:6px solid '+C.linea+';border-top:4px solid transparent;border-bottom:4px solid transparent"></div>';
+      h+='<div style="'+ln+'left:50%;top:'+p+'%;width:44%;height:1.5px"></div>';
+      h+='<div style="position:absolute;right:0;top:'+p+'%;transform:translateY(-50%);width:0;height:0;border-left:6px solid '+C.linea+';border-top:4px solid transparent;border-bottom:4px solid transparent"></div>';
     });
-    return h + '</div>';
+    return h+'</div>';
   };
 
-  const filaTipo = (tipo, color) =>
-    '<div style="display:flex;align-items:center;gap:12px">'+
-      '<div style="width:62px;height:62px;border-radius:50%;border:2.5px solid '+color+';background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+
-        '<div style="font-size:22px;font-weight:800;color:'+color+'">'+ceTipo(tipo)+'</div>'+
-      '</div>'+
-      '<div style="flex:1;display:flex;align-items:center;gap:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;min-width:0">'+
-        '<div style="flex-shrink:0;min-width:88px">'+
-          '<div style="font-size:12px;font-weight:800;color:'+C.texto+'">'+tipo.toUpperCase()+'</div>'+
-          '<div style="font-size:9px;color:#64748b">(Ítem 5 + Enlace)</div>'+
+  const filaTipo = (tipo,color) =>
+    '<div class="dfx-tipo">'+
+      '<div class="dfx-c dfx-c-sm" style="border-color:'+color+'"><div style="font-size:19px;font-weight:800;color:'+color+'">'+ceTipo(tipo)+'</div></div>'+
+      '<div class="dfx-card" style="flex:1">'+
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">'+
+          '<span style="font-size:11px;font-weight:800;color:'+C.texto+'">'+tipo.toUpperCase()+'</span>'+
+          '<span style="font-size:8.5px;color:#94a3b8">Ítem 5 + enlace</span>'+
         '</div>'+
-        '<div style="flex:1;min-width:0">'+
-          '<div style="font-size:9px;font-weight:800;color:'+color+';letter-spacing:.5px;margin-bottom:3px">CON ENLACE</div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>Ítem 5 + Ítem 1</span><strong style="color:'+C.texto+'">'+(ce.item1?.[tipo]||0)+'</strong></div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>Ítem 5 + Ítem 2</span><strong style="color:'+C.texto+'">'+(ce.item2?.[tipo]||0)+'</strong></div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>Ítem 5 + Ítem 1 + Ítem 2</span><strong style="color:'+C.texto+'">'+(ce.item1_item2?.[tipo]||0)+'</strong></div>'+
-        '</div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>+ Ítem 1</span><strong style="color:'+C.texto+'">'+(ce.item1?.[tipo]||0)+'</strong></div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>+ Ítem 2</span><strong style="color:'+C.texto+'">'+(ce.item2?.[tipo]||0)+'</strong></div>'+
+        '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>+ Ítem 1 y 2</span><strong style="color:'+C.texto+'">'+(ce.item1_item2?.[tipo]||0)+'</strong></div>'+
       '</div>'+
     '</div>';
 
-  const tarjetaMini = (titulo, obj, color, bg, borde, pie) =>
-    '<div style="background:'+bg+';border:1px solid '+borde+';border-radius:8px;padding:9px 12px;min-width:150px">'+
-      '<div style="font-size:10px;font-weight:800;color:'+color+';letter-spacing:.5px;margin-bottom:5px">'+titulo+'</div>'+
-      TV.map(function(t){
-        return '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:#475569;padding:1px 0"><span>'+t+'</span><strong style="color:'+C.texto+'">'+((obj||{})[t]||0)+'</strong></div>';
-      }).join('')+
-      (pie?'<div style="margin-top:6px;padding-top:5px;border-top:1px dashed '+borde+';font-size:9.5px;color:'+color+';font-weight:700">'+pie+'</div>':'')+
+  const mini = (titulo,obj,color,bg,borde,pie) =>
+    '<div class="dfx-card" style="background:'+bg+';border-color:'+borde+'">'+
+      '<div style="font-size:9.5px;font-weight:800;color:'+color+';letter-spacing:.4px;margin-bottom:4px">'+titulo+'</div>'+
+      TV.map(function(t){return '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>'+t+'</span><strong style="color:'+C.texto+'">'+((obj||{})[t]||0)+'</strong></div>';}).join('')+
+      (pie?'<div style="margin-top:5px;padding-top:4px;border-top:1px dashed '+borde+';font-size:9px;color:'+color+';font-weight:700">'+pie+'</div>':'')+
     '</div>';
 
-  el.innerHTML =
-  '<div style="background:#fff;border-radius:10px;padding:22px 18px">'+
-    '<div style="display:flex;align-items:stretch;min-width:1120px">'+
+  const estilos =
+  '<style>'+
+  '.dfx-wrap{background:#fff;border-radius:10px;padding:18px 14px}'+
+  '.dfx-flow{display:flex;align-items:stretch;min-width:940px}'+
+  '.dfx-c{border-radius:50%;border:3px solid;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.06)}'+
+  '.dfx-c-sm{width:54px;height:54px;border-width:2.5px}'+
+  '.dfx-con{position:relative;align-self:stretch;flex-shrink:0;min-height:64px}'+
+  '.dfx-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 11px;min-width:0}'+
+  '.dfx-tipo{display:flex;align-items:center;gap:10px}'+
+  '.dfx-col{display:flex;flex-direction:column;min-width:0}'+
+  '.dfx-fila{display:flex;align-items:center;gap:12px;flex-shrink:0}'+
+  '.dfx-foot{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0}'+
+  '@media(max-width:900px){'+
+    '.dfx-flow{display:block;min-width:0}'+
+    '.dfx-con{display:none}'+
+    '.dfx-col{gap:14px!important}'+
+    '.dfx-nivel{border-left:2px solid '+C.linea+';margin-left:16px;padding-left:14px;margin-top:12px}'+
+    '.dfx-raiz{display:flex;justify-content:center;margin-bottom:6px}'+
+    '.dfx-fila{flex-wrap:wrap;gap:10px}'+
+    '.dfx-tipo{gap:8px}'+
+    '.dfx-card{flex:1 1 140px}'+
+  '}'+
+  '@media(min-width:901px){.dfx-nivel{display:contents}}'+
+  '</style>';
 
-      // 217 — gabinete instalado por Ítem 5
-      '<div style="display:flex;align-items:center;flex-shrink:0">'+
-        circulo(totalGabinete,'SEDES CON<br>GABINETE','(Ítem 5)',C.morado,132,40)+
+  el.innerHTML = estilos +
+  '<div class="dfx-wrap">'+
+    '<div class="dfx-flow">'+
+
+      '<div class="dfx-raiz" style="display:flex;align-items:center;flex-shrink:0">'+
+        circulo(totalGabinete,'SEDES CON<br>GABINETE','(Ítem 5)',C.morado,120,36)+
       '</div>'+
-      conector([30,86],46)+
+      conector([30,86],40)+
 
-      '<div style="flex:1;display:flex;flex-direction:column;gap:26px;min-width:0">'+
+      '<div class="dfx-nivel"><div class="dfx-col" style="flex:1;gap:22px">'+
 
-        // FILA PRINCIPAL: 125 instaladas por Ítem 3
+        // Rama instaladas
         '<div style="flex:1;display:flex;align-items:stretch;min-width:0">'+
           '<div style="display:flex;align-items:center;flex-shrink:0">'+
-            circulo(totalItem3,'ÍTEM 3 INSTALÓ<br>EQUIPO','',C.verde,112,34)+
+            circulo(totalItem3,'ÍTEM 3 INSTALÓ<br>EQUIPO','',C.verde,102,32)+
           '</div>'+
-          conector([26,76],42)+
-          '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:18px;min-width:0">'+
+          conector([26,76],36)+
+          '<div class="dfx-nivel"><div class="dfx-col" style="flex:1;justify-content:space-around;gap:14px">'+
 
-            // 37 con enlace → desglose por tipo
             '<div style="display:flex;align-items:stretch;min-width:0">'+
               '<div style="display:flex;align-items:center;flex-shrink:0">'+
-                circulo(totalConEnlace,'CON ENLACE','En pruebas',C.azul,94,28)+
+                circulo(totalConEnlace,'CON ENLACE','En pruebas',C.azul,84,26)+
               '</div>'+
-              conector([17,50,83],40)+
-              '<div style="flex:1;display:flex;flex-direction:column;gap:8px;min-width:0">'+
-                filaTipo('Tipo 1',C.azul)+
-                filaTipo('Tipo 2',C.azul)+
-                filaTipo('Tipo 3',C.azul)+
+              conector([17,50,83],34)+
+              '<div class="dfx-col" style="flex:1;gap:7px">'+
+                filaTipo('Tipo 1',C.azul)+filaTipo('Tipo 2',C.azul)+filaTipo('Tipo 3',C.azul)+
               '</div>'+
             '</div>'+
 
-            // 88 sin enlace → esperando operador
-            '<div style="display:flex;align-items:center;gap:16px;flex-shrink:0">'+
-              circulo(totalSinEnlace,'SIN ENLACE','Espera Ítem 1/2',C.gris,94,28)+
-              tarjetaMini('INSTALADAS SIN ENLACE',D.item3_sin_enlace,'#64748b','#f8fafc','#e2e8f0','Se regularizan al llegar el enlace')+
+            '<div class="dfx-fila">'+
+              circulo(totalSinEnlace,'SIN ENLACE','Espera Ítem 1/2',C.gris,84,26)+
+              mini('INSTALADAS SIN ENLACE',D.item3_sin_enlace,'#64748b','#f8fafc','#e2e8f0','Se regularizan al llegar el enlace')+
             '</div>'+
 
+          '</div></div>'+
+        '</div>'+
+
+        // Rama sin equipo, abierta en programables / en espera
+        '<div style="display:flex;align-items:stretch;min-width:0">'+
+          '<div style="display:flex;align-items:center;flex-shrink:0">'+
+            circulo(totalPendientes,'SIN EQUIPO','(Ítem 3 no instaló)',C.naranja,96,30)+
           '</div>'+
+          conector([28,78],36)+
+          '<div class="dfx-nivel"><div class="dfx-col" style="flex:1;gap:12px">'+
+            '<div class="dfx-fila">'+
+              circulo(totalProgramables,'PROGRAMABLES','Ya tienen enlace',C.ambar,84,26)+
+              mini('LISTAS PARA AGENDAR',D.pendientes_programables,C.ambar,'#fffbeb','#fde68a','Criterio vigente: gabinete + enlace')+
+            '</div>'+
+            '<div class="dfx-fila">'+
+              circulo(totalEspera,'EN ESPERA','Falta enlace',C.gris,84,26)+
+              mini('SIN ENLACE AÚN',enEspera,'#64748b','#f8fafc','#e2e8f0','Esperan a Ítem 1 o Ítem 2')+
+            '</div>'+
+          '</div></div>'+
         '</div>'+
 
-        // FILA PENDIENTES: 92 con gabinete sin equipo Ítem 3
-        '<div style="display:flex;align-items:center;gap:16px;flex-shrink:0">'+
-          circulo(totalPendientes,'SIN EQUIPO','(Ítem 3 no instaló)',C.naranja,104,32)+
-          '<div style="width:26px;height:1.5px;background:'+C.linea+';position:relative"><div style="position:absolute;right:0;top:50%;transform:translateY(-50%);width:0;height:0;border-left:6px solid '+C.linea+';border-top:4px solid transparent;border-bottom:4px solid transparent"></div></div>'+
-          tarjetaMini('SIN ÍTEM 3',D.pendientes,C.naranja,'#fffbeb','#fde68a',null)+
-          tarjetaMini('YA PROGRAMABLES',D.pendientes_programables,C.naranja,'#fff7ed','#fed7aa','Nuevo criterio: gabinete + enlace')+
-        '</div>'+
-
-      '</div>'+
+      '</div></div>'+
     '</div>'+
 
-    // FOOTER
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:22px;padding-top:18px;border-top:1px solid #e2e8f0">'+
-      '<div style="text-align:center"><div style="font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.6px">UNIVERSO TOTAL DEL PROYECTO</div><div style="font-size:26px;font-weight:900;color:'+C.texto+';line-height:1.2">'+totalUniverso+'</div><div style="font-size:9px;color:#94a3b8">SEDES</div></div>'+
-      '<div style="text-align:center"><div style="font-size:11px;font-weight:800;color:'+C.morado+'">'+totalGabinete+' = Sedes con gabinete (Ítem 5)</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">Avanza progresivamente hasta las '+totalUniverso+' sedes del universo.</div></div>'+
-      '<div style="text-align:center"><div style="font-size:11px;font-weight:800;color:'+C.verde+'">'+totalItem3+' = Sedes intervenidas por Ítem 3</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">'+totalConEnlace+' con enlace (en pruebas) + '+totalSinEnlace+' esperando Ítem 1/2. Las '+totalSinEnlace+' no son pérdida: se regularizan.</div></div>'+
-      '<div style="text-align:center"><div style="font-size:11px;font-weight:800;color:'+C.azul+'">Criterio vigente</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">Ítem 5 + al menos un enlace = <strong>'+totalCriterioNuevo+'</strong> sedes ('+totalConEnlace+' ya intervenidas + '+totalProgramables+' por programar).</div></div>'+
+    '<div class="dfx-foot">'+
+      '<div style="text-align:center"><div style="font-size:9px;font-weight:800;color:#64748b;letter-spacing:.5px">UNIVERSO TOTAL</div><div style="font-size:24px;font-weight:900;color:'+C.texto+';line-height:1.2">'+totalUniverso+'</div><div style="font-size:9px;color:#94a3b8">SEDES</div></div>'+
+      '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.morado+'">'+totalGabinete+' con gabinete (Ítem 5)</div><div style="font-size:9px;color:#64748b;margin-top:2px">Avanza hasta las '+totalUniverso+' sedes del universo.</div></div>'+
+      '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.verde+'">'+totalItem3+' intervenidas por Ítem 3</div><div style="font-size:9px;color:#64748b;margin-top:2px">'+totalConEnlace+' en pruebas + '+totalSinEnlace+' esperando enlace. Las '+totalSinEnlace+' no son pérdida: se regularizan.</div></div>'+
+      '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.ambar+'">Criterio vigente: '+totalCriterio+'</div><div style="font-size:9px;color:#64748b;margin-top:2px">Ítem 5 + enlace = '+totalConEnlace+' ya intervenidas + '+totalProgramables+' listas para agendar.</div></div>'+
+      '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+(totalAlta?C.verde:'#94a3b8')+'">Alta operativa: '+totalAlta+'</div><div style="font-size:9px;color:#64748b;margin-top:2px">'+(D.colAlta>=0?'Pruebas hechas y cargadas en la plataforma.':'Agrega la columna «Fecha Migración» a la plantilla para activarlo.')+'</div></div>'+
     '</div>'+
   '</div>';
 }
