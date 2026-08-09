@@ -2529,138 +2529,138 @@ async function cargarItemsExternos(){
 function renderDiagramaFlujoCompleto() {
   const el = document.getElementById('diagrama-contenido');
   if (!el) return;
-  
+
   const soloItem5 = window.TIPO_POR_ITEM_PLANTILLA?.solo_item5 || {};
   const conEnlace = window.TIPO_POR_ITEM_PLANTILLA?.con_enlace || {};
-  
   const sumarObj = obj => Object.values(obj || {}).reduce((a,b) => a+b, 0);
-  
-  const t5Tipo1 = soloItem5['Tipo 1'] || 0;
-  const t5Tipo2 = soloItem5['Tipo 2'] || 0;
-  const t5Tipo3 = soloItem5['Tipo 3'] || 0;
-  
-  const totalItem5 = t5Tipo1 + t5Tipo2 + t5Tipo3;
-  const ce1 = sumarObj(conEnlace.item1);
-  const ce2 = sumarObj(conEnlace.item2);
-  const ce12 = sumarObj(conEnlace.item1_item2);
-  const totalConEnlace = ce1 + ce2 + ce12;
-  
+
+  const totalItem5 = (soloItem5['Tipo 1']||0) + (soloItem5['Tipo 2']||0) + (soloItem5['Tipo 3']||0);
+  const totalConEnlace = sumarObj(conEnlace.item1) + sumarObj(conEnlace.item2) + sumarObj(conEnlace.item1_item2);
   const totalItem3 = totalConEnlace;
   const totalSinEnlace = totalItem5 - totalConEnlace;
   const totalPendientes = totalItem5 - totalItem3;
-  
-  const sinEnlaceByType = {};
-  ['Tipo 1', 'Tipo 2', 'Tipo 3'].forEach(tipo => {
-    const conE = (conEnlace.item1?.[tipo] || 0) + (conEnlace.item2?.[tipo] || 0) + (conEnlace.item1_item2?.[tipo] || 0);
-    const soloE = soloItem5[tipo] || 0;
-    sinEnlaceByType[tipo] = soloE - conE;
+
+  const ceTipo = t => (conEnlace.item1?.[t]||0) + (conEnlace.item2?.[t]||0) + (conEnlace.item1_item2?.[t]||0);
+  const sinEnlaceByType = {}, pendientesByType = {};
+  ['Tipo 1','Tipo 2','Tipo 3'].forEach(t => {
+    sinEnlaceByType[t] = (soloItem5[t]||0) - ceTipo(t);
+    pendientesByType[t] = (soloItem5[t]||0) - ceTipo(t);
   });
-  
-  const pendientesByType = {};
-  ['Tipo 1', 'Tipo 2', 'Tipo 3'].forEach(tipo => {
-    const conItem5 = soloItem5[tipo] || 0;
-    const instalado = (conEnlace.item1?.[tipo] || 0) + (conEnlace.item2?.[tipo] || 0) + (conEnlace.item1_item2?.[tipo] || 0);
-    pendientesByType[tipo] = conItem5 - instalado;
-  });
-  
-  el.innerHTML = `
-    <div style="padding: 24px; background: white;">
-      <div style="display: flex; flex-direction: column; gap: 40px;">
-        
-        <!-- FILA 1: UNIVERSO -->
-        <div style="display: flex; justify-content: center; gap: 60px; align-items: center;">
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
-            <div style="width: 140px; height: 140px; border-radius: 50%; border: 4px solid #2c3e50; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f8f9fa; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-              <div style="font-size: 52px; font-weight: 900; color: #2c3e50;">${totalItem5}</div>
-              <div style="font-size: 10px; font-weight: 700; color: #2c3e50; text-align: center; margin-top: 8px;">Sedes con<br>Gabinete<br>(Ítem 5)</div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- FILA 2: BIFURCACIÓN -->
-        <div style="display: flex; justify-content: center; gap: 80px; align-items: flex-start;">
-          
-          <!-- RAMA IZQUIERDA: CON ENLACE -->
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 20px; flex: 1; max-width: 500px;">
-            <div style="font-size: 12px; font-weight: 700; color: #27ae60; text-transform: uppercase; letter-spacing: 1px;">➜ Con Enlace (Ítem 1 ó 2)</div>
-            
-            <div style="width: 130px; height: 130px; border-radius: 50%; border: 4px solid #27ae60; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f0fdf4; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-              <div style="font-size: 48px; font-weight: 900; color: #27ae60;">${totalConEnlace}</div>
-              <div style="font-size: 9px; font-weight: 700; color: #27ae60; text-align: center; margin-top: 4px;">Instaladas<br>Ítem 3</div>
-            </div>
-            
-            <div style="width: 100%; display: flex; flex-direction: column; gap: 12px;">
-              <div style="background: #f8f9fa; border-radius: 8px; padding: 12px; border-left: 3px solid #27ae60;">
-                <div style="font-size: 11px; font-weight: 700; color: #2c3e50; margin-bottom: 8px;">Desglose por Tipo:</div>
-                <div style="font-size: 10px; color: #555; display: flex; justify-content: space-between; margin-bottom: 4px;">
-                  <span>Tipo 1:</span>
-                  <strong>${(conEnlace.item1?.['Tipo 1'] || 0) + (conEnlace.item2?.['Tipo 1'] || 0) + (conEnlace.item1_item2?.['Tipo 1'] || 0)}</strong>
-                </div>
-                <div style="font-size: 10px; color: #555; display: flex; justify-content: space-between; margin-bottom: 4px;">
-                  <span>Tipo 2:</span>
-                  <strong>${(conEnlace.item1?.['Tipo 2'] || 0) + (conEnlace.item2?.['Tipo 2'] || 0) + (conEnlace.item1_item2?.['Tipo 2'] || 0)}</strong>
-                </div>
-                <div style="font-size: 10px; color: #555; display: flex; justify-content: space-between;">
-                  <span>Tipo 3:</span>
-                  <strong>${(conEnlace.item1?.['Tipo 3'] || 0) + (conEnlace.item2?.['Tipo 3'] || 0) + (conEnlace.item1_item2?.['Tipo 3'] || 0)}</strong>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- RAMA DERECHA: SIN ENLACE -->
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 20px; flex: 1; max-width: 500px;">
-            <div style="font-size: 12px; font-weight: 700; color: #c0392b; text-transform: uppercase; letter-spacing: 1px;">➜ Sin Enlace (Solo Ítem 5)</div>
-            
-            <div style="width: 130px; height: 130px; border-radius: 50%; border: 4px solid #c0392b; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fef2f2; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-              <div style="font-size: 48px; font-weight: 900; color: #c0392b;">${totalSinEnlace}</div>
-              <div style="font-size: 9px; font-weight: 700; color: #c0392b; text-align: center; margin-top: 4px;">Pendientes<br>Ítem 3</div>
-            </div>
-            
-            <div style="width: 100%; display: flex; flex-direction: column; gap: 12px;">
-              <div style="background: #f8f9fa; border-radius: 8px; padding: 12px; border-left: 3px solid #c0392b;">
-                <div style="font-size: 11px; font-weight: 700; color: #2c3e50; margin-bottom: 8px;">Desglose por Tipo:</div>
-                <div style="font-size: 10px; color: #555; display: flex; justify-content: space-between; margin-bottom: 4px;">
-                  <span>Tipo 1:</span>
-                  <strong>${sinEnlaceByType['Tipo 1'] || 0}</strong>
-                </div>
-                <div style="font-size: 10px; color: #555; display: flex; justify-content: space-between; margin-bottom: 4px;">
-                  <span>Tipo 2:</span>
-                  <strong>${sinEnlaceByType['Tipo 2'] || 0}</strong>
-                </div>
-                <div style="font-size: 10px; color: #555; display: flex; justify-content: space-between;">
-                  <span>Tipo 3:</span>
-                  <strong>${sinEnlaceByType['Tipo 3'] || 0}</strong>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- RESUMEN FOOTER -->
-        <div style="border-top: 1px solid #e0e0e0; padding-top: 24px; margin-top: 24px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; text-align: center;">
-            <div>
-              <div style="font-size: 12px; color: #666; margin-bottom: 4px; font-weight: 600;">UNIVERSO</div>
-              <div style="font-size: 28px; font-weight: 900; color: #2c3e50;">${totalItem5}</div>
-            </div>
-            <div>
-              <div style="font-size: 12px; color: #666; margin-bottom: 4px; font-weight: 600;">CON ENLACE</div>
-              <div style="font-size: 28px; font-weight: 900; color: #27ae60;">${totalConEnlace}</div>
-            </div>
-            <div>
-              <div style="font-size: 12px; color: #666; margin-bottom: 4px; font-weight: 600;">SIN ENLACE</div>
-              <div style="font-size: 28px; font-weight: 900; color: #c0392b;">${totalSinEnlace}</div>
-            </div>
-            <div>
-              <div style="font-size: 12px; color: #666; margin-bottom: 4px; font-weight: 600;">% COMPLETADO</div>
-              <div style="font-size: 28px; font-weight: 900; color: #2c3e50;">${totalItem5 > 0 ? Math.round((totalConEnlace/totalItem5)*100) : 0}%</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+
+  const C = { morado:'#7c3aed', verde:'#0d9488', azul:'#2563eb', gris:'#94a3b8', naranja:'#ea580c', linea:'#cbd5e1', texto:'#334155' };
+
+  const circulo = (valor, titulo, sub, color, size, fs) =>
+    '<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;border:3px solid '+color+';background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.06)">'+
+      '<div style="font-size:'+fs+'px;font-weight:800;color:'+color+';line-height:1">'+valor+'</div>'+
+      '<div style="font-size:10px;font-weight:700;color:'+color+';text-align:center;margin-top:3px;line-height:1.15">'+titulo+'</div>'+
+      (sub ? '<div style="font-size:9px;color:'+color+';opacity:.7;text-align:center;line-height:1.15">'+sub+'</div>' : '')+
+    '</div>';
+
+  const conector = (positions, width) => {
+    const ln = 'position:absolute;background:'+C.linea+';';
+    let h = '<div style="position:relative;width:'+width+'px;align-self:stretch;flex-shrink:0;min-height:70px">';
+    h += '<div style="'+ln+'left:0;top:50%;width:52%;height:1.5px"></div>';
+    if (positions.length > 1) {
+      const mn = Math.min.apply(null,positions), mx = Math.max.apply(null,positions);
+      h += '<div style="'+ln+'left:50%;top:'+mn+'%;height:'+(mx-mn)+'%;width:1.5px"></div>';
+    }
+    positions.forEach(function(p){
+      h += '<div style="'+ln+'left:50%;top:'+p+'%;width:44%;height:1.5px"></div>';
+      h += '<div style="position:absolute;right:0;top:'+p+'%;transform:translateY(-50%);width:0;height:0;border-left:6px solid '+C.linea+';border-top:4px solid transparent;border-bottom:4px solid transparent"></div>';
+    });
+    return h + '</div>';
+  };
+
+  const filaTipo = (tipo, color) =>
+    '<div style="display:flex;align-items:center;gap:12px">'+
+      '<div style="width:62px;height:62px;border-radius:50%;border:2.5px solid '+color+';background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+
+        '<div style="font-size:22px;font-weight:800;color:'+color+'">'+ceTipo(tipo)+'</div>'+
+      '</div>'+
+      '<div style="flex:1;display:flex;align-items:center;gap:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;min-width:0">'+
+        '<div style="flex-shrink:0;min-width:88px">'+
+          '<div style="font-size:12px;font-weight:800;color:'+C.texto+'">'+tipo.toUpperCase()+'</div>'+
+          '<div style="font-size:9px;color:#64748b">(Ítem 5 + Enlace)</div>'+
+        '</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:9px;font-weight:800;color:'+color+';letter-spacing:.5px;margin-bottom:3px">CON ENLACE</div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>Ítem 5 + Ítem 1</span><strong style="color:'+C.texto+'">'+(conEnlace.item1?.[tipo]||0)+'</strong></div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>Ítem 5 + Ítem 2</span><strong style="color:'+C.texto+'">'+(conEnlace.item2?.[tipo]||0)+'</strong></div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>Ítem 5 + Ítem 1 + Ítem 2</span><strong style="color:'+C.texto+'">'+(conEnlace.item1_item2?.[tipo]||0)+'</strong></div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+
+  const tarjetaMini = (titulo, obj, color, bg, borde) =>
+    '<div style="background:'+bg+';border:1px solid '+borde+';border-radius:8px;padding:9px 12px;min-width:150px">'+
+      '<div style="font-size:10px;font-weight:800;color:'+color+';letter-spacing:.5px;margin-bottom:5px">'+titulo+'</div>'+
+      ['Tipo 1','Tipo 2','Tipo 3'].map(function(t){
+        return '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:#475569;padding:1px 0"><span>'+t+'</span><strong style="color:'+C.texto+'">'+(obj[t]||0)+'</strong></div>';
+      }).join('')+
+    '</div>';
+
+  const universoTotal = (typeof TOTAL !== 'undefined' ? TOTAL : 745);
+
+  el.innerHTML =
+  '<div style="background:#fff;border-radius:10px;padding:22px 18px">'+
+    '<div style="display:flex;align-items:stretch;min-width:1080px">'+
+
+      // 217
+      '<div style="display:flex;align-items:center;flex-shrink:0">'+
+        circulo(totalItem5,'SEDES CON<br>GABINETE','(Ítem 5)',C.morado,132,40)+
+      '</div>'+
+      conector([30,86],46)+
+
+      // stack: fila principal + fila pendientes
+      '<div style="flex:1;display:flex;flex-direction:column;gap:26px;min-width:0">'+
+
+        // FILA PRINCIPAL
+        '<div style="flex:1;display:flex;align-items:stretch;min-width:0">'+
+          '<div style="display:flex;align-items:center;flex-shrink:0">'+
+            circulo(totalItem3,'INSTALADAS<br>ÍTEM 3','',C.verde,110,34)+
+          '</div>'+
+          conector([26,76],42)+
+          '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:18px;min-width:0">'+
+
+            // rama con enlace
+            '<div style="display:flex;align-items:stretch;min-width:0">'+
+              '<div style="display:flex;align-items:center;flex-shrink:0">'+
+                circulo(totalConEnlace,'CON ENLACE','(Ítem 1 ó 2)',C.azul,92,28)+
+              '</div>'+
+              conector([17,50,83],40)+
+              '<div style="flex:1;display:flex;flex-direction:column;gap:8px;min-width:0">'+
+                filaTipo('Tipo 1',C.azul)+
+                filaTipo('Tipo 2',C.azul)+
+                filaTipo('Tipo 3',C.azul)+
+              '</div>'+
+            '</div>'+
+
+            // rama sin enlace
+            '<div style="display:flex;align-items:center;gap:16px;flex-shrink:0">'+
+              circulo(totalSinEnlace,'SIN ENLACE','(Solo Ítem 5)',C.gris,92,28)+
+              tarjetaMini('SOLO ÍTEM 5',sinEnlaceByType,'#64748b','#f8fafc','#e2e8f0')+
+            '</div>'+
+
+          '</div>'+
+        '</div>'+
+
+        // FILA PENDIENTES
+        '<div style="display:flex;align-items:center;gap:16px;flex-shrink:0">'+
+          circulo(totalPendientes,'PENDIENTES','(Sin Ítem 3)',C.naranja,104,32)+
+          '<div style="width:26px;height:1.5px;background:'+C.linea+';position:relative"><div style="position:absolute;right:0;top:50%;transform:translateY(-50%);width:0;height:0;border-left:6px solid '+C.linea+';border-top:4px solid transparent;border-bottom:4px solid transparent"></div></div>'+
+          tarjetaMini('SIN ÍTEM 3',pendientesByType,C.naranja,'#fffbeb','#fde68a')+
+        '</div>'+
+
+      '</div>'+
+    '</div>'+
+
+    // FOOTER
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:22px;padding-top:18px;border-top:1px solid #e2e8f0">'+
+      '<div style="text-align:center"><div style="font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.6px">UNIVERSO TOTAL DEL PROYECTO</div><div style="font-size:26px;font-weight:900;color:'+C.texto+';line-height:1.2">'+universoTotal+'</div><div style="font-size:9px;color:#94a3b8">SEDES</div></div>'+
+      '<div style="text-align:center"><div style="font-size:11px;font-weight:800;color:'+C.morado+'">'+totalItem5+' = Sedes con gabinete (Ítem 5)</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">Total de sedes donde el Ítem 5 ya instaló el gabinete.</div></div>'+
+      '<div style="text-align:center"><div style="font-size:11px;font-weight:800;color:'+C.verde+'">'+totalItem3+' = Sedes donde Ítem 3 ya instaló equipo</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">'+totalConEnlace+' con enlace + '+totalSinEnlace+' sin enlace.</div></div>'+
+      '<div style="text-align:center"><div style="font-size:11px;font-weight:800;color:'+C.azul+'">Objetivo</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">Avanzar progresivamente desde las '+totalItem5+' sedes actuales hasta alcanzar las '+universoTotal+' sedes del universo total.</div></div>'+
+    '</div>'+
+  '</div>';
 }
 
 // Exportar función
