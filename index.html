@@ -1618,6 +1618,37 @@ window.handleFile=function(file){
       // PERSISTENCIA: guardar para que el diagrama sobreviva al refrescar (web y celular)
       guardarPlantillaTipos(window.TIPO_POR_ITEM_PLANTILLA);
 
+      // === DATASET DEL DIAGRAMA DE FLUJO (aislado: no altera pendingRows ni el embudo) ===
+      // Lee N/O/P/Q aceptando tanto fechas como "Si" (la plantilla cambió de formato).
+      {
+        const pres=v=>{const s=String(v==null?'':v).trim().toLowerCase();return s!==''&&s!=='no'&&s!=='n/a'&&s!=='-'&&s!=='pendiente'&&s!=='false';};
+        const tv=['Tipo 1','Tipo 2','Tipo 3'];
+        const z=()=>{const o={};tv.forEach(t=>o[t]=0);return o;};
+        const D={universo:z(),gabinete:z(),item3:z(),item3_sin_enlace:z(),pendientes:z(),pendientes_programables:z(),
+                 item3_con_enlace:{item1:z(),item2:z(),item1_item2:z()}};
+        raw.slice(headerRow+1).forEach(r=>{
+          if(!r[2])return;
+          const tipo=String(r[4]||'').trim();
+          if(!tv.includes(tipo))return;
+          D.universo[tipo]++;
+          const gab=pres(r[13]),e1=pres(r[14]),e2=pres(r[15]),inst=pres(r[16]);
+          if(gab)D.gabinete[tipo]++;
+          if(inst){
+            D.item3[tipo]++;
+            if(e1&&e2)D.item3_con_enlace.item1_item2[tipo]++;
+            else if(e1)D.item3_con_enlace.item1[tipo]++;
+            else if(e2)D.item3_con_enlace.item2[tipo]++;
+            else D.item3_sin_enlace[tipo]++;
+          }
+          if(gab&&!inst){
+            D.pendientes[tipo]++;
+            if(e1||e2)D.pendientes_programables[tipo]++;
+          }
+        });
+        window.DIAGRAMA_DATOS=D;
+        guardarDiagramaDatos(D);
+      }
+
       // IMPORTANTE: Actualizar dashboard con los nuevos totales (aunque no haya cambios nuevos)
       window.renderTodo();
       
@@ -2513,6 +2544,24 @@ window.confirmarSeg=async function(){
 // PERSISTENCIA DE LA PLANTILLA (para que el diagrama no se pierda al refrescar)
 // ============================================================
 const CLAVE_PLANTILLA='plantilla_tipos_v1';
+const CLAVE_DIAGRAMA='diagrama_datos_v1';
+
+function guardarDiagramaDatos(D){
+  if(!D)return;
+  try{localStorage.setItem(CLAVE_DIAGRAMA,JSON.stringify(D));}catch(e){}
+  try{
+    setDoc(doc(db,'config','diagrama_datos'),{...D,actualizado:Date.now()})
+      .catch(e=>console.error('guardarDiagramaDatos:',e));
+  }catch(e){console.error('guardarDiagramaDatos:',e);}
+}
+
+function restaurarDiagramaLocal(){
+  if(window.DIAGRAMA_DATOS)return;
+  try{
+    const raw=localStorage.getItem(CLAVE_DIAGRAMA);
+    if(raw)window.DIAGRAMA_DATOS=JSON.parse(raw);
+  }catch(e){}
+}
 
 function guardarPlantillaTipos(datos){
   if(!datos)return;
@@ -2541,6 +2590,13 @@ async function cargarItemsExternos(){
     const snap=await getDocs(collection(db,'config'));
     let hayItems=false;
     snap.forEach(d=>{
+      if(d.id==='diagrama_datos'){
+        const p=d.data();
+        if(p&&p.gabinete){
+          window.DIAGRAMA_DATOS=p;
+          try{localStorage.setItem(CLAVE_DIAGRAMA,JSON.stringify(p));}catch(e){}
+        }
+      }
       if(d.id==='plantilla_tipos'){
         const p=d.data();
         if(p&&p.solo_item5){
@@ -2629,45 +2685,26 @@ function renderDiagramaFlujoCompleto() {
   const el = document.getElementById('diagrama-contenido');
   if (!el) return;
 
-  // Fuente 1: plantilla cargada en esta sesión. Fuente 2: sedes_estado. Fuente 3: historial de registros.
-  let datos = window.TIPO_POR_ITEM_PLANTILLA;
-  let fuente = 'plantilla';
-  if (totalDatosDiagrama(datos) === 0) {
-    datos = calcularTiposDesdeSedesEstado();
-    fuente = 'sedes_estado';
-  }
-  if (totalDatosDiagrama(datos) === 0) {
-    datos = calcularTiposDesdeRegistros();
-    fuente = 'registros';
-  }
+  const D = window.DIAGRAMA_DATOS;
+  const TV = ['Tipo 1','Tipo 2','Tipo 3'];
+  const sum = o => TV.reduce((a,t) => a + (Number((o||{})[t]) || 0), 0);
 
-  if (totalDatosDiagrama(datos) === 0) {
-    const nEstados = Object.keys(sedesEstado || {}).length;
-    const nRegs = Array.isArray(registros) ? registros.length : 0;
-    el.innerHTML =
-      '<div style="color:#9ca3af;text-align:center;padding:36px 20px;font-size:14px">Carga la Plantilla_Carga para ver el diagrama de flujo'+
-      '<div style="font-size:11px;color:#cbd5e1;margin-top:10px">Diagnóstico · sedes_estado: '+nEstados+' · registros: '+nRegs+' · estados cargados: '+(sedesEstadoCargado?'sí':'no')+'</div>'+
-      '</div>';
+  if (!D || !D.gabinete || sum(D.gabinete) === 0) {
+    el.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:36px 20px;font-size:14px">Carga la Plantilla_Carga para ver el diagrama de flujo</div>';
     return;
   }
-  window._diagramaFuente = fuente;
 
-  const soloItem5 = datos.solo_item5 || {};
-  const conEnlace = datos.con_enlace || {};
-  const sumarObj = obj => Object.values(obj || {}).reduce((a,b) => a+b, 0);
+  const ce = D.item3_con_enlace || {item1:{},item2:{},item1_item2:{}};
+  const ceTipo = t => (ce.item1?.[t]||0) + (ce.item2?.[t]||0) + (ce.item1_item2?.[t]||0);
 
-  const totalItem5 = (soloItem5['Tipo 1']||0) + (soloItem5['Tipo 2']||0) + (soloItem5['Tipo 3']||0);
-  const totalConEnlace = sumarObj(conEnlace.item1) + sumarObj(conEnlace.item2) + sumarObj(conEnlace.item1_item2);
-  const totalItem3 = totalConEnlace;
-  const totalSinEnlace = totalItem5 - totalConEnlace;
-  const totalPendientes = totalItem5 - totalItem3;
-
-  const ceTipo = t => (conEnlace.item1?.[t]||0) + (conEnlace.item2?.[t]||0) + (conEnlace.item1_item2?.[t]||0);
-  const sinEnlaceByType = {}, pendientesByType = {};
-  ['Tipo 1','Tipo 2','Tipo 3'].forEach(t => {
-    sinEnlaceByType[t] = (soloItem5[t]||0) - ceTipo(t);
-    pendientesByType[t] = (soloItem5[t]||0) - ceTipo(t);
-  });
+  const totalUniverso   = sum(D.universo) || 745;
+  const totalGabinete   = sum(D.gabinete);
+  const totalItem3      = sum(D.item3);
+  const totalConEnlace  = TV.reduce((a,t) => a + ceTipo(t), 0);
+  const totalSinEnlace  = sum(D.item3_sin_enlace);
+  const totalPendientes = sum(D.pendientes);
+  const totalProgramables = sum(D.pendientes_programables);
+  const totalCriterioNuevo = totalConEnlace + totalProgramables;
 
   const C = { morado:'#7c3aed', verde:'#0d9488', azul:'#2563eb', gris:'#94a3b8', naranja:'#ea580c', linea:'#cbd5e1', texto:'#334155' };
 
@@ -2705,48 +2742,46 @@ function renderDiagramaFlujoCompleto() {
         '</div>'+
         '<div style="flex:1;min-width:0">'+
           '<div style="font-size:9px;font-weight:800;color:'+color+';letter-spacing:.5px;margin-bottom:3px">CON ENLACE</div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>Ítem 5 + Ítem 1</span><strong style="color:'+C.texto+'">'+(conEnlace.item1?.[tipo]||0)+'</strong></div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>Ítem 5 + Ítem 2</span><strong style="color:'+C.texto+'">'+(conEnlace.item2?.[tipo]||0)+'</strong></div>'+
-          '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>Ítem 5 + Ítem 1 + Ítem 2</span><strong style="color:'+C.texto+'">'+(conEnlace.item1_item2?.[tipo]||0)+'</strong></div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>Ítem 5 + Ítem 1</span><strong style="color:'+C.texto+'">'+(ce.item1?.[tipo]||0)+'</strong></div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>Ítem 5 + Ítem 2</span><strong style="color:'+C.texto+'">'+(ce.item2?.[tipo]||0)+'</strong></div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:10px;color:#475569"><span>Ítem 5 + Ítem 1 + Ítem 2</span><strong style="color:'+C.texto+'">'+(ce.item1_item2?.[tipo]||0)+'</strong></div>'+
         '</div>'+
       '</div>'+
     '</div>';
 
-  const tarjetaMini = (titulo, obj, color, bg, borde) =>
+  const tarjetaMini = (titulo, obj, color, bg, borde, pie) =>
     '<div style="background:'+bg+';border:1px solid '+borde+';border-radius:8px;padding:9px 12px;min-width:150px">'+
       '<div style="font-size:10px;font-weight:800;color:'+color+';letter-spacing:.5px;margin-bottom:5px">'+titulo+'</div>'+
-      ['Tipo 1','Tipo 2','Tipo 3'].map(function(t){
-        return '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:#475569;padding:1px 0"><span>'+t+'</span><strong style="color:'+C.texto+'">'+(obj[t]||0)+'</strong></div>';
+      TV.map(function(t){
+        return '<div style="display:flex;justify-content:space-between;font-size:10.5px;color:#475569;padding:1px 0"><span>'+t+'</span><strong style="color:'+C.texto+'">'+((obj||{})[t]||0)+'</strong></div>';
       }).join('')+
+      (pie?'<div style="margin-top:6px;padding-top:5px;border-top:1px dashed '+borde+';font-size:9.5px;color:'+color+';font-weight:700">'+pie+'</div>':'')+
     '</div>';
-
-  const universoTotal = (typeof TOTAL !== 'undefined' ? TOTAL : 745);
 
   el.innerHTML =
   '<div style="background:#fff;border-radius:10px;padding:22px 18px">'+
-    '<div style="display:flex;align-items:stretch;min-width:1080px">'+
+    '<div style="display:flex;align-items:stretch;min-width:1120px">'+
 
-      // 217
+      // 217 — gabinete instalado por Ítem 5
       '<div style="display:flex;align-items:center;flex-shrink:0">'+
-        circulo(totalItem5,'SEDES CON<br>GABINETE','(Ítem 5)',C.morado,132,40)+
+        circulo(totalGabinete,'SEDES CON<br>GABINETE','(Ítem 5)',C.morado,132,40)+
       '</div>'+
       conector([30,86],46)+
 
-      // stack: fila principal + fila pendientes
       '<div style="flex:1;display:flex;flex-direction:column;gap:26px;min-width:0">'+
 
-        // FILA PRINCIPAL
+        // FILA PRINCIPAL: 125 instaladas por Ítem 3
         '<div style="flex:1;display:flex;align-items:stretch;min-width:0">'+
           '<div style="display:flex;align-items:center;flex-shrink:0">'+
-            circulo(totalItem3,'INSTALADAS<br>ÍTEM 3','',C.verde,110,34)+
+            circulo(totalItem3,'ÍTEM 3 INSTALÓ<br>EQUIPO','',C.verde,112,34)+
           '</div>'+
           conector([26,76],42)+
           '<div style="flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:18px;min-width:0">'+
 
-            // rama con enlace
+            // 37 con enlace → desglose por tipo
             '<div style="display:flex;align-items:stretch;min-width:0">'+
               '<div style="display:flex;align-items:center;flex-shrink:0">'+
-                circulo(totalConEnlace,'CON ENLACE','(Ítem 1 ó 2)',C.azul,92,28)+
+                circulo(totalConEnlace,'CON ENLACE','En pruebas',C.azul,94,28)+
               '</div>'+
               conector([17,50,83],40)+
               '<div style="flex:1;display:flex;flex-direction:column;gap:8px;min-width:0">'+
@@ -2756,20 +2791,21 @@ function renderDiagramaFlujoCompleto() {
               '</div>'+
             '</div>'+
 
-            // rama sin enlace
+            // 88 sin enlace → esperando operador
             '<div style="display:flex;align-items:center;gap:16px;flex-shrink:0">'+
-              circulo(totalSinEnlace,'SIN ENLACE','(Solo Ítem 5)',C.gris,92,28)+
-              tarjetaMini('SOLO ÍTEM 5',sinEnlaceByType,'#64748b','#f8fafc','#e2e8f0')+
+              circulo(totalSinEnlace,'SIN ENLACE','Espera Ítem 1/2',C.gris,94,28)+
+              tarjetaMini('INSTALADAS SIN ENLACE',D.item3_sin_enlace,'#64748b','#f8fafc','#e2e8f0','Se regularizan al llegar el enlace')+
             '</div>'+
 
           '</div>'+
         '</div>'+
 
-        // FILA PENDIENTES
+        // FILA PENDIENTES: 92 con gabinete sin equipo Ítem 3
         '<div style="display:flex;align-items:center;gap:16px;flex-shrink:0">'+
-          circulo(totalPendientes,'PENDIENTES','(Sin Ítem 3)',C.naranja,104,32)+
+          circulo(totalPendientes,'SIN EQUIPO','(Ítem 3 no instaló)',C.naranja,104,32)+
           '<div style="width:26px;height:1.5px;background:'+C.linea+';position:relative"><div style="position:absolute;right:0;top:50%;transform:translateY(-50%);width:0;height:0;border-left:6px solid '+C.linea+';border-top:4px solid transparent;border-bottom:4px solid transparent"></div></div>'+
-          tarjetaMini('SIN ÍTEM 3',pendientesByType,C.naranja,'#fffbeb','#fde68a')+
+          tarjetaMini('SIN ÍTEM 3',D.pendientes,C.naranja,'#fffbeb','#fde68a',null)+
+          tarjetaMini('YA PROGRAMABLES',D.pendientes_programables,C.naranja,'#fff7ed','#fed7aa','Nuevo criterio: gabinete + enlace')+
         '</div>'+
 
       '</div>'+
@@ -2777,10 +2813,10 @@ function renderDiagramaFlujoCompleto() {
 
     // FOOTER
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:22px;padding-top:18px;border-top:1px solid #e2e8f0">'+
-      '<div style="text-align:center"><div style="font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.6px">UNIVERSO TOTAL DEL PROYECTO</div><div style="font-size:26px;font-weight:900;color:'+C.texto+';line-height:1.2">'+universoTotal+'</div><div style="font-size:9px;color:#94a3b8">SEDES</div></div>'+
-      '<div style="text-align:center"><div style="font-size:11px;font-weight:800;color:'+C.morado+'">'+totalItem5+' = Sedes con gabinete (Ítem 5)</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">Total de sedes donde el Ítem 5 ya instaló el gabinete.</div></div>'+
-      '<div style="text-align:center"><div style="font-size:11px;font-weight:800;color:'+C.verde+'">'+totalItem3+' = Sedes donde Ítem 3 ya instaló equipo</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">'+totalConEnlace+' con enlace + '+totalSinEnlace+' sin enlace.</div></div>'+
-      '<div style="text-align:center"><div style="font-size:11px;font-weight:800;color:'+C.azul+'">Objetivo</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">Avanzar progresivamente desde las '+totalItem5+' sedes actuales hasta alcanzar las '+universoTotal+' sedes del universo total.</div></div>'+
+      '<div style="text-align:center"><div style="font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.6px">UNIVERSO TOTAL DEL PROYECTO</div><div style="font-size:26px;font-weight:900;color:'+C.texto+';line-height:1.2">'+totalUniverso+'</div><div style="font-size:9px;color:#94a3b8">SEDES</div></div>'+
+      '<div style="text-align:center"><div style="font-size:11px;font-weight:800;color:'+C.morado+'">'+totalGabinete+' = Sedes con gabinete (Ítem 5)</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">Avanza progresivamente hasta las '+totalUniverso+' sedes del universo.</div></div>'+
+      '<div style="text-align:center"><div style="font-size:11px;font-weight:800;color:'+C.verde+'">'+totalItem3+' = Sedes intervenidas por Ítem 3</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">'+totalConEnlace+' con enlace (en pruebas) + '+totalSinEnlace+' esperando Ítem 1/2. Las '+totalSinEnlace+' no son pérdida: se regularizan.</div></div>'+
+      '<div style="text-align:center"><div style="font-size:11px;font-weight:800;color:'+C.azul+'">Criterio vigente</div><div style="font-size:9.5px;color:#64748b;margin-top:3px">Ítem 5 + al menos un enlace = <strong>'+totalCriterioNuevo+'</strong> sedes ('+totalConEnlace+' ya intervenidas + '+totalProgramables+' por programar).</div></div>'+
     '</div>'+
   '</div>';
 }
@@ -2790,6 +2826,7 @@ window.renderDiagramaFlujoCompleto = renderDiagramaFlujoCompleto;
 
 // Load on startup
 restaurarPlantillaLocal();
+restaurarDiagramaLocal();
 renderDiagramaFlujoCompleto();
 cargarItemsExternos();
 
