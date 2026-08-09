@@ -2566,6 +2566,41 @@ async function cargarItemsExternos(){
 // ============================================================
 // FUNCIÓN: Renderizar diagrama flujo jerárquico
 // ============================================================
+// Calcula los totales del diagrama a partir de `registros` (historial persistente en Firestore).
+// Aplica la misma desduplicación por sede que el embudo: una sede cuenta una sola vez, en su etapa más avanzada.
+function calcularTiposDesdeRegistros(){
+  const tiposValidos=['Tipo 1','Tipo 2','Tipo 3'];
+  const base={solo_item5:{},con_enlace:{item1:{},item2:{},item1_item2:{}}};
+  tiposValidos.forEach(t=>{base.solo_item5[t]=0;base.con_enlace.item1[t]=0;base.con_enlace.item2[t]=0;base.con_enlace.item1_item2[t]=0;});
+  if(!Array.isArray(registros)||!registros.length)return base;
+
+  const zonaFiltro=document.getElementById('filtro-zona-dash')?.value||'';
+  const regs=zonaFiltro?registros.filter(r=>r.zona===zonaFiltro):registros;
+
+  const ordenEtapa={solo_item5:1,con_enlace:2,alta:3};
+  const maxPorSede={},combinacionPorSede={};
+  regs.forEach(r=>{
+    if(!ordenEtapa[r.frente])return;
+    const clave=(r.sedes||'').trim()||('__sinCodigo_'+r.id);
+    const actual=maxPorSede[clave];
+    if(!actual||ordenEtapa[r.frente]>ordenEtapa[actual.etapa])maxPorSede[clave]={etapa:r.frente,tipo:String(r.tipo||'').trim()};
+    if(r.frente==='con_enlace'&&r.enlaceCombinacion)combinacionPorSede[clave]=r.enlaceCombinacion;
+  });
+
+  Object.entries(maxPorSede).forEach(([clave,{etapa,tipo}])=>{
+    if(!tiposValidos.includes(tipo))return;
+    // Toda sede que alcanzó cualquiera de estas etapas tiene el gabinete (Ítem 5) instalado
+    base.solo_item5[tipo]++;
+    if(etapa==='con_enlace'||etapa==='alta'){
+      const c=combinacionPorSede[clave];
+      if(c==='item1_item2')base.con_enlace.item1_item2[tipo]++;
+      else if(c==='item1')base.con_enlace.item1[tipo]++;
+      else if(c==='item2')base.con_enlace.item2[tipo]++;
+    }
+  });
+  return base;
+}
+
 // Calcula los mismos totales del diagrama a partir de sedes_estado (persistente en Firestore).
 // Usa exactamente los mismos criterios que la carga de plantilla: item5==='si' y enlaceCombinacion.
 function calcularTiposDesdeSedesEstado(){
@@ -2594,17 +2629,28 @@ function renderDiagramaFlujoCompleto() {
   const el = document.getElementById('diagrama-contenido');
   if (!el) return;
 
-  // Fuente 1: plantilla recién cargada en esta sesión. Fuente 2: sedes_estado de Firestore (sobrevive al refrescar).
+  // Fuente 1: plantilla cargada en esta sesión. Fuente 2: sedes_estado. Fuente 3: historial de registros.
   let datos = window.TIPO_POR_ITEM_PLANTILLA;
+  let fuente = 'plantilla';
   if (totalDatosDiagrama(datos) === 0) {
-    const desdeEstado = calcularTiposDesdeSedesEstado();
-    if (totalDatosDiagrama(desdeEstado) > 0) datos = desdeEstado;
+    datos = calcularTiposDesdeSedesEstado();
+    fuente = 'sedes_estado';
+  }
+  if (totalDatosDiagrama(datos) === 0) {
+    datos = calcularTiposDesdeRegistros();
+    fuente = 'registros';
   }
 
   if (totalDatosDiagrama(datos) === 0) {
-    el.innerHTML = '<div style="color:#9ca3af;text-align:center;padding:40px;font-size:14px">Carga la Plantilla_Carga para ver el diagrama de flujo</div>';
+    const nEstados = Object.keys(sedesEstado || {}).length;
+    const nRegs = Array.isArray(registros) ? registros.length : 0;
+    el.innerHTML =
+      '<div style="color:#9ca3af;text-align:center;padding:36px 20px;font-size:14px">Carga la Plantilla_Carga para ver el diagrama de flujo'+
+      '<div style="font-size:11px;color:#cbd5e1;margin-top:10px">Diagnóstico · sedes_estado: '+nEstados+' · registros: '+nRegs+' · estados cargados: '+(sedesEstadoCargado?'sí':'no')+'</div>'+
+      '</div>';
     return;
   }
+  window._diagramaFuente = fuente;
 
   const soloItem5 = datos.solo_item5 || {};
   const conEnlace = datos.con_enlace || {};
