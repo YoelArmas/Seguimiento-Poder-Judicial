@@ -1517,6 +1517,8 @@ window.handleFile=function(file){
     }
     if(!ws){ws=wb.Sheets[wb.SheetNames[0]];raw=XLSX.utils.sheet_to_json(ws,{defval:'',header:1});}
     if(esPlantilla){
+      // ¿Es la plantilla NUEVA (con Historial_Atenciones y columna ESTADO SEDE)?
+      if(procesarPlantillaNueva(raw))return;
       let headerRow=-1;
       raw.forEach((r,i)=>{if(Array.isArray(r)&&r.some(c=>String(c).trim()==='ESTADO'))headerRow=i;});
       if(headerRow<0){alert('No se encontró fila de encabezados. Verifica el archivo.');return;}
@@ -2722,6 +2724,112 @@ function datosDiagramaActivos(){
   return D.porZona[zona]||null;         // zona sin sedes en la plantilla
 }
 
+// ============================================================
+// PLANTILLA NUEVA: mapea columnas por NOMBRE (no por posición) y
+// toma el estado directamente de la columna «ESTADO SEDE».
+// Devuelve true si reconoció el formato nuevo y ya lo procesó.
+// ============================================================
+function procesarPlantillaNueva(raw){
+  const norm=s=>String(s==null?'':s).replace(/\u00a0/g,' ')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+
+  let hr=-1;
+  for(let i=0;i<Math.min(raw.length,12);i++){
+    const f=raw[i];
+    if(Array.isArray(f)&&f.some(c=>norm(c)==='estado sede')&&f.some(c=>norm(c)==='cod. pj')){hr=i;break;}
+  }
+  if(hr<0)return false;   // no es el formato nuevo; sigue el camino antiguo
+
+  const cab=raw[hr].map(norm);
+  const col=n=>cab.indexOf(n);
+  const iCod=col('cod. pj'), iTipo=col('tipo sede'), iZona=col('zona'),
+        iGab=col('fecha gabinete (item 5)'), iE1=col('fecha enlace item 1'),
+        iE2=col('fecha enlace item 2'), iEstado=col('estado sede'),
+        iAt=col('n.º atenciones')>=0?col('n.º atenciones'):col('n° atenciones'),
+        iQb=col('atenc. quebradas');
+  if(iCod<0||iEstado<0||iTipo<0){alert('La plantilla nueva no tiene las columnas esperadas.');return true;}
+
+  const TV=['Tipo 1','Tipo 2','Tipo 3'];
+  const z=()=>({'Tipo 1':0,'Tipo 2':0,'Tipo 3':0});
+  const nuevo=()=>({universo:z(),gabinete:z(),item3:z(),item3_sin_enlace:z(),
+    item3_con_enlace:{item1:z(),item2:z(),item1_item2:z()},
+    pendientes:z(),pendientes_programables:z(),pendientes_en_espera:z(),
+    programados:z(),reprog_pendiente:z(),
+    listo_pruebas:z(),migrado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
+    atenciones:0,quebradas:0,reintentos:0});
+
+  const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2';
+  const pres=v=>String(v==null?'':v).replace(/\u00a0/g,' ').trim()!=='';
+  let filas=0;
+
+  raw.slice(hr+1).forEach(r=>{
+    if(!Array.isArray(r)||!pres(r[iCod]))return;
+    const tipo=String(r[iTipo]||'').trim();
+    if(!TV.includes(tipo))return;
+    filas++;
+    const zr=String(r[iZona]||'').trim();
+    const zona=zr?('Zona '+zr.charAt(0).toUpperCase()+zr.slice(1).toLowerCase()):'';
+    const estado=String(r[iEstado]||'').trim();
+    const e1=pres(r[iE1]), e2=pres(r[iE2]);
+    const nAt=iAt>=0?(Number(r[iAt])||0):0, nQb=iQb>=0?(Number(r[iQb])||0):0;
+
+    const acum=B=>{
+      B.universo[tipo]++;
+      B.atenciones+=nAt; B.quebradas+=nQb; if(nAt>1)B.reintentos++;
+      const e=norm(estado);
+      if(e.includes('sin gabinete'))return;
+      B.gabinete[tipo]++;
+
+      // --- Equipo YA rackeado: cadena rackeo -> pruebas -> migracion -> cierre ---
+      const rackeada = e.includes('rackeada sin enlace')||e.includes('listo para pruebas')||
+                       e.includes('migrado')||e.includes('validacion')||
+                       e.includes('conformidad')||e.includes('alta operativa');
+      if(rackeada){
+        B.item3[tipo]++;
+        if(e.includes('alta operativa'))      B.alta[tipo]++;
+        else if(e.includes('conformidad'))    B.en_conformidad[tipo]++;
+        else if(e.includes('validacion'))     B.en_validacion[tipo]++;
+        else if(e.includes('migrado'))        B.migrado_pend_doc[tipo]++;
+        else if(e.includes('listo para pruebas')) B.listo_pruebas[tipo]++;
+        if(e1&&e2)B.item3_con_enlace.item1_item2[tipo]++;
+        else if(e1)B.item3_con_enlace.item1[tipo]++;
+        else if(e2)B.item3_con_enlace.item2[tipo]++;
+        else B.item3_sin_enlace[tipo]++;
+        return;
+      }
+
+      // --- Sin equipo todavia ---
+      B.pendientes[tipo]++;
+      if(e.includes('reprogramacion'))        B.reprog_pendiente[tipo]++;
+      else if(e.includes('programado'))       B.programados[tipo]++;
+      else if(e.includes('programable'))      B.pendientes_programables[tipo]++;
+      else                                    B.pendientes_en_espera[tipo]++;
+    };
+
+    acum(D);
+    if(zona){ if(!D.porZona[zona])D.porZona[zona]=nuevo(); acum(D.porZona[zona]); }
+  });
+
+  window.DIAGRAMA_DATOS=D;
+  guardarDiagramaDatos(D);
+  window.renderTodo();
+  const s=o=>TV.reduce((a,t)=>a+(o[t]||0),0);
+  alert('Plantilla cargada ('+filas+' sedes)\n\n'+
+        'Con gabinete (Ítem 5): '+s(D.gabinete)+'\n'+
+        'Equipo rackeado: '+s(D.item3)+'\n'+
+        '   · Rackeadas sin enlace: '+s(D.item3_sin_enlace)+'\n'+
+        '   · Listo para pruebas: '+s(D.listo_pruebas)+'\n'+
+        '   · Migrado pend. documentación: '+s(D.migrado_pend_doc)+'\n'+
+        '   · En validación Ítem 5: '+s(D.en_validacion)+'\n'+
+        '   · En conformidad PJ: '+s(D.en_conformidad)+'\n'+
+        '   · Alta operativa: '+s(D.alta)+'\n\n'+
+        'Sin equipo: '+s(D.pendientes)+'\n'+
+        '   · Agendadas: '+s(D.programados)+'   · Reagendar: '+s(D.reprog_pendiente)+'\n'+
+        '   · Programables: '+s(D.pendientes_programables)+'   · En espera de enlace: '+s(D.pendientes_en_espera)+'\n\n'+
+        'Atenciones: '+D.atenciones+'   ·   Quebradas: '+D.quebradas);
+  return true;
+}
+
 function renderDiagramaFlujoCompleto() {
   const el = document.getElementById('diagrama-contenido');
   if (!el) return;
@@ -2753,10 +2861,18 @@ function renderDiagramaFlujoCompleto() {
   const totalProgramables= sum(D.pendientes_programables);
   const totalEspera      = sum(enEspera);
   const totalAlta        = sum(D.alta);
-  const totalCriterio    = totalConEnlace + totalProgramables;
+  const totalProgramados = sum(D.programados);
+  const totalListoPru    = sum(D.listo_pruebas);
+  const totalMigradoDoc  = sum(D.migrado_pend_doc);
+  const totalValid       = sum(D.en_validacion);
+  const totalConf        = sum(D.en_conformidad);
+  const totalCierre      = totalMigradoDoc+totalValid+totalConf+totalAlta;
+  const totalReprog      = sum(D.reprog_pendiente);
+  const totalCriterio    = totalConEnlace + totalProgramables + totalProgramados + totalReprog;
+  const esV2             = (window.DIAGRAMA_DATOS||{}).formato === 'v2';
   const hayAlta          = (window.DIAGRAMA_DATOS.colAlta ?? -1) >= 0;
 
-  const C = { morado:'#7c3aed', verde:'#0d9488', azul:'#2563eb', gris:'#94a3b8', naranja:'#ea580c', ambar:'#d97706', linea:'#cbd5e1', texto:'#334155' };
+  const C = { morado:'#7c3aed', verde:'#0d9488', azul:'#2563eb', gris:'#94a3b8', naranja:'#ea580c', ambar:'#d97706', rojo:'#b91c1c', linea:'#cbd5e1', texto:'#334155' };
 
   const circulo = (valor,titulo,sub,color,cls) =>
     '<div class="dfx-c '+cls+'" style="border-color:'+color+'">'+
@@ -2791,6 +2907,13 @@ function renderDiagramaFlujoCompleto() {
       '</div>'+
     '</div>';
 
+  const paso = (n,txt,color,fuerte) =>
+    '<div class="dfx-paso'+(fuerte?' dfx-paso-f':'')+'" style="border-color:'+color+'">'+
+      '<div style="font-size:20px;font-weight:800;color:'+color+';line-height:1">'+n+'</div>'+
+      '<div style="font-size:9px;font-weight:700;color:'+color+';line-height:1.15;margin-top:2px">'+txt+'</div>'+
+    '</div>';
+  const flecha = () => '<div class="dfx-fl">→</div>';
+
   const mini = (titulo,obj,color,bg,borde,pie) =>
     '<div class="dfx-card dfx-grow" style="background:'+bg+';border-color:'+borde+'">'+
       '<div class="dfx-card-t" style="color:'+color+';margin-bottom:4px">'+titulo+'</div>'+
@@ -2824,6 +2947,12 @@ function renderDiagramaFlujoCompleto() {
   '.dfx-l strong{color:'+C.texto+'}'+
   '.dfx-pie{margin-top:5px;padding-top:4px;border-top:1px dashed;font-size:9px;font-weight:700}'+
   '.dfx-tipo{display:flex;align-items:center;gap:10px}'+
+  '.dfx-cierre{border:1px dashed #cbd5e1;border-radius:10px;padding:10px 12px;background:#fcfdff}'+
+  '.dfx-cierre-t{font-size:9px;font-weight:800;color:#64748b;letter-spacing:.6px;margin-bottom:8px}'+
+  '.dfx-cadena{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'+
+  '.dfx-paso{flex:1;min-width:92px;text-align:center;border:2px solid;border-radius:8px;padding:7px 6px;background:#fff}'+
+  '.dfx-paso-f{box-shadow:0 0 0 3px rgba(13,148,136,.12)}'+
+  '.dfx-fl{color:#cbd5e1;font-size:15px;flex-shrink:0}'+
   '.dfx-foot{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0}'+
   '@media(max-width:900px){'+
     '.dfx-wrap{padding:12px 8px}'+
@@ -2851,8 +2980,13 @@ function renderDiagramaFlujoCompleto() {
   '}'+
   '</style>';
 
+  const avisoViejo = esV2 ? '' :
+    '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:11.5px;color:#92400e;line-height:1.45">'+
+    '<strong>Estos datos son de una carga anterior.</strong> Ve a «Registrar y cargar avance» y sube la Plantilla_Carga_SDWAN_PJ_v6 una vez para actualizar el diagrama.'+
+    '</div>';
+
   el.innerHTML = estilos +
-  '<div class="dfx-wrap">'+
+  '<div class="dfx-wrap">'+ avisoViejo +
     '<div class="dfx-flow">'+
 
       '<div class="dfx-mid">'+ circulo(totalGabinete,'SEDES CON<br>GABINETE','(Ítem 5)',C.morado,'dfx-xl') +'</div>'+
@@ -2862,12 +2996,12 @@ function renderDiagramaFlujoCompleto() {
 
         // Rama: equipo ya instalado
         '<div class="dfx-row">'+
-          '<div class="dfx-mid">'+ circulo(totalItem3,'ÍTEM 3 INSTALÓ<br>EQUIPO','',C.verde,'dfx-lg') +'</div>'+
+          '<div class="dfx-mid">'+ circulo(totalItem3,'EQUIPO<br>RACKEADO','(Ítem 3)',C.verde,'dfx-lg') +'</div>'+
           conector([26,76],36)+
           '<div class="dfx-col dfx-ind" style="justify-content:space-around;gap:14px">'+
 
             '<div class="dfx-row">'+
-              '<div class="dfx-mid">'+ circulo(totalConEnlace,'CON ENLACE','En pruebas',C.azul,'dfx-md') +'</div>'+
+              '<div class="dfx-mid">'+ circulo(totalConEnlace,'CON ENLACE','Pruebas / migración',C.azul,'dfx-md') +'</div>'+
               conector([17,50,83],34)+
               '<div class="dfx-col dfx-ind" style="gap:7px">'+
                 filaTipo('Tipo 1',C.azul)+filaTipo('Tipo 2',C.azul)+filaTipo('Tipo 3',C.azul)+
@@ -2876,8 +3010,19 @@ function renderDiagramaFlujoCompleto() {
 
             '<div class="dfx-fila">'+
               circulo(totalSinEnlace,'SIN ENLACE','Espera Ítem 1/2',C.gris,'dfx-md')+
-              mini('INSTALADAS SIN ENLACE',D.item3_sin_enlace,'#64748b','#f8fafc','#e2e8f0','Se regularizan al llegar el enlace')+
+              mini('RACKEADAS SIN ENLACE',D.item3_sin_enlace,'#64748b','#f8fafc','#e2e8f0','Se regularizan al llegar el enlace')+
             '</div>'+
+            (esV2&&totalCierre>0 ?
+              '<div class="dfx-cierre">'+
+                '<div class="dfx-cierre-t">CICLO DE ALTA OPERATIVA — '+totalCierre+' sedes migradas</div>'+
+                '<div class="dfx-cadena">'+
+                  paso(totalMigradoDoc,'Pend.<br>documentación',C.ambar)+ flecha()+
+                  paso(totalValid,'En validación<br>Ítem 5',C.azul)+ flecha()+
+                  paso(totalConf,'En conformidad<br>PJ',C.morado)+ flecha()+
+                  paso(totalAlta,'ALTA<br>OPERATIVA',C.verde,true)+
+                '</div>'+
+              '</div>'
+              : '')+
 
           '</div>'+
         '</div>'+
@@ -2887,6 +3032,16 @@ function renderDiagramaFlujoCompleto() {
           '<div class="dfx-mid">'+ circulo(totalPendientes,'SIN EQUIPO','(Ítem 3 no instaló)',C.naranja,'dfx-lg') +'</div>'+
           conector([28,78],36)+
           '<div class="dfx-col dfx-ind" style="gap:12px">'+
+            (esV2 ?
+              '<div class="dfx-fila">'+
+                circulo(totalProgramados,'PROGRAMADAS','Con fecha vigente',C.azul,'dfx-md')+
+                mini('AGENDADAS',D.programados,C.azul,'#eff6ff','#bfdbfe','Atención con fecha en el historial')+
+              '</div>'+
+              '<div class="dfx-fila">'+
+                circulo(totalReprog,'REPROGRAMAR','Atención quebrada',C.rojo,'dfx-md')+
+                mini('REQUIEREN FECHA NUEVA',D.reprog_pendiente,C.rojo,'#fef2f2','#fecaca','La última atención no se concretó')+
+              '</div>'
+              : '')+
             '<div class="dfx-fila">'+
               circulo(totalProgramables,'PROGRAMABLES','Ya tienen enlace',C.ambar,'dfx-md')+
               mini('LISTAS PARA AGENDAR',D.pendientes_programables,C.ambar,'#fffbeb','#fde68a','Criterio vigente: gabinete + enlace')+
@@ -2905,8 +3060,8 @@ function renderDiagramaFlujoCompleto() {
       '<div style="text-align:center"><div style="font-size:9px;font-weight:800;color:#64748b;letter-spacing:.5px">'+(zonaSel?zonaSel.toUpperCase():'UNIVERSO TOTAL')+'</div><div style="font-size:23px;font-weight:900;color:'+C.texto+';line-height:1.2">'+totalUniverso+'</div><div style="font-size:9px;color:#94a3b8">SEDES</div></div>'+
       '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.morado+'">'+totalGabinete+' con gabinete (Ítem 5)</div><div style="font-size:9px;color:#64748b;margin-top:2px">Avanza hasta las '+totalUniverso+' sedes'+(zonaSel?' de la zona':' del universo')+'.</div></div>'+
       '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.verde+'">'+totalItem3+' intervenidas por Ítem 3</div><div style="font-size:9px;color:#64748b;margin-top:2px">'+totalConEnlace+' en pruebas + '+totalSinEnlace+' esperando enlace. Las '+totalSinEnlace+' no son pérdida: se regularizan.</div></div>'+
-      '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.ambar+'">Criterio vigente: '+totalCriterio+'</div><div style="font-size:9px;color:#64748b;margin-top:2px">Ítem 5 + enlace = '+totalConEnlace+' ya intervenidas + '+totalProgramables+' listas para agendar.</div></div>'+
-      '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+(totalAlta?C.verde:'#94a3b8')+'">Alta operativa: '+totalAlta+'</div><div style="font-size:9px;color:#64748b;margin-top:2px">'+(hayAlta?'Migradas y cargadas en la plataforma de gestión.':'Agrega la columna «Fecha Migración» a la plantilla para activarlo.')+'</div></div>'+
+      '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.ambar+'">Criterio vigente: '+totalCriterio+'</div><div style="font-size:9px;color:#64748b;margin-top:2px">Ítem 5 + enlace = '+totalConEnlace+' intervenidas + '+(totalProgramables+totalProgramados+totalReprog)+' por atender.</div></div>'+(esV2?'<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.rojo+'">Atenciones: '+(D.atenciones||0)+'</div><div style="font-size:9px;color:#64748b;margin-top:2px">'+(D.quebradas||0)+' quebradas · '+(D.reintentos||0)+' sedes con más de un intento.</div></div>':'')+
+      '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+(totalAlta?C.verde:'#94a3b8')+'">Alta operativa: '+totalAlta+' de '+totalCierre+'</div><div style="font-size:9px;color:#64748b;margin-top:2px">'+(totalCierre?(totalCierre-totalAlta)+' migradas aún en el ciclo de cierre documentario.':'Aún no hay sedes migradas.')+'</div></div>'+
     '</div>'+
   '</div>';
 }
