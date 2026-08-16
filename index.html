@@ -2941,7 +2941,6 @@ function renderEjecutivo(){
   const envP=(D.envejec.pru||[]).slice().sort((a,b)=>b.dias-a.dias);
   const prom=a=>a.length?Math.round(a.reduce((x,y)=>x+y.dias,0)/a.length):0;
   const vencidas=(D.alertas||[]).filter(a=>a.tipo==='vencida').length;
-  const zonaSel=document.getElementById('filtro-zona-dash')?.value||'';
 
   const C={rojo:'#b91c1c',ambar:'#b45309',verde:'#0f766e',azul:'#1d4ed8',gris:'#64748b',
            bgR:'#fef2f2',bgA:'#fffbeb',bgV:'#f0fdfa',bgB:'#eff6ff',linea:'#e2e8f0',texto:'#1e293b'};
@@ -3091,15 +3090,6 @@ function renderEjecutivo(){
 
   '</div>'+
 
-  // ===== REPARTO DEL UNIVERSO (diagrama compacto) =====
-  '<div class="ejx-card" style="margin-bottom:14px">'+
-    '<div class="ejx-h" style="display:flex;justify-content:space-between;align-items:baseline">'+
-      '<span>Cómo se reparten las '+UNIV+' sedes'+(zonaSel?' — '+zonaSel:'')+'</span>'+
-      '<span style="font-size:9px;font-weight:600;color:#cbd5e1;letter-spacing:0;text-transform:none">Cada nivel suma el total del anterior</span>'+
-    '</div>'+
-    '<div id="ejx-diagrama" style="overflow-x:auto"></div>'+
-  '</div>'+
-
   // ===== FILA 2: envejecimiento =====
   '<div class="ejx-grid ejx-r2" style="margin-bottom:14px">'+
     tabla('Habilitadas sin atender','Top '+Math.min(6,envH.length)+' de '+envH.length+' · prom '+prom(envH)+' d',envH.slice(0,6),C.ambar)+
@@ -3145,12 +3135,6 @@ function renderEjecutivo(){
   '</div>'+
 
   '</div>';
-
-  // El diagrama de flujo se reutiliza en modo compacto: aquí explica el reparto,
-  // en el Dashboard sigue en tamaño completo para el uso operativo.
-  if(typeof renderDiagramaFlujoCompleto==='function'){
-    renderDiagramaFlujoCompleto({target:'ejx-diagrama',compacto:true});
-  }
 }
 window.renderEjecutivo=renderEjecutivo;
 
