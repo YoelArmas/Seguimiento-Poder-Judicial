@@ -2783,7 +2783,7 @@ function procesarPlantillaNueva(raw){
     enlace_item1:z(),enlace_item2:z(),
     atenciones:0,quebradas:0,reintentos:0});
 
-  const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2';
+  const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2'; D.v=3;   // v3 = fechas seriales corregidas
   const iGabF=col('fecha gabinete (item 5)'), iRack=col('fecha rackeo'), iMig=col('fecha migracion'),
         iSede=col('sede'), iMot=col('ult. atencion — motivo'), iResp=col('ult. atencion — responsable'),
         iUlt=col('ult. atencion — estado');
@@ -2912,6 +2912,17 @@ function renderEjecutivo(){
   if(!D||D.formato!=='v2'||!D.envejec){
     el.innerHTML='<div class="card" style="text-align:center;padding:48px 20px;color:#94a3b8;font-size:14px">'+
       'Carga la <strong>Plantilla_Carga_SDWAN_PJ_v6</strong> en «Registrar y cargar avance» para construir la vista ejecutiva.</div>';
+    return;
+  }
+  // Los datos guardados antes de la corrección de fechas traen antigüedades y ritmos inválidos.
+  // Preferible no mostrar nada a mostrar cifras equivocadas.
+  if((D.v||0)<3){
+    el.innerHTML='<div class="card" style="padding:34px 26px;max-width:620px;margin:0 auto">'+
+      '<div style="font-size:15px;font-weight:700;color:#b45309;margin-bottom:10px">Hay que recalcular los datos</div>'+
+      '<div style="font-size:13px;color:#475569;line-height:1.6">Los datos guardados vienen de una carga anterior y sus fechas quedaron mal interpretadas: '+
+      'por eso las antigüedades salían en 20.681 días y los ritmos en 0.0 por semana.<br><br>'+
+      'Ve a <strong>«Registrar y cargar avance»</strong> y vuelve a subir la <strong>Plantilla_Carga_SDWAN_PJ_v6</strong> una sola vez. '+
+      'Con eso se recalcula todo y esta vista queda correcta.</div></div>';
     return;
   }
 
@@ -3306,7 +3317,7 @@ function renderDiagramaFlujoCompleto(opts) {
   '}'+
   '</style>';
 
-  const avisoViejo = esV2 ? '' :
+  const avisoViejo = (esV2 && (window.DIAGRAMA_DATOS.v||0)>=3) ? '' :
     '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:11.5px;color:#92400e;line-height:1.45">'+
     '<strong>Estos datos son de una carga anterior.</strong> Ve a «Registrar y cargar avance» y sube la Plantilla_Carga_SDWAN_PJ_v6 una vez para actualizar el diagrama.'+
     '</div>';
