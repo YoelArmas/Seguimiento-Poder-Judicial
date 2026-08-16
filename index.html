@@ -43,7 +43,7 @@
 
 <div class="tabs">
   <button class="tab active" onclick="window.showTab('dashboard')">Dashboard</button>
-  <button class="tab" onclick="window.showTab('ejecutivo')">Vista Ejecutiva</button>
+  <button class="tab" id="tabbtn-ejecutivo" style="display:none" onclick="window.showTab('ejecutivo')">Vista Ejecutiva</button>
   <button class="tab" onclick="window.showTab('metricas')">Métricas</button>
   <button class="tab" onclick="window.showTab('hitos')">Hitos y proyeccion</button>
   <button class="tab" id="tabbtn-gestion" style="display:none" onclick="window.showTab('gestion')">Registrar y cargar avance</button>
@@ -64,15 +64,6 @@
   <div class="card" style="margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div class="card-title" style="margin:0">Avance Ítems de Soporte (1, 2 y 5)</div>
-      <span id="fuente-items" style="font-size:11px;color:var(--text3)">Fuente: SEGUIMIENTO_TDR_WAN — actualizado al 13/07/2026</span>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" id="cards-items"></div>
-  </div>
-
-  <!-- DESPLIEGUE EN CAMPO -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="flex-between flex-wrap gap-8 mb-16">
-      <div class="card-title" style="margin:0">Flujo de implementacion — 745 sedes</div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <select class="inp" id="filtro-zona-dash" style="width:auto;font-size:12px" onchange="window.renderTodo()">
           <option value="">Todas las zonas</option>
@@ -81,8 +72,17 @@
           <option value="Zona Centro">Zona Centro</option>
           <option value="Zona Oriente">Zona Oriente</option>
         </select>
-        <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
+        <span id="fuente-items" style="font-size:11px;color:var(--text3)">Fuente: SEGUIMIENTO_TDR_WAN — actualizado al 13/07/2026</span>
       </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" id="cards-items"></div>
+  </div>
+
+  <!-- DESPLIEGUE EN CAMPO -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="flex-between flex-wrap gap-8 mb-16">
+      <div class="card-title" style="margin:0">Flujo de implementacion — 745 sedes</div>
+      <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
     </div>
 
     <!-- Diagrama de flujo jerárquico -->
@@ -796,6 +796,10 @@ function actualizarUI(){
   const tbGestion=document.getElementById('tabbtn-gestion'),tbHistorial=document.getElementById('tabbtn-historial');
   if(tbGestion)tbGestion.style.display=esAutorizado?'':'none';
   if(tbHistorial)tbHistorial.style.display=esAutorizado?'':'none';
+  // Vista Ejecutiva: solo administradores
+  const tbEjec=document.getElementById('tabbtn-ejecutivo');
+  if(tbEjec)tbEjec.style.display=esAdmin?'':'none';
+  if(!esAdmin&&document.getElementById('tab-ejecutivo')?.style.display==='block')window.showTab('dashboard');
   if(!esAutorizado){
     const activaOculta=(document.getElementById('tab-gestion')?.style.display==='block')||(document.getElementById('tab-historial')?.style.display==='block');
     if(activaOculta)window.showTab('dashboard');
@@ -1040,6 +1044,9 @@ function renderTodo(){
     const fu=document.getElementById('fuente-items');
     if(fu)fu.textContent='Fuente: Plantilla_Carga_Diaria — '+new Date().toLocaleDateString('es-PE');
   }
+  // Universo asignado a cada ítem. El Ítem 2 (Claro) no cubre las 745 sedes.
+  // Ajusta estos valores si cambia el reparto contractual.
+  const UNIVERSO_ITEM={item5:TOTAL,item1:TOTAL,item2:433};
   const tiposCortos=['Tipo 1','Tipo 2','Tipo 3'];
   const filaTipos=clave=>{
     const d=tipoPorItem[clave]||{};
@@ -1050,20 +1057,21 @@ function renderTodo(){
     {lbl:'Ítem 1 — Bitel (enlaces)',val:it1,color:'#534AB7',bg:'#EEEDFE',sub:'Enlace principal activo',icon:'📡',claveTipo:'item1'},
     {lbl:'Ítem 2 — Claro (enlaces)',val:it2,color:'#B07A10',bg:'#FFF8E1',sub:'Enlace activo',icon:'🔗',claveTipo:'item2'},
   ].map(x=>{
-    const pct=Math.round(x.val/TOTAL*100);
+    const univ=UNIVERSO_ITEM[x.claveTipo]||TOTAL;
+    const pct=Math.round(x.val/univ*100);
     return`<div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:#fff">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <span style="font-size:20px">${x.icon}</span>
         <span style="font-size:12px;font-weight:600;color:var(--text)">${x.lbl}</span>
       </div>
-      <div style="font-size:28px;font-weight:700;color:${x.color};line-height:1">${x.val}<span style="font-size:14px;font-weight:400;color:var(--text3)"> / 745</span></div>
+      <div style="font-size:28px;font-weight:700;color:${x.color};line-height:1">${x.val}<span style="font-size:14px;font-weight:400;color:var(--text3)"> / ${univ}</span></div>
       <div style="margin:6px 0 2px">
         <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
           <div style="width:${pct}%;height:6px;background:${x.color};border-radius:4px;transition:width .4s"></div>
         </div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:8px">
-        <span>${pct}% del universo</span><span>${x.sub}</span>
+        <span>${pct}%${univ!==TOTAL?' de su universo':' del universo'}</span><span>${x.sub}</span>
       </div>
       <div style="display:flex;justify-content:center;gap:8px;font-size:11px;color:var(--text2);border-top:1px solid var(--border);padding-top:8px">${filaTipos(x.claveTipo)}</div>
     </div>`;
@@ -2780,7 +2788,21 @@ function procesarPlantillaNueva(raw){
         iSede=col('sede'), iMot=col('ult. atencion — motivo'), iResp=col('ult. atencion — responsable'),
         iUlt=col('ult. atencion — estado');
   const HOY=new Date(); HOY.setHours(0,0,0,0);
-  const fx=v=>{ if(!v)return null; const d=(v instanceof Date)?v:new Date(v); return isNaN(d)?null:d; };
+  // SheetJS entrega las fechas como SERIAL de Excel (46202), no como Date.
+  // new Date(46202) daría 1970 -> de ahí salían antigüedades de ~20.681 días y ritmos en 0.
+  const fx=v=>{
+    if(v===null||v===undefined||v==='')return null;
+    if(v instanceof Date)return isNaN(v)?null:v;
+    if(typeof v==='number'){
+      if(v<20000||v>60000)return null;                       // fuera de 1954-2064: no es fecha
+      const d=new Date(Math.round((v-25569)*86400000));       // 25569 = 01/01/1970 en serial Excel
+      return isNaN(d)?null:d;
+    }
+    const t=String(v).trim(); if(!t)return null;
+    const m=t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);   // dd/mm/aaaa
+    if(m){ let y=+m[3]; if(y<100)y+=2000; const d=new Date(y,+m[2]-1,+m[1]); return isNaN(d)?null:d; }
+    const d=new Date(t); return isNaN(d)?null:d;              // ISO (viene así del dataset guardado)
+  };
   const dias=d0=>d0?Math.round((HOY-d0)/86400000):null;
   D.alertas=[]; D.ritmo={gab:[],rack:[],mig:[],enl:[]}; D.quiebres={}; D.envejec={hab:[],rack:[],pru:[]};
   const pres=v=>String(v==null?'':v).replace(/\u00a0/g,' ').trim()!=='';
@@ -2838,8 +2860,9 @@ function procesarPlantillaNueva(raw){
     // --- datos para la Vista Ejecutiva ---
     const fg=fx(r[iGabF]), fr=fx(r[iRack]), fm=fx(r[iMig]),
           f1=fx(r[iE1]), f2=fx(r[iE2]);
-    if(fg)D.ritmo.gab.push(fg); if(fr)D.ritmo.rack.push(fr); if(fm)D.ritmo.mig.push(fm);
-    if(f1)D.ritmo.enl.push(f1); if(f2)D.ritmo.enl.push(f2);
+    const iso=d0=>d0.toISOString().slice(0,10);
+    if(fg)D.ritmo.gab.push(iso(fg)); if(fr)D.ritmo.rack.push(iso(fr)); if(fm)D.ritmo.mig.push(iso(fm));
+    if(f1)D.ritmo.enl.push(iso(f1)); if(f2)D.ritmo.enl.push(iso(f2));
     const eN=norm(estado), sede=String(r[iSede]||'').trim(), cod=String(r[iCod]).trim();
     const ultMax=(...fs)=>{const v=fs.filter(Boolean); return v.length?new Date(Math.max.apply(null,v)):null;};
     if(eN.includes('programable')||eN.includes('reprogramacion')){
@@ -2918,6 +2941,7 @@ function renderEjecutivo(){
   const envP=(D.envejec.pru||[]).slice().sort((a,b)=>b.dias-a.dias);
   const prom=a=>a.length?Math.round(a.reduce((x,y)=>x+y.dias,0)/a.length):0;
   const vencidas=(D.alertas||[]).filter(a=>a.tipo==='vencida').length;
+  const zonaSel=document.getElementById('filtro-zona-dash')?.value||'';
 
   const C={rojo:'#b91c1c',ambar:'#b45309',verde:'#0f766e',azul:'#1d4ed8',gris:'#64748b',
            bgR:'#fef2f2',bgA:'#fffbeb',bgV:'#f0fdfa',bgB:'#eff6ff',linea:'#e2e8f0',texto:'#1e293b'};
@@ -3021,11 +3045,20 @@ function renderEjecutivo(){
         '<div style="font-size:11px;color:#64748b">'+migr+' de '+UNIV+' sedes migradas<br><span style="font-size:9.5px;color:#94a3b8">Avance real = migración, no rackeo</span></div>'+
       '</div>'+
       barra(pctMig,semGlobal[1])+
-      '<div class="ejx-line"><span style="color:#64748b">Gabinete instalado (Ítem 5)</span><b>'+gab+' · '+pctGab.toFixed(0)+'%</b></div>'+
-      barra(pctGab,'#7c3aed')+
-      '<div class="ejx-line"><span style="color:#64748b">Equipo rackeado (Ítem 3)</span><b>'+rack+' · '+pctRack.toFixed(0)+'%</b></div>'+
-      barra(pctRack,'#0d9488')+
-      '<div class="ejx-line" style="margin-top:12px;padding-top:10px;border-top:1px dashed '+C.linea+'"><span style="color:#64748b">Alta operativa (cerradas con PJ)</span><b style="color:'+(alta?C.verde:C.rojo)+'">'+alta+'</b></div>'+
+      '<div style="margin-top:14px;padding-top:11px;border-top:1px dashed '+C.linea+'">'+
+        '<div style="font-size:9px;font-weight:800;color:#94a3b8;letter-spacing:.6px;margin-bottom:7px">CADENA DE VALOR — CADA ETAPA CONTIENE A LA SIGUIENTE</div>'+
+        [['1 · Gabinete instalado (Ítem 5)',gab,pctGab,'#7c3aed','depende del Ítem 5'],
+         ['2 · Equipo rackeado (Ítem 3)',rack,pctRack,'#0d9488','de los '+gab+' con gabinete'],
+         ['3 · Migradas — servicio activo',migr,pctMig,'#2563eb','de las '+rack+' rackeadas'],
+         ['4 · Alta operativa (conformidad PJ)',alta,UNIV?alta/UNIV*100:0,alta?'#0f766e':'#cbd5e1','de las '+migr+' migradas']]
+        .map(([l,v,p,c,sub])=>
+          '<div style="margin-bottom:7px">'+
+            '<div class="ejx-line" style="margin:0"><span style="color:#475569">'+l+'</span><b style="color:'+c+'">'+v+' · '+p.toFixed(0)+'%</b></div>'+
+            barra(p,c)+
+            '<div style="font-size:9px;color:#cbd5e1">'+sub+'</div>'+
+          '</div>').join('')+
+      '</div>'+
+      (alta===0?'<div style="font-size:10px;color:'+C.rojo+';background:'+C.bgR+';padding:7px 9px;border-radius:7px;line-height:1.35">Ninguna sede tiene conformidad del PJ todavía: <b>0 sedes entregadas</b> en términos contractuales.</div>':'')+
     '</div>'+
 
     // 2. Retraso / proyección
@@ -3056,6 +3089,15 @@ function renderEjecutivo(){
         '<b style="color:'+C.texto+'">'+(sinGab+espera+sinEnl)+' de '+UNIV+'</b> sedes ('+((sinGab+espera+sinEnl)/UNIV*100).toFixed(0)+'%) están detenidas por terceros, no por el Ítem 3.</div>'+
     '</div>'+
 
+  '</div>'+
+
+  // ===== REPARTO DEL UNIVERSO (diagrama compacto) =====
+  '<div class="ejx-card" style="margin-bottom:14px">'+
+    '<div class="ejx-h" style="display:flex;justify-content:space-between;align-items:baseline">'+
+      '<span>Cómo se reparten las '+UNIV+' sedes'+(zonaSel?' — '+zonaSel:'')+'</span>'+
+      '<span style="font-size:9px;font-weight:600;color:#cbd5e1;letter-spacing:0;text-transform:none">Cada nivel suma el total del anterior</span>'+
+    '</div>'+
+    '<div id="ejx-diagrama" style="overflow-x:auto"></div>'+
   '</div>'+
 
   // ===== FILA 2: envejecimiento =====
@@ -3103,11 +3145,19 @@ function renderEjecutivo(){
   '</div>'+
 
   '</div>';
+
+  // El diagrama de flujo se reutiliza en modo compacto: aquí explica el reparto,
+  // en el Dashboard sigue en tamaño completo para el uso operativo.
+  if(typeof renderDiagramaFlujoCompleto==='function'){
+    renderDiagramaFlujoCompleto({target:'ejx-diagrama',compacto:true});
+  }
 }
 window.renderEjecutivo=renderEjecutivo;
 
-function renderDiagramaFlujoCompleto() {
-  const el = document.getElementById('diagrama-contenido');
+function renderDiagramaFlujoCompleto(opts) {
+  opts = opts || {};
+  const compacto = !!opts.compacto;
+  const el = document.getElementById(opts.target || 'diagrama-contenido');
   if (!el) return;
 
   const TV = ['Tipo 1','Tipo 2','Tipo 3'];
@@ -3143,6 +3193,8 @@ function renderDiagramaFlujoCompleto() {
   const totalValid       = sum(D.en_validacion);
   const totalConf        = sum(D.en_conformidad);
   const totalCierre      = totalMigradoDoc+totalValid+totalConf+totalAlta;
+  const migradasTipo = TV.reduce((o,t)=>{o[t]=(D.migrado_pend_doc?.[t]||0)+(D.en_validacion?.[t]||0)+
+                                              (D.en_conformidad?.[t]||0)+(D.alta?.[t]||0);return o;},{});
   const totalReprog      = sum(D.reprog_pendiente);
   const totalCriterio    = totalConEnlace + totalProgramables + totalProgramados + totalReprog;
   const esV2             = (window.DIAGRAMA_DATOS||{}).formato === 'v2';
@@ -3223,8 +3275,22 @@ function renderDiagramaFlujoCompleto() {
   '.dfx-l strong{color:'+C.texto+'}'+
   '.dfx-pie{margin-top:5px;padding-top:4px;border-top:1px dashed;font-size:9px;font-weight:700}'+
   '.dfx-tipo{display:flex;align-items:center;gap:10px}'+
-  '.dfx-cierre{border:1px dashed #cbd5e1;border-radius:10px;padding:10px 12px;background:#fcfdff}'+
-  '.dfx-cierre-t{font-size:9px;font-weight:800;color:#64748b;letter-spacing:.6px;margin-bottom:8px}'+
+  '.dfx-cmp{padding:4px 0}'+
+  '.dfx-cmp .dfx-flow{min-width:860px}'+
+  '.dfx-cmp .dfx-xl{width:96px;height:96px}.dfx-cmp .dfx-xl .dfx-n{font-size:28px}'+
+  '.dfx-cmp .dfx-lg{width:82px;height:82px}.dfx-cmp .dfx-lg .dfx-n{font-size:24px}'+
+  '.dfx-cmp .dfx-md{width:70px;height:70px}.dfx-cmp .dfx-md .dfx-n{font-size:20px}'+
+  '.dfx-cmp .dfx-card{padding:6px 9px}'+
+  '.dfx-cmp .dfx-l{font-size:9.5px}'+
+  '.dfx-cmp .dfx-cierre{margin-top:14px}'+
+  '.dfx-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:1px;background:#e8edf3;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:18px}'+
+  '.dfx-top-i{background:#fff;padding:10px 12px;display:flex;flex-direction:column;gap:1px}'+
+  '.dfx-top-l{font-size:8.5px;font-weight:800;color:#94a3b8;letter-spacing:.7px}'+
+  '.dfx-top-v{font-size:25px;font-weight:800;color:'+C.texto+';line-height:1.1}'+
+  '.dfx-top-s{font-size:9px;color:#94a3b8;line-height:1.25}'+
+  '.dfx-cierre-p{font-size:9.5px;color:#64748b;margin-top:8px;line-height:1.4}'+
+  '.dfx-cierre{margin-top:20px;border:1px dashed #cbd5e1;border-radius:10px;padding:10px 12px;background:#fcfdff}'+
+  '.dfx-cierre-t{font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.6px;margin-bottom:8px}'+
   '.dfx-cadena{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'+
   '.dfx-paso{flex:1;min-width:92px;text-align:center;border:2px solid;border-radius:8px;padding:7px 6px;background:#fff}'+
   '.dfx-paso-f{box-shadow:0 0 0 3px rgba(13,148,136,.12)}'+
@@ -3261,8 +3327,30 @@ function renderDiagramaFlujoCompleto() {
     '<strong>Estos datos son de una carga anterior.</strong> Ve a «Registrar y cargar avance» y sube la Plantilla_Carga_SDWAN_PJ_v6 una vez para actualizar el diagrama.'+
     '</div>';
 
+  const resumen =
+    '<div class="dfx-top">'+
+      '<div class="dfx-top-i"><span class="dfx-top-l">UNIVERSO</span><span class="dfx-top-v">'+totalUniverso+'</span><span class="dfx-top-s">'+(zonaSel||'745 sedes del contrato')+'</span></div>'+
+      '<div class="dfx-top-i"><span class="dfx-top-l">CON GABINETE</span><span class="dfx-top-v" style="color:'+C.morado+'">'+totalGabinete+'</span><span class="dfx-top-s">Ítem 5 · '+Math.round(totalGabinete/totalUniverso*100)+'% del universo</span></div>'+
+      '<div class="dfx-top-i"><span class="dfx-top-l">EQUIPO RACKEADO</span><span class="dfx-top-v" style="color:'+C.verde+'">'+totalItem3+'</span><span class="dfx-top-s">Ítem 3 · '+totalConEnlace+' con enlace</span></div>'+
+      '<div class="dfx-top-i"><span class="dfx-top-l">MIGRADAS</span><span class="dfx-top-v" style="color:'+C.azul+'">'+totalCierre+'</span><span class="dfx-top-s">Servicio activo · '+Math.round(totalCierre/totalUniverso*100)+'%</span></div>'+
+      '<div class="dfx-top-i"><span class="dfx-top-l">ALTA OPERATIVA</span><span class="dfx-top-v" style="color:'+(totalAlta?C.verde:'#94a3b8')+'">'+totalAlta+'</span><span class="dfx-top-s">Cerradas con conformidad PJ</span></div>'+
+      '<div class="dfx-top-i"><span class="dfx-top-l">POR ATENDER HOY</span><span class="dfx-top-v" style="color:'+C.ambar+'">'+(totalProgramables+totalProgramados+totalReprog)+'</span><span class="dfx-top-s">Habilitadas, no dependen de terceros</span></div>'+
+    '</div>';
+
+  const cierre = (esV2&&totalCierre>0) ?
+    '<div class="dfx-cierre">'+
+      '<div class="dfx-cierre-t">FASE DE CIERRE DOCUMENTARIO — continúa con las '+totalCierre+' sedes ya migradas</div>'+
+      '<div class="dfx-cadena">'+
+        paso(totalMigradoDoc,'Pend.<br>documentación',C.ambar)+ flecha()+
+        paso(totalValid,'En validación<br>Ítem 5',C.azul)+ flecha()+
+        paso(totalConf,'En conformidad<br>PJ',C.morado)+ flecha()+
+        paso(totalAlta,'ALTA<br>OPERATIVA',C.verde,true)+
+      '</div>'+
+      '<div class="dfx-cierre-p">Sin conformidad del Poder Judicial la sede no se considera entregada, aunque el servicio ya esté activo.</div>'+
+    '</div>' : '';
+
   el.innerHTML = estilos +
-  '<div class="dfx-wrap">'+ avisoViejo +
+  '<div class="dfx-wrap'+(compacto?' dfx-cmp':'')+'">'+ avisoViejo + (compacto?'':resumen) +
     '<div class="dfx-flow">'+
 
       '<div class="dfx-mid">'+ circulo(totalGabinete,'SEDES CON<br>GABINETE','(Ítem 5)',C.morado,'dfx-xl') +'</div>'+
@@ -3277,10 +3365,17 @@ function renderDiagramaFlujoCompleto() {
           '<div class="dfx-col dfx-ind" style="justify-content:space-around;gap:14px">'+
 
             '<div class="dfx-row">'+
-              '<div class="dfx-mid">'+ circulo(totalConEnlace,'CON ENLACE','Pruebas / migración',C.azul,'dfx-md') +'</div>'+
-              conector([17,50,83],34)+
-              '<div class="dfx-col dfx-ind" style="gap:7px">'+
-                filaTipo('Tipo 1',C.azul)+filaTipo('Tipo 2',C.azul)+filaTipo('Tipo 3',C.azul)+
+              '<div class="dfx-mid">'+ circulo(totalConEnlace,'CON ENLACE','Habilitadas',C.azul,'dfx-md') +'</div>'+
+              conector([25,75],34)+
+              '<div class="dfx-col dfx-ind" style="gap:10px">'+
+                '<div class="dfx-fila">'+
+                  circulo(totalListoPru,'LISTO PARA<br>PRUEBAS','Falta migrar',C.azul,'dfx-md')+
+                  mini('PENDIENTE DE MIGRAR',D.listo_pruebas,C.azul,'#eff6ff','#bfdbfe','Requieren una salida de pruebas y migración')+
+                '</div>'+
+                '<div class="dfx-fila">'+
+                  circulo(totalCierre,'MIGRADAS','Servicio activo',C.verde,'dfx-md')+
+                  mini('YA MIGRADAS',migradasTipo,C.verde,'#f0fdfa','#99f6e4','Entran al ciclo de alta operativa')+
+                '</div>'+
               '</div>'+
             '</div>'+
 
@@ -3288,17 +3383,7 @@ function renderDiagramaFlujoCompleto() {
               circulo(totalSinEnlace,'SIN ENLACE','Espera Ítem 1/2',C.gris,'dfx-md')+
               mini('RACKEADAS SIN ENLACE',D.item3_sin_enlace,'#64748b','#f8fafc','#e2e8f0','Se regularizan al llegar el enlace')+
             '</div>'+
-            (esV2&&totalCierre>0 ?
-              '<div class="dfx-cierre">'+
-                '<div class="dfx-cierre-t">CICLO DE ALTA OPERATIVA — '+totalCierre+' sedes migradas</div>'+
-                '<div class="dfx-cadena">'+
-                  paso(totalMigradoDoc,'Pend.<br>documentación',C.ambar)+ flecha()+
-                  paso(totalValid,'En validación<br>Ítem 5',C.azul)+ flecha()+
-                  paso(totalConf,'En conformidad<br>PJ',C.morado)+ flecha()+
-                  paso(totalAlta,'ALTA<br>OPERATIVA',C.verde,true)+
-                '</div>'+
-              '</div>'
-              : '')+
+
 
           '</div>'+
         '</div>'+
@@ -3332,13 +3417,7 @@ function renderDiagramaFlujoCompleto() {
       '</div>'+
     '</div>'+
 
-    '<div class="dfx-foot">'+
-      '<div style="text-align:center"><div style="font-size:9px;font-weight:800;color:#64748b;letter-spacing:.5px">'+(zonaSel?zonaSel.toUpperCase():'UNIVERSO TOTAL')+'</div><div style="font-size:23px;font-weight:900;color:'+C.texto+';line-height:1.2">'+totalUniverso+'</div><div style="font-size:9px;color:#94a3b8">SEDES</div></div>'+
-      '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.morado+'">'+totalGabinete+' con gabinete (Ítem 5)</div><div style="font-size:9px;color:#64748b;margin-top:2px">Avanza hasta las '+totalUniverso+' sedes'+(zonaSel?' de la zona':' del universo')+'.</div></div>'+
-      '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.verde+'">'+totalItem3+' intervenidas por Ítem 3</div><div style="font-size:9px;color:#64748b;margin-top:2px">'+totalConEnlace+' en pruebas + '+totalSinEnlace+' esperando enlace. Las '+totalSinEnlace+' no son pérdida: se regularizan.</div></div>'+
-      '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.ambar+'">Criterio vigente: '+totalCriterio+'</div><div style="font-size:9px;color:#64748b;margin-top:2px">Ítem 5 + enlace = '+totalConEnlace+' intervenidas + '+(totalProgramables+totalProgramados+totalReprog)+' por atender.</div></div>'+(esV2?'<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+C.rojo+'">Atenciones: '+(D.atenciones||0)+'</div><div style="font-size:9px;color:#64748b;margin-top:2px">'+(D.quebradas||0)+' quebradas · '+(D.reintentos||0)+' sedes con más de un intento.</div></div>':'')+
-      '<div style="text-align:center"><div style="font-size:10.5px;font-weight:800;color:'+(totalAlta?C.verde:'#94a3b8')+'">Alta operativa: '+totalAlta+' de '+totalCierre+'</div><div style="font-size:9px;color:#64748b;margin-top:2px">'+(totalCierre?(totalCierre-totalAlta)+' migradas aún en el ciclo de cierre documentario.':'Aún no hay sedes migradas.')+'</div></div>'+
-    '</div>'+
+    cierre +
   '</div>';
 }
 
