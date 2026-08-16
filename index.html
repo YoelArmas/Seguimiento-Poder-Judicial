@@ -43,6 +43,7 @@
 
 <div class="tabs">
   <button class="tab active" onclick="window.showTab('dashboard')">Dashboard</button>
+  <button class="tab" onclick="window.showTab('ejecutivo')">Vista Ejecutiva</button>
   <button class="tab" onclick="window.showTab('metricas')">Métricas</button>
   <button class="tab" onclick="window.showTab('hitos')">Hitos y proyeccion</button>
   <button class="tab" id="tabbtn-gestion" style="display:none" onclick="window.showTab('gestion')">Registrar y cargar avance</button>
@@ -51,6 +52,11 @@
 
 <div class="content">
 
+<!-- VISTA EJECUTIVA -->
+<div id="tab-ejecutivo" style="display:none">
+  <div id="ejecutivo-contenido"></div>
+</div>
+
 <!-- DASHBOARD -->
 <div id="tab-dashboard">
 
@@ -58,7 +64,7 @@
   <div class="card" style="margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div class="card-title" style="margin:0">Avance Ítems de Soporte (1, 2 y 5)</div>
-      <span style="font-size:11px;color:var(--text3)">Fuente: SEGUIMIENTO_TDR_WAN — actualizado al 13/07/2026</span>
+      <span id="fuente-items" style="font-size:11px;color:var(--text3)">Fuente: SEGUIMIENTO_TDR_WAN — actualizado al 13/07/2026</span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" id="cards-items"></div>
   </div>
@@ -1023,8 +1029,17 @@ function renderTodo(){
 
   // KPIs rapidos
   function getLastVal(series){return series.length?series[series.length-1][1]:0;}
-  const it1=getLastVal(window.ITEM1_ACUM),it2=getLastVal(window.ITEM2_ACUM),it5=getLastVal(window.ITEM5_ACUM);
-  const tipoPorItem=window.TIPO_POR_ITEM||{};
+  let it1=getLastVal(window.ITEM1_ACUM),it2=getLastVal(window.ITEM2_ACUM),it5=getLastVal(window.ITEM5_ACUM);
+  let tipoPorItem=window.TIPO_POR_ITEM||{};
+  // La Plantilla_Carga v6 es la fuente mas fresca: si esta cargada, manda sobre el archivo externo
+  const _dv6=typeof datosDiagramaActivos==='function'?datosDiagramaActivos():null;
+  if(_dv6&&_dv6.enlace_item1){
+    const st=o=>['Tipo 1','Tipo 2','Tipo 3'].reduce((a,k)=>a+((o||{})[k]||0),0);
+    it5=st(_dv6.gabinete); it1=st(_dv6.enlace_item1); it2=st(_dv6.enlace_item2);
+    tipoPorItem={item5:_dv6.gabinete,item1:_dv6.enlace_item1,item2:_dv6.enlace_item2};
+    const fu=document.getElementById('fuente-items');
+    if(fu)fu.textContent='Fuente: Plantilla_Carga_Diaria — '+new Date().toLocaleDateString('es-PE');
+  }
   const tiposCortos=['Tipo 1','Tipo 2','Tipo 3'];
   const filaTipos=clave=>{
     const d=tipoPorItem[clave]||{};
@@ -2048,10 +2063,11 @@ window.confirmarBorrar=async function(){
 // ============================================================
 // UI — Navegación por pestañas
 // ============================================================
-const TABS_ORDEN=['dashboard','metricas','hitos','gestion','historial'];
+const TABS_ORDEN=['dashboard','ejecutivo','metricas','hitos','gestion','historial'];
 window.showTab=function(name){
   TABS_ORDEN.forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
   document.querySelectorAll('.tabs .tab').forEach((b,i)=>b.classList.toggle('active',TABS_ORDEN[i]===name));
+  if(name==='ejecutivo')renderEjecutivo();
   if(name==='metricas')renderMetricas();
   if(name==='historial'){renderEliminados();renderEdiciones();}
 };
@@ -2756,9 +2772,17 @@ function procesarPlantillaNueva(raw){
     pendientes:z(),pendientes_programables:z(),pendientes_en_espera:z(),
     programados:z(),reprog_pendiente:z(),
     listo_pruebas:z(),migrado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
+    enlace_item1:z(),enlace_item2:z(),
     atenciones:0,quebradas:0,reintentos:0});
 
   const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2';
+  const iGabF=col('fecha gabinete (item 5)'), iRack=col('fecha rackeo'), iMig=col('fecha migracion'),
+        iSede=col('sede'), iMot=col('ult. atencion — motivo'), iResp=col('ult. atencion — responsable'),
+        iUlt=col('ult. atencion — estado');
+  const HOY=new Date(); HOY.setHours(0,0,0,0);
+  const fx=v=>{ if(!v)return null; const d=(v instanceof Date)?v:new Date(v); return isNaN(d)?null:d; };
+  const dias=d0=>d0?Math.round((HOY-d0)/86400000):null;
+  D.alertas=[]; D.ritmo={gab:[],rack:[],mig:[],enl:[]}; D.quiebres={}; D.envejec={hab:[],rack:[],pru:[]};
   const pres=v=>String(v==null?'':v).replace(/\u00a0/g,' ').trim()!=='';
   let filas=0;
 
@@ -2776,6 +2800,8 @@ function procesarPlantillaNueva(raw){
     const acum=B=>{
       B.universo[tipo]++;
       B.atenciones+=nAt; B.quebradas+=nQb; if(nAt>1)B.reintentos++;
+      if(e1)B.enlace_item1[tipo]++;
+      if(e2)B.enlace_item2[tipo]++;
       const e=norm(estado);
       if(e.includes('sin gabinete'))return;
       B.gabinete[tipo]++;
@@ -2808,6 +2834,26 @@ function procesarPlantillaNueva(raw){
 
     acum(D);
     if(zona){ if(!D.porZona[zona])D.porZona[zona]=nuevo(); acum(D.porZona[zona]); }
+
+    // --- datos para la Vista Ejecutiva ---
+    const fg=fx(r[iGabF]), fr=fx(r[iRack]), fm=fx(r[iMig]),
+          f1=fx(r[iE1]), f2=fx(r[iE2]);
+    if(fg)D.ritmo.gab.push(fg); if(fr)D.ritmo.rack.push(fr); if(fm)D.ritmo.mig.push(fm);
+    if(f1)D.ritmo.enl.push(f1); if(f2)D.ritmo.enl.push(f2);
+    const eN=norm(estado), sede=String(r[iSede]||'').trim(), cod=String(r[iCod]).trim();
+    const ultMax=(...fs)=>{const v=fs.filter(Boolean); return v.length?new Date(Math.max.apply(null,v)):null;};
+    if(eN.includes('programable')||eN.includes('reprogramacion')){
+      const dd=dias(ultMax(fg,f1,f2));
+      if(dd!=null)D.envejec.hab.push({cod,sede,zona:zr,tipo,dias:dd,estado});
+    } else if(eN.includes('rackeada sin enlace')){
+      const dd=dias(fr); if(dd!=null)D.envejec.rack.push({cod,sede,zona:zr,tipo,dias:dd,estado});
+    } else if(eN.includes('listo para pruebas')){
+      const dd=dias(ultMax(fr,f1,f2)); if(dd!=null)D.envejec.pru.push({cod,sede,zona:zr,tipo,dias:dd,estado});
+    }
+    const mot=String(r[iMot]||'').trim(), resp=String(r[iResp]||'').trim();
+    if(mot){ D.quiebres[resp||'Por definir']=(D.quiebres[resp||'Por definir']||0)+1; }
+    const ultE=norm(String(r[iUlt]||''));
+    if(ultE.includes('vencida'))D.alertas.push({cod,sede,zona:zr,tipo:'vencida'});
   });
 
   window.DIAGRAMA_DATOS=D;
@@ -2829,6 +2875,236 @@ function procesarPlantillaNueva(raw){
         'Atenciones: '+D.atenciones+'   ·   Quebradas: '+D.quebradas);
   return true;
 }
+
+// ============================================================
+//  VISTA EJECUTIVA — una sola pantalla para toma de decisiones
+// ============================================================
+function renderEjecutivo(){
+  const el=document.getElementById('ejecutivo-contenido');
+  if(!el)return;
+  const D=window.DIAGRAMA_DATOS;
+  const TV=['Tipo 1','Tipo 2','Tipo 3'];
+  const s=o=>TV.reduce((a,t)=>a+(Number((o||{})[t])||0),0);
+
+  if(!D||D.formato!=='v2'||!D.envejec){
+    el.innerHTML='<div class="card" style="text-align:center;padding:48px 20px;color:#94a3b8;font-size:14px">'+
+      'Carga la <strong>Plantilla_Carga_SDWAN_PJ_v6</strong> en «Registrar y cargar avance» para construir la vista ejecutiva.</div>';
+    return;
+  }
+
+  // ---------- METRICAS ----------
+  const UNIV=s(D.universo)||745;
+  const gab=s(D.gabinete), rack=s(D.item3), migr=s(D.migrado_pend_doc)+s(D.en_validacion)+s(D.en_conformidad)+s(D.alta);
+  const alta=s(D.alta), sinEnl=s(D.item3_sin_enlace), listoPru=s(D.listo_pruebas);
+  const progble=s(D.pendientes_programables), reprog=s(D.reprog_pendiente), agend=s(D.programados), espera=s(D.pendientes_en_espera);
+  const pctMig=UNIV?(migr/UNIV*100):0, pctRack=UNIV?(rack/UNIV*100):0, pctGab=UNIV?(gab/UNIV*100):0;
+
+  // ritmo de las ultimas 4 semanas
+  const HOY=new Date(); HOY.setHours(0,0,0,0);
+  const ritmo4=arr=>{const c=(arr||[]).filter(f=>(HOY-new Date(f))/86400000<=28).length; return c/4;};
+  const rMig=ritmo4(D.ritmo.mig), rGab=ritmo4(D.ritmo.gab), rEnl=ritmo4(D.ritmo.enl), rRack=ritmo4(D.ritmo.rack);
+  const faltaMig=UNIV-migr;
+  const semanasMig=rMig>0?Math.ceil(faltaMig/rMig):null;
+  const ultima=arr=>{const v=(arr||[]).map(f=>new Date(f)).filter(f=>!isNaN(f)); return v.length?new Date(Math.max.apply(null,v)):null;};
+  const ultRack=ultima(D.ritmo.rack), ultMig=ultima(D.ritmo.mig);
+  const diasSinRack=ultRack?Math.round((HOY-ultRack)/86400000):null;
+
+  const ejecutableHoy=progble+reprog+listoPru;
+  const bloqTerceros=espera+sinEnl+s(D.universo)-gab-espera-progble-reprog-agend-rack; // se recalcula abajo
+  const sinGab=UNIV-gab;
+
+  const envH=(D.envejec.hab||[]).slice().sort((a,b)=>b.dias-a.dias);
+  const envR=(D.envejec.rack||[]).slice().sort((a,b)=>b.dias-a.dias);
+  const envP=(D.envejec.pru||[]).slice().sort((a,b)=>b.dias-a.dias);
+  const prom=a=>a.length?Math.round(a.reduce((x,y)=>x+y.dias,0)/a.length):0;
+  const vencidas=(D.alertas||[]).filter(a=>a.tipo==='vencida').length;
+
+  const C={rojo:'#b91c1c',ambar:'#b45309',verde:'#0f766e',azul:'#1d4ed8',gris:'#64748b',
+           bgR:'#fef2f2',bgA:'#fffbeb',bgV:'#f0fdfa',bgB:'#eff6ff',linea:'#e2e8f0',texto:'#1e293b'};
+  const sem=(v,ok,warn)=> v<=ok?['verde',C.verde,C.bgV]:(v<=warn?['ambar',C.ambar,C.bgA]:['rojo',C.rojo,C.bgR]);
+
+  // ---------- BLOQUE 1: salud ----------
+  const semGlobal = semanasMig===null?['rojo',C.rojo,C.bgR]:(semanasMig<=22?['verde',C.verde,C.bgV]:(semanasMig<=40?['ambar',C.ambar,C.bgA]:['rojo',C.rojo,C.bgR]));
+
+  const kpi=(val,lbl,sub,color,bg)=>
+    '<div class="ejx-kpi" style="background:'+bg+';border-color:'+color+'33">'+
+      '<div class="ejx-kpi-v" style="color:'+color+'">'+val+'</div>'+
+      '<div class="ejx-kpi-l">'+lbl+'</div>'+
+      (sub?'<div class="ejx-kpi-s">'+sub+'</div>':'')+
+    '</div>';
+
+  const barra=(pct,color)=>
+    '<div class="ejx-bar"><div style="width:'+Math.min(100,pct)+'%;background:'+color+'"></div></div>';
+
+  // ---------- filas de tabla ----------
+  const filaSede=x=>{
+    const [n,c,bg]=sem(x.dias,15,30);
+    return '<tr><td class="ejx-cod">'+x.cod+'</td><td class="ejx-sede">'+x.sede+'</td>'+
+      '<td class="ejx-z">'+(x.zona||'')+'</td>'+
+      '<td style="text-align:right"><span class="ejx-pill" style="color:'+c+';background:'+bg+'">'+x.dias+' d</span></td></tr>';
+  };
+  const tabla=(titulo,nota,rows,color)=>
+    '<div class="ejx-panel">'+
+      '<div class="ejx-panel-h" style="border-left:3px solid '+color+'"><span>'+titulo+'</span><span class="ejx-nota">'+nota+'</span></div>'+
+      (rows.length?'<table class="ejx-t"><tbody>'+rows.map(filaSede).join('')+'</tbody></table>'
+                  :'<div class="ejx-vacio">Sin casos</div>')+
+    '</div>';
+
+  // ---------- quiebres ----------
+  const qEnt=Object.entries(D.quiebres||{}).sort((a,b)=>b[1]-a[1]);
+  const qTot=qEnt.reduce((a,b)=>a+b[1],0);
+  const terceros=qEnt.filter(([k])=>/item|ítem|poder judicial|pj/i.test(k)).reduce((a,b)=>a+b[1],0);
+
+  // ---------- acciones ----------
+  const acciones=[];
+  if(vencidas>0)acciones.push([C.rojo,'Cerrar '+vencidas+' atenciones vencidas sin registrar','Pasó la fecha y nadie registró resultado. El avance real puede ser mayor o menor al que muestra el tablero.']);
+  if(agend===0)acciones.push([C.rojo,'No hay ninguna visita agendada a futuro','El pipeline de campo está vacío: sin programaciones nuevas, el avance de las próximas semanas será cero.']);
+  if(ejecutableHoy>0)acciones.push([C.ambar,'Agendar '+ejecutableHoy+' sedes que ya son ejecutables','No dependen de terceros: '+progble+' habilitadas + '+reprog+' por reprogramar + '+listoPru+' listas para pruebas.']);
+  if(semanasMig&&semanasMig>40)acciones.push([C.rojo,'Ritmo de migración insuficiente: '+rMig.toFixed(1)+'/semana','A este paso las '+faltaMig+' sedes restantes tomarían ~'+semanasMig+' semanas. Requiere decisión de capacidad.']);
+  if(migr>0&&alta===0)acciones.push([C.ambar,'El ciclo de alta operativa no ha arrancado','Hay '+migr+' sedes migradas y ninguna con documentación cargada. Sin conformidad no hay sede facturable.']);
+  if(envR.length&&prom(envR)>25)acciones.push([C.gris,envR.length+' sedes rackeadas llevan '+prom(envR)+' días esperando enlace','Bloqueo de Ítem 1/2. Documentar para el expediente de Ampliación de Plazo.']);
+
+  // ---------- HTML ----------
+  el.innerHTML =
+  '<style>'+
+  '.ejx{font-family:inherit;color:'+C.texto+'}'+
+  '.ejx-grid{display:grid;gap:14px}'+
+  '.ejx-r1{grid-template-columns:1.35fr 1fr 1fr}'+
+  '.ejx-r2{grid-template-columns:1fr 1fr 1fr}'+
+  '.ejx-r3{grid-template-columns:1.2fr 1fr}'+
+  '.ejx-card{background:#fff;border:1px solid '+C.linea+';border-radius:12px;padding:16px}'+
+  '.ejx-h{font-size:10px;font-weight:800;letter-spacing:.8px;color:#64748b;margin-bottom:12px;text-transform:uppercase}'+
+  '.ejx-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}'+
+  '.ejx-kpi{border:1px solid;border-radius:9px;padding:9px 8px;text-align:center}'+
+  '.ejx-kpi-v{font-size:23px;font-weight:800;line-height:1}'+
+  '.ejx-kpi-l{font-size:9.5px;font-weight:700;color:#475569;margin-top:3px;line-height:1.2}'+
+  '.ejx-kpi-s{font-size:8.5px;color:#94a3b8;margin-top:1px}'+
+  '.ejx-bar{height:7px;background:#eef2f7;border-radius:4px;overflow:hidden;margin:5px 0 3px}'+
+  '.ejx-bar>div{height:100%;border-radius:4px}'+
+  '.ejx-line{display:flex;justify-content:space-between;font-size:11px;margin-top:9px}'+
+  '.ejx-line b{font-weight:700}'+
+  '.ejx-panel{background:#fff;border:1px solid '+C.linea+';border-radius:12px;overflow:hidden}'+
+  '.ejx-panel-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:10px 12px;font-size:11px;font-weight:800;background:#fbfcfe;border-bottom:1px solid '+C.linea+'}'+
+  '.ejx-nota{font-size:9.5px;font-weight:600;color:#94a3b8;text-align:right}'+
+  '.ejx-t{width:100%;border-collapse:collapse;font-size:11px}'+
+  '.ejx-t td{padding:5px 12px;border-bottom:1px solid #f1f5f9}'+
+  '.ejx-t tr:last-child td{border-bottom:0}'+
+  '.ejx-cod{font-weight:700;width:60px;color:#475569}'+
+  '.ejx-sede{color:#334155}'+
+  '.ejx-z{font-size:9.5px;color:#94a3b8;width:64px}'+
+  '.ejx-pill{font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;white-space:nowrap}'+
+  '.ejx-vacio{padding:16px;text-align:center;color:#cbd5e1;font-size:11px}'+
+  '.ejx-acc{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9}'+
+  '.ejx-acc:last-child{border-bottom:0}'+
+  '.ejx-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}'+
+  '.ejx-acc-t{font-size:12px;font-weight:700;line-height:1.3}'+
+  '.ejx-acc-d{font-size:10.5px;color:#64748b;line-height:1.4;margin-top:2px}'+
+  '.ejx-blq{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid #f1f5f9}'+
+  '.ejx-blq:last-child{border-bottom:0}'+
+  '.ejx-blq-n{font-size:19px;font-weight:800;min-width:46px;text-align:right}'+
+  '.ejx-blq-t{font-size:11px;font-weight:700;line-height:1.25}'+
+  '.ejx-blq-s{font-size:9.5px;color:#94a3b8;line-height:1.3}'+
+  '.ejx-badge{display:inline-block;font-size:9.5px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.4px}'+
+  '@media(max-width:1000px){.ejx-r1,.ejx-r2,.ejx-r3{grid-template-columns:1fr}}'+
+  '</style>'+
+
+  '<div class="ejx">'+
+
+  // ===== FILA 1 =====
+  '<div class="ejx-grid ejx-r1" style="margin-bottom:14px">'+
+
+    // 1. ¿Cómo va el proyecto?
+    '<div class="ejx-card">'+
+      '<div class="ejx-h">1 · ¿Cómo va el proyecto?</div>'+
+      '<div style="display:flex;align-items:baseline;gap:9px;margin-bottom:2px">'+
+        '<div style="font-size:38px;font-weight:800;color:'+semGlobal[1]+';line-height:1">'+pctMig.toFixed(1)+'%</div>'+
+        '<div style="font-size:11px;color:#64748b">'+migr+' de '+UNIV+' sedes migradas<br><span style="font-size:9.5px;color:#94a3b8">Avance real = migración, no rackeo</span></div>'+
+      '</div>'+
+      barra(pctMig,semGlobal[1])+
+      '<div class="ejx-line"><span style="color:#64748b">Gabinete instalado (Ítem 5)</span><b>'+gab+' · '+pctGab.toFixed(0)+'%</b></div>'+
+      barra(pctGab,'#7c3aed')+
+      '<div class="ejx-line"><span style="color:#64748b">Equipo rackeado (Ítem 3)</span><b>'+rack+' · '+pctRack.toFixed(0)+'%</b></div>'+
+      barra(pctRack,'#0d9488')+
+      '<div class="ejx-line" style="margin-top:12px;padding-top:10px;border-top:1px dashed '+C.linea+'"><span style="color:#64748b">Alta operativa (cerradas con PJ)</span><b style="color:'+(alta?C.verde:C.rojo)+'">'+alta+'</b></div>'+
+    '</div>'+
+
+    // 2. Retraso / proyección
+    '<div class="ejx-card">'+
+      '<div class="ejx-h">2 · ¿Qué tan retrasados vamos?</div>'+
+      '<div style="text-align:center;padding:6px 0 10px">'+
+        '<span class="ejx-badge" style="color:'+semGlobal[1]+';background:'+semGlobal[2]+'">PROYECCIÓN AL RITMO ACTUAL</span>'+
+        '<div style="font-size:34px;font-weight:800;color:'+semGlobal[1]+';line-height:1.1;margin-top:8px">'+(semanasMig?semanasMig+' sem':'—')+'</div>'+
+        '<div style="font-size:10.5px;color:#64748b">para migrar las '+faltaMig+' sedes restantes'+(semanasMig?' (~'+(semanasMig/4.3).toFixed(0)+' meses)':'')+'</div>'+
+      '</div>'+
+      '<div style="background:#f8fafc;border-radius:8px;padding:9px 11px">'+
+        '<div style="font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.5px;margin-bottom:6px">RITMO ÚLTIMAS 4 SEMANAS</div>'+
+        [['Gabinetes Ítem 5',rGab,'#7c3aed'],['Enlaces Ítem 1/2',rEnl,'#2563eb'],['Rackeo Ítem 3',rRack,'#0d9488'],['Migración Ítem 3',rMig,C.rojo]]
+          .map(([l,v,c])=>'<div class="ejx-line" style="margin-top:4px"><span style="color:#475569">'+l+'</span><b style="color:'+c+'">'+v.toFixed(1)+' /sem</b></div>').join('')+
+      '</div>'+
+      (diasSinRack!=null&&diasSinRack>7?'<div style="margin-top:9px;font-size:10px;color:'+C.ambar+';background:'+C.bgA+';padding:7px 9px;border-radius:7px;line-height:1.35">Último rackeo hace <b>'+diasSinRack+' días</b>. El equipo cambió a modo migración.</div>':'')+
+    '</div>'+
+
+    // 3. Bloqueos
+    '<div class="ejx-card">'+
+      '<div class="ejx-h">3 · ¿Qué está bloqueado y por qué?</div>'+
+      [[sinGab,'Sin gabinete','Depende del Ítem 5','#7c3aed'],
+       [espera,'Con gabinete, sin enlace','Depende de Ítem 1 / Ítem 2','#2563eb'],
+       [sinEnl,'Rackeadas sin enlace','Equipo puesto, espera operador','#64748b'],
+       [ejecutableHoy,'EJECUTABLES HOY','No dependen de nadie más',C.verde]]
+       .map(([n,t,sub,c])=>'<div class="ejx-blq"><div class="ejx-blq-n" style="color:'+c+'">'+n+'</div><div><div class="ejx-blq-t">'+t+'</div><div class="ejx-blq-s">'+sub+'</div></div></div>').join('')+
+      '<div style="margin-top:9px;padding-top:9px;border-top:1px dashed '+C.linea+';font-size:10px;color:#64748b;line-height:1.4">'+
+        '<b style="color:'+C.texto+'">'+(sinGab+espera+sinEnl)+' de '+UNIV+'</b> sedes ('+((sinGab+espera+sinEnl)/UNIV*100).toFixed(0)+'%) están detenidas por terceros, no por el Ítem 3.</div>'+
+    '</div>'+
+
+  '</div>'+
+
+  // ===== FILA 2: envejecimiento =====
+  '<div class="ejx-grid ejx-r2" style="margin-bottom:14px">'+
+    tabla('Habilitadas sin atender','Top '+Math.min(6,envH.length)+' de '+envH.length+' · prom '+prom(envH)+' d',envH.slice(0,6),C.ambar)+
+    tabla('Rackeadas esperando enlace','Top '+Math.min(6,envR.length)+' de '+envR.length+' · prom '+prom(envR)+' d',envR.slice(0,6),C.gris)+
+    tabla('Listas para pruebas, sin migrar','Top '+Math.min(6,envP.length)+' de '+envP.length+' · prom '+prom(envP)+' d',envP.slice(0,6),C.azul)+
+  '</div>'+
+
+  // ===== FILA 3 =====
+  '<div class="ejx-grid ejx-r3">'+
+
+    // 5. Acciones
+    '<div class="ejx-card">'+
+      '<div class="ejx-h">5 · Requiere atención inmediata</div>'+
+      (acciones.length?acciones.map(([c,t,d])=>
+        '<div class="ejx-acc"><div class="ejx-dot" style="background:'+c+'"></div><div><div class="ejx-acc-t" style="color:'+c+'">'+t+'</div><div class="ejx-acc-d">'+d+'</div></div></div>').join('')
+        :'<div class="ejx-vacio">Sin alertas activas</div>')+
+    '</div>'+
+
+    // 4. Riesgos
+    '<div class="ejx-card">'+
+      '<div class="ejx-h">4 · Riesgos y trazabilidad</div>'+
+      '<div style="display:flex;gap:8px;margin-bottom:12px">'+
+        kpi(D.atenciones||0,'Atenciones','salidas a campo',C.gris,'#f8fafc')+
+        kpi(D.quebradas||0,'Quiebres',(qTot?((D.quebradas/(D.atenciones||1))*100).toFixed(0)+'% del total':'—'),C.ambar,C.bgA)+
+        kpi(D.reintentos||0,'Con reintento','sedes >1 visita',C.rojo,C.bgR)+
+      '</div>'+
+      '<div style="font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.5px;margin-bottom:6px">RESPONSABLE DEL QUIEBRE</div>'+
+      (qEnt.length?qEnt.map(([k,v])=>{
+        const pct=qTot?(v/qTot*100):0;
+        const esT=/item|ítem|poder judicial|pj/i.test(k);
+        return '<div style="margin-bottom:7px"><div class="ejx-line" style="margin:0"><span style="color:#475569">'+k+'</span><b>'+v+'</b></div>'+barra(pct,esT?C.rojo:C.gris)+'</div>';
+      }).join('')+
+      '<div style="margin-top:8px;font-size:10px;color:#64748b;background:'+C.bgR+';padding:8px 10px;border-radius:7px;line-height:1.4">'+
+        '<b style="color:'+C.rojo+'">'+terceros+' de '+qTot+'</b> quiebres son atribuibles a terceros (Ítem 1/2 o PJ). Es evidencia directa para el expediente de Ampliación de Plazo.</div>'
+        :'<div class="ejx-vacio">Sin quiebres registrados</div>')+
+    '</div>'+
+
+  '</div>'+
+
+  '<div style="margin-top:12px;font-size:9.5px;color:#94a3b8;text-align:center;line-height:1.5">'+
+    'Fuente: Plantilla_Carga_SDWAN_PJ_v6 · '+UNIV+' sedes · generado '+new Date().toLocaleString('es-PE')+'<br>'+
+    'Dato no disponible en el archivo: fechas contractuales de inicio y fin, por eso la proyección se expresa en semanas y no como desviación vs. cronograma.'+
+  '</div>'+
+
+  '</div>';
+}
+window.renderEjecutivo=renderEjecutivo;
 
 function renderDiagramaFlujoCompleto() {
   const el = document.getElementById('diagrama-contenido');
