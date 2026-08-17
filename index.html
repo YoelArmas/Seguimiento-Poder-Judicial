@@ -45,7 +45,6 @@
   <button class="tab active" onclick="window.showTab('dashboard')">Dashboard</button>
   <button class="tab" id="tabbtn-ejecutivo" style="display:none" onclick="window.showTab('ejecutivo')">Vista Ejecutiva</button>
   <button class="tab" onclick="window.showTab('metricas')">Métricas</button>
-  <button class="tab" onclick="window.showTab('hitos')">Hitos y proyeccion</button>
   <button class="tab" id="tabbtn-gestion" style="display:none" onclick="window.showTab('gestion')">Registrar y cargar avance</button>
   <button class="tab" id="tabbtn-historial" style="display:none" onclick="window.showTab('historial')">Historial</button>
 </div>
@@ -403,12 +402,6 @@
 </div><!-- /gestion-sub-carga -->
 
 </div><!-- /tab-gestion -->
-
-<!-- HITOS -->
-<div id="tab-hitos" style="display:none">
-  <div class="card"><div class="card-title">Proyección automática</div><div id="proyeccion-detalle">Cargando...</div></div>
-  <div id="hitos-lista"></div>
-</div>
 
 <!-- HISTORIAL -->
 <div id="tab-metricas" style="display:none">
@@ -1089,45 +1082,6 @@ function renderTodo(){
 
   window.renderLogDashboard();
 
-  // Proyeccion
-  document.getElementById('proyeccion-detalle').innerHTML=`
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
-      ${[
-        {lbl:'Sedes configuradas',p:pj,v:t.configurados},
-        {lbl:'Altas operativas (meta final)',p:aj,v:t.alta},
-      ].map(x=>`<div><div style="font-size:12px;color:var(--text3);font-weight:600;text-transform:uppercase;margin-bottom:8px">${x.lbl}</div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.9">
-        Completado: <strong>${x.v}/${TOTAL}</strong><br>Pendiente: <strong>${TOTAL-x.v}</strong><br>
-        ${x.p.sinDatos
-          ?`<span style="color:#B07A10;font-weight:500">⚠️ Sin datos suficientes para proyectar</span>`
-          :x.p.ok
-            ?`<span style="color:#085041;font-weight:600">✅ Completado</span>`
-            :`Ritmo actual: <strong>${x.p.ritmo}/dia</strong><br>
-        Fecha estimada fin: <strong>${fmt(x.p.fecha)}</strong><br>
-        <span style="color:${colorR(x.p.riesgo).tx};font-weight:600">${x.p.holgura>=0?`✅ +${x.p.holgura} dias antes del 06/09`:`⚠️ ${Math.abs(x.p.holgura)} dias despues del 06/09`}</span><br>
-        <span style="font-size:11px;color:var(--text3)">${x.p.holgura>=0?'Terminas antes del plazo contractual':'Con el ritmo actual no llegas al 06/09 — ajusta la capacidad'}</span>`}
-      </div></div>`).join('')}
-    </div>`;
-
-  const h=new Date();
-  document.getElementById('hitos-lista').innerHTML=[
-    {f:'2026-07-06',lbl:'Inicio despliegue en campo',det:'143 sedes habilitadas con gabinete Item 5',color:'#0F6E56'},
-    {f:'2026-07-14',lbl:'Prueba Item 2 — Claro (estimado)',det:'Integración con Cabecera de Internet - Principal y Respaldo - ¨ruebas de Failover',color:'#A32D2D'},
-    {f:'2026-07-17',lbl:'Prueba Item 1 — Bitel (estimado)',det:'Integración con cabeceras MPLS - Principal y Respaldo - Pruebas de failover',color:'#A32D2D'},
-    {f:'2026-07-17',lbl:'Meta Fase 1 — 143 gabinetes instaladas',det:'Culminacion estimada de todos los 143 gabinetes',color:'#0F6E56'},
-    {f:'2026-08-31',lbl:'Meta interna de implementacion',det:'745/745 sedes instaladas',color:'#0F6E56'},
-    {f:'2026-09-06',lbl:'Fin contractual — 150 dias',det:'Cierre de implementacion, inicio servicios gestionados 36 meses',color:'#534AB7'},
-  ].map(it=>{
-    const fd=new Date(it.f+'T00:00:00'),diff=Math.round((fd-h)/(1000*60*60*24)),pasado=diff<0;
-    const badge=pasado?{bg:'#F1EFE8',tx:'#5F5E5A',lbl:'Completado'}:diff===0?{bg:'#E6F1FB',tx:'#185FA5',lbl:'Hoy'}:{bg:'#F1EFE8',tx:'#5F5E5A',lbl:`en ${diff} dias`};
-    return`<div class="hito-row" style="border-left-color:${it.color};opacity:${pasado?.65:1}">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;font-weight:700;color:${it.color}">${fmt(it.f)}</span><span style="font-size:13px;font-weight:600">${it.lbl}</span></div>
-        <span class="badge" style="background:${badge.bg};color:${badge.tx}">${badge.lbl}</span>
-      </div>
-      <div style="font-size:12px;color:var(--text2);margin-top:4px">${it.det}</div>
-    </div>`;
-  }).join('');
 
   const filtro=document.getElementById('filtro-frente')?.value||'';
   const lista=filtro?registros.filter(r=>r.frente===filtro):registros;
@@ -2071,7 +2025,7 @@ window.confirmarBorrar=async function(){
 // ============================================================
 // UI — Navegación por pestañas
 // ============================================================
-const TABS_ORDEN=['dashboard','ejecutivo','metricas','hitos','gestion','historial'];
+const TABS_ORDEN=['dashboard','ejecutivo','metricas','gestion','historial'];
 window.showTab=function(name){
   TABS_ORDEN.forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
   document.querySelectorAll('.tabs .tab').forEach((b,i)=>b.classList.toggle('active',TABS_ORDEN[i]===name));
@@ -2778,15 +2732,15 @@ function procesarPlantillaNueva(raw){
   const nuevo=()=>({universo:z(),gabinete:z(),item3:z(),item3_sin_enlace:z(),
     item3_con_enlace:{item1:z(),item2:z(),item1_item2:z()},
     pendientes:z(),pendientes_programables:z(),pendientes_en_espera:z(),
-    programados:z(),reprog_pendiente:z(),
+    programados:z(),reprog_pendiente:z(),agendadas:z(),agend_listo:z(),
     listo_pruebas:z(),migrado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
     enlace_item1:z(),enlace_item2:z(),
     atenciones:0,quebradas:0,reintentos:0});
 
-  const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2'; D.v=3;   // v3 = fechas seriales corregidas
+  const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2'; D.v=4;   // v4 = buckets de visitas agendadas
   const iGabF=col('fecha gabinete (item 5)'), iRack=col('fecha rackeo'), iMig=col('fecha migracion'),
         iSede=col('sede'), iMot=col('ult. atencion — motivo'), iResp=col('ult. atencion — responsable'),
-        iUlt=col('ult. atencion — estado');
+        iUlt=col('ult. atencion — estado'), iEstAt=col('estado atencion'), iFProg=col('fecha programada vigente');
   const HOY=new Date(); HOY.setHours(0,0,0,0);
   // SheetJS entrega las fechas como SERIAL de Excel (46202), no como Date.
   // new Date(46202) daría 1970 -> de ahí salían antigüedades de ~20.681 días y ritmos en 0.
@@ -2818,6 +2772,8 @@ function procesarPlantillaNueva(raw){
     const estado=String(r[iEstado]||'').trim();
     const e1=pres(r[iE1]), e2=pres(r[iE2]);
     const nAt=iAt>=0?(Number(r[iAt])||0):0, nQb=iQb>=0?(Number(r[iQb])||0):0;
+    const estAt=iEstAt>=0?norm(String(r[iEstAt]||'')):'';
+    const agendada=estAt.includes('visita agendada');
 
     const acum=B=>{
       B.universo[tipo]++;
@@ -2827,6 +2783,7 @@ function procesarPlantillaNueva(raw){
       const e=norm(estado);
       if(e.includes('sin gabinete'))return;
       B.gabinete[tipo]++;
+      if(agendada)B.agendadas[tipo]++;   // visita con fecha vigente, esté rackeada o no
 
       // --- Equipo YA rackeado: cadena rackeo -> pruebas -> migracion -> cierre ---
       const rackeada = e.includes('rackeada sin enlace')||e.includes('listo para pruebas')||
@@ -2838,7 +2795,7 @@ function procesarPlantillaNueva(raw){
         else if(e.includes('conformidad'))    B.en_conformidad[tipo]++;
         else if(e.includes('validacion'))     B.en_validacion[tipo]++;
         else if(e.includes('migrado'))        B.migrado_pend_doc[tipo]++;
-        else if(e.includes('listo para pruebas')) B.listo_pruebas[tipo]++;
+        else if(e.includes('listo para pruebas')){ B.listo_pruebas[tipo]++; if(agendada)B.agend_listo[tipo]++; }
         if(e1&&e2)B.item3_con_enlace.item1_item2[tipo]++;
         else if(e1)B.item3_con_enlace.item1[tipo]++;
         else if(e2)B.item3_con_enlace.item2[tipo]++;
@@ -2849,7 +2806,7 @@ function procesarPlantillaNueva(raw){
       // --- Sin equipo todavia ---
       B.pendientes[tipo]++;
       if(e.includes('reprogramacion'))        B.reprog_pendiente[tipo]++;
-      else if(e.includes('programado'))       B.programados[tipo]++;
+      else if(e.includes('visita agendada')||e.includes('programado')) B.programados[tipo]++;
       else if(e.includes('programable'))      B.pendientes_programables[tipo]++;
       else                                    B.pendientes_en_espera[tipo]++;
     };
@@ -2916,7 +2873,7 @@ function renderEjecutivo(){
   }
   // Los datos guardados antes de la corrección de fechas traen antigüedades y ritmos inválidos.
   // Preferible no mostrar nada a mostrar cifras equivocadas.
-  if((D.v||0)<3){
+  if((D.v||0)<4){
     el.innerHTML='<div class="card" style="padding:34px 26px;max-width:620px;margin:0 auto">'+
       '<div style="font-size:15px;font-weight:700;color:#b45309;margin-bottom:10px">Hay que recalcular los datos</div>'+
       '<div style="font-size:13px;color:#475569;line-height:1.6">Los datos guardados vienen de una carga anterior y sus fechas quedaron mal interpretadas: '+
@@ -3183,6 +3140,8 @@ function renderDiagramaFlujoCompleto(opts) {
   const totalEspera      = sum(enEspera);
   const totalAlta        = sum(D.alta);
   const totalProgramados = sum(D.programados);
+  const totalAgendadas   = sum(D.agendadas||{});
+  const totalAgendListo  = sum(D.agend_listo||{});
   const totalListoPru    = sum(D.listo_pruebas);
   const totalMigradoDoc  = sum(D.migrado_pend_doc);
   const totalValid       = sum(D.en_validacion);
@@ -3329,7 +3288,7 @@ function renderDiagramaFlujoCompleto(opts) {
       '<div class="dfx-top-i"><span class="dfx-top-l">EQUIPO RACKEADO</span><span class="dfx-top-v" style="color:'+C.verde+'">'+totalItem3+'</span><span class="dfx-top-s">Ítem 3 · '+totalConEnlace+' con enlace</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">MIGRADAS</span><span class="dfx-top-v" style="color:'+C.azul+'">'+totalCierre+'</span><span class="dfx-top-s">Servicio activo · '+Math.round(totalCierre/totalUniverso*100)+'%</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">ALTA OPERATIVA</span><span class="dfx-top-v" style="color:'+(totalAlta?C.verde:'#94a3b8')+'">'+totalAlta+'</span><span class="dfx-top-s">Cerradas con conformidad PJ</span></div>'+
-      '<div class="dfx-top-i"><span class="dfx-top-l">POR ATENDER HOY</span><span class="dfx-top-v" style="color:'+C.ambar+'">'+(totalProgramables+totalProgramados+totalReprog)+'</span><span class="dfx-top-s">Habilitadas, no dependen de terceros</span></div>'+
+      '<div class="dfx-top-i"><span class="dfx-top-l">CON VISITA AGENDADA</span><span class="dfx-top-v" style="color:'+(totalAgendadas?C.azul:'#94a3b8')+'">'+totalAgendadas+'</span><span class="dfx-top-s">Fecha vigente en el historial</span></div>'+
     '</div>';
 
   const cierre = (esV2&&totalCierre>0) ?
@@ -3365,7 +3324,10 @@ function renderDiagramaFlujoCompleto(opts) {
               '<div class="dfx-col dfx-ind" style="gap:10px">'+
                 '<div class="dfx-fila">'+
                   circulo(totalListoPru,'LISTO PARA<br>PRUEBAS','Falta migrar',C.azul,'dfx-md')+
-                  mini('PENDIENTE DE MIGRAR',D.listo_pruebas,C.azul,'#eff6ff','#bfdbfe','Requieren una salida de pruebas y migración')+
+                  mini('PENDIENTE DE MIGRAR',D.listo_pruebas,C.azul,'#eff6ff','#bfdbfe',
+                       totalAgendListo>0
+                         ? totalAgendListo+' ya tienen visita agendada · '+(sum(D.listo_pruebas)-totalAgendListo)+' sin fecha'
+                         : 'Requieren una salida de pruebas y migración — ninguna tiene fecha agendada')+
                 '</div>'+
                 '<div class="dfx-fila">'+
                   circulo(totalCierre,'MIGRADAS','Servicio activo',C.verde,'dfx-md')+
@@ -3390,7 +3352,7 @@ function renderDiagramaFlujoCompleto(opts) {
           '<div class="dfx-col dfx-ind" style="gap:12px">'+
             (esV2 ?
               '<div class="dfx-fila">'+
-                circulo(totalProgramados,'PROGRAMADAS','Con fecha vigente',C.azul,'dfx-md')+
+                circulo(totalProgramados,'PROGRAMADAS','Sin equipo, con fecha',C.azul,'dfx-md')+
                 mini('AGENDADAS',D.programados,C.azul,'#eff6ff','#bfdbfe','Atención con fecha en el historial')+
               '</div>'+
               '<div class="dfx-fila">'+
