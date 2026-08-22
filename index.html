@@ -1038,8 +1038,16 @@ function renderTodo(){
     if(fu)fu.textContent='Fuente: Plantilla_Carga_Diaria — '+new Date().toLocaleDateString('es-PE');
   }
   // Universo asignado a cada ítem. El Ítem 2 (Claro) no cubre las 745 sedes.
-  // Ajusta estos valores si cambia el reparto contractual.
-  const UNIVERSO_ITEM={item5:TOTAL,item1:TOTAL,item2:433};
+  // Ítem 5 e Ítem 1 sí cubren el universo completo, así que su denominador
+  // sigue el mismo total que usa el resto del dashboard para la zona activa.
+  // Ítem 2 (Claro): universo real = 432 sedes (columna AB "Enlace de internet
+  // Tipo 1,2" del SEGUIMIENTO_TDR_WAN_2026_IMPLEMENTACIÓN_v1.xlsx, cruzada con
+  // Cód. PJ → Zona de la Plantilla; corte 22/08/2026). Reemplaza el 433 anterior,
+  // que era un valor heredado sin fuente verificada.
+  const CLARO_UNIVERSO_POR_ZONA={'Zona Centro':178,'Zona Norte':68,'Zona Oriente':65,'Zona Sur':121};
+  const UNIVERSO_ITEM = zonaInfo
+    ? {item5:zonaInfo.total, item1:zonaInfo.total, item2:(CLARO_UNIVERSO_POR_ZONA[zonaFiltro]||0)}
+    : {item5:TOTAL, item1:TOTAL, item2:432};
   const tiposCortos=['Tipo 1','Tipo 2','Tipo 3'];
   const filaTipos=clave=>{
     const d=tipoPorItem[clave]||{};
@@ -2150,7 +2158,15 @@ function renderMetricas(){
     return resultado;
   }
   const realProd=acumReal('configurados');
-  const realDesp=acumReal('solo_item5');
+  // Antes: realDesp salía únicamente del log manual "solo_item5" (Registrar y cargar
+  // avance), que dejó de alimentarse a fines de julio cuando el criterio cambió a
+  // gabinete + enlace y el seguimiento se trasladó por completo a la Plantilla.
+  // Por eso la curva se veía plana desde esa fecha, sin mostrar el avance real de
+  // rackeo/migración (incluidas las 125 sedes migradas bajo el criterio antiguo).
+  // Ahora se usa la curva calculada de la Plantilla (Fecha Migración, columna P) en
+  // cuanto exista; si aún no se cargó ninguna, cae al log manual como antes.
+  const hayMigReal=window.CURVA_REAL_MIG&&Object.keys(window.CURVA_REAL_MIG).length>0;
+  const realDesp=hayMigReal?window.CURVA_REAL_MIG:acumReal('solo_item5');
   const totalRealProd=Object.values(realProd).reduce((a,v)=>Math.max(a,v),0);
   const totalRealDesp=Object.values(realDesp).reduce((a,v)=>Math.max(a,v),0);
 
@@ -2391,12 +2407,19 @@ function renderMetricas(){
   if(chartDesp)chartDesp.destroy();
   const despLabels=dd.planFechas.map(f=>{const d=new Date(f+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'});});
   // Build Item5 real data aligned to desp plan dates
+  // Item5_ACUM llega hardcodeado/heredado (se detiene el 08/07) o desde el log manual
+  // en Firestore, que también dejó de alimentarse. Si ya se cargó una Plantilla,
+  // se prioriza la curva real de gabinetes calculada de ahí (más completa y viva).
   const item5Map={};
-  const item5Acum=window.ITEM5_ACUM||[];
-  item5Acum.forEach(([f,v])=>item5Map[f]=v);
+  const hayGabReal=window.CURVA_REAL_GAB&&Object.keys(window.CURVA_REAL_GAB).length>0;
+  if(hayGabReal){
+    Object.entries(window.CURVA_REAL_GAB).forEach(([f,v])=>item5Map[f]=v);
+  } else {
+    (window.ITEM5_ACUM||[]).forEach(([f,v])=>item5Map[f]=v);
+  }
   // Pre-calculate lastItem5 for dates before plan start
   let lastItem5=0;
-  item5Acum.forEach(([f,v])=>{if(f<=dd.planFechas[0])lastItem5=v;});
+  Object.entries(item5Map).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([f,v])=>{if(f<=dd.planFechas[0])lastItem5=v;});
   const item5Vals=dd.planFechas.map(f=>{
     if(item5Map[f]!==undefined)lastItem5=item5Map[f];
     return f<=hoyStr?lastItem5:null;
@@ -2566,6 +2589,23 @@ function guardarDiagramaDatos(D){
   }catch(e){console.error('guardarDiagramaDatos:',e);}
 }
 
+const CLAVE_CURVA_REAL='curva_real_v1';
+function guardarCurvaReal(mig,gab){
+  if(!mig&&!gab)return;
+  try{localStorage.setItem(CLAVE_CURVA_REAL,JSON.stringify({mig,gab}));}catch(e){}
+  try{
+    setDoc(doc(db,'config','curva_real'),{mig:mig||{},gab:gab||{},actualizado:Date.now()})
+      .catch(e=>console.error('guardarCurvaReal:',e));
+  }catch(e){console.error('guardarCurvaReal:',e);}
+}
+function restaurarCurvaRealLocal(){
+  if(window.CURVA_REAL_MIG||window.CURVA_REAL_GAB)return;
+  try{
+    const raw=localStorage.getItem(CLAVE_CURVA_REAL);
+    if(raw){const o=JSON.parse(raw);window.CURVA_REAL_MIG=o.mig||{};window.CURVA_REAL_GAB=o.gab||{};}
+  }catch(e){}
+}
+
 function restaurarDiagramaLocal(){
   if(window.DIAGRAMA_DATOS)return;
   try{
@@ -2606,6 +2646,14 @@ async function cargarItemsExternos(){
         if(p&&p.gabinete){
           window.DIAGRAMA_DATOS=p;
           try{localStorage.setItem(CLAVE_DIAGRAMA,JSON.stringify(p));}catch(e){}
+        }
+      }
+      if(d.id==='curva_real'){
+        const p=d.data();
+        if(p&&(p.mig||p.gab)){
+          window.CURVA_REAL_MIG=p.mig||{};
+          window.CURVA_REAL_GAB=p.gab||{};
+          try{localStorage.setItem(CLAVE_CURVA_REAL,JSON.stringify({mig:window.CURVA_REAL_MIG,gab:window.CURVA_REAL_GAB}));}catch(e){}
         }
       }
       if(d.id==='plantilla_tipos'){
@@ -2835,6 +2883,23 @@ function procesarPlantillaNueva(raw){
     const ultE=norm(String(r[iUlt]||''));
     if(ultE.includes('vencida'))D.alertas.push({cod,sede,zona:zr,tipo:'vencida'});
   });
+
+  // --- Curva S real: cumulativo por fecha, calculado directamente de la Plantilla ---
+  // D.ritmo.mig / D.ritmo.gab ya traen una fecha ISO por cada sede con Fecha Migración /
+  // Fecha Gabinete. Antes esas fechas solo alimentaban el ritmo semanal de la Vista
+  // Ejecutiva; aquí se acumulan por fecha para que la Curva S muestre el avance real
+  // (incluidas las 125 sedes migradas bajo el criterio antiguo, sin gabinete previo).
+  const cumularPorFecha=arr=>{
+    const mapa={};
+    arr.forEach(f=>{mapa[f]=(mapa[f]||0)+1;});
+    const fechas=Object.keys(mapa).sort();
+    let acum=0; const out={};
+    fechas.forEach(f=>{acum+=mapa[f]; out[f]=acum;});
+    return out;
+  };
+  window.CURVA_REAL_MIG=cumularPorFecha(D.ritmo.mig);
+  window.CURVA_REAL_GAB=cumularPorFecha(D.ritmo.gab);
+  guardarCurvaReal(window.CURVA_REAL_MIG,window.CURVA_REAL_GAB);
 
   window.DIAGRAMA_DATOS=D;
   guardarDiagramaDatos(D);
@@ -3384,6 +3449,7 @@ window.renderDiagramaFlujoCompleto = renderDiagramaFlujoCompleto;
 // Load on startup
 restaurarPlantillaLocal();
 restaurarDiagramaLocal();
+restaurarCurvaRealLocal();
 renderDiagramaFlujoCompleto();
 cargarItemsExternos();
 
