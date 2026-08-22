@@ -2406,24 +2406,41 @@ function renderMetricas(){
 
   if(chartDesp)chartDesp.destroy();
   const despLabels=dd.planFechas.map(f=>{const d=new Date(f+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'});});
-  // Build Item5 real data aligned to desp plan dates
-  // Item5_ACUM llega hardcodeado/heredado (se detiene el 08/07) o desde el log manual
-  // en Firestore, que también dejó de alimentarse. Si ya se cargó una Plantilla,
-  // se prioriza la curva real de gabinetes calculada de ahí (más completa y viva).
-  const item5Map={};
+
+  // Forward-fill genérico: una vez que una fecha tiene dato, se mantiene el último
+  // valor conocido hasta la siguiente fecha con dato (evita que la línea se corte
+  // en cada día sin evento). Solo se proyecta hasta hoy; después queda en null.
+  const serieFF=mapa=>{
+    const claves=Object.keys(mapa||{}).sort();
+    let last=0;
+    claves.forEach(f=>{if(f<=dd.planFechas[0])last=mapa[f];});
+    return dd.planFechas.map(f=>{
+      if(mapa[f]!==undefined)last=mapa[f];
+      return f<=hoyStr?last:null;
+    });
+  };
+
+  // "Nosotros" (Ítem 3): antes salía del log manual "solo_item5" (Registrar y cargar
+  // avance), abandonado a fines de julio. Ahora, si ya se cargó la Plantilla, se usa
+  // la Fecha Migración real (columna P) — cierre completo de la sede. `realDesp` ya
+  // eligió la fuente correcta más arriba.
+  const realDespVals=serieFF(realDesp);
+
+  // Rackeo sin enlace (columna Fecha Rackeo): incluye las 125 sedes que se instalaron
+  // solo con gabinete bajo el criterio antiguo, antes de exigir gabinete + enlace.
+  const rackVals=serieFF(window.CURVA_REAL_RACK||{});
+
+  // Ítem 5 (gabinetes): prioriza la curva calculada de la Plantilla sobre el ITEM5_ACUM
+  // heredado (se detiene el 08/07) o el log manual, ambos ya sin actualizar.
   const hayGabReal=window.CURVA_REAL_GAB&&Object.keys(window.CURVA_REAL_GAB).length>0;
-  if(hayGabReal){
-    Object.entries(window.CURVA_REAL_GAB).forEach(([f,v])=>item5Map[f]=v);
-  } else {
-    (window.ITEM5_ACUM||[]).forEach(([f,v])=>item5Map[f]=v);
-  }
-  // Pre-calculate lastItem5 for dates before plan start
-  let lastItem5=0;
-  Object.entries(item5Map).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([f,v])=>{if(f<=dd.planFechas[0])lastItem5=v;});
-  const item5Vals=dd.planFechas.map(f=>{
-    if(item5Map[f]!==undefined)lastItem5=item5Map[f];
-    return f<=hoyStr?lastItem5:null;
-  });
+  const item5MapFallback={};
+  (window.ITEM5_ACUM||[]).forEach(([f,v])=>item5MapFallback[f]=v);
+  const item5Vals=serieFF(hayGabReal?window.CURVA_REAL_GAB:item5MapFallback);
+
+  // Ítem 1 (Bitel) e Ítem 2 (Claro): fechas de enlace real por operador, calculadas
+  // de la Plantilla (columnas Fecha Enlace Ítem 1 / Ítem 2).
+  const item1Vals=serieFF(window.CURVA_REAL_ITEM1||{});
+  const item2Vals=serieFF(window.CURVA_REAL_ITEM2||{});
 
   if(chartDesp)chartDesp.destroy();
   chartDesp=new Chart(document.getElementById('chart-desp'),{
@@ -2431,10 +2448,13 @@ function renderMetricas(){
     data:{
       labels:despLabels,
       datasets:[
-        {label:'Planificado SD-WAN',data:dd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:'origin',order:3},
-        {label:'Real SD-WAN',data:dd.realVals,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.15)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:'origin',spanGaps:false,order:1},
-        {label:'Real Ítem 5 (Gabinetes)',data:item5Vals,borderColor:'#E8A33D',backgroundColor:'rgba(232,163,61,0.10)',borderWidth:2,pointRadius:2,tension:0.3,fill:'origin',spanGaps:true,order:2,borderDash:[4,3]},
-        {label:'Brecha',data:dd.planVals.map((v,i)=>dd.realVals[i]!==null&&dd.realVals[i]!==undefined?Math.max(0,v-dd.realVals[i]):null),borderColor:'rgba(200,50,50,0)',backgroundColor:'rgba(200,50,50,0.10)',borderWidth:0,pointRadius:0,tension:0.4,fill:'origin',order:4,spanGaps:false},
+        {label:'Planificado SD-WAN',data:dd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.06)',borderWidth:2,pointRadius:2,tension:0.4,fill:'origin',order:6},
+        {label:'Real SD-WAN — Migración (Ítem 3)',data:realDespVals,borderColor:'#EA580C',backgroundColor:'rgba(234,88,12,0.12)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:'origin',spanGaps:false,order:1},
+        {label:'Real SD-WAN — Rackeo sin enlace (Ítem 3)',data:rackVals,borderColor:'#EA580C',backgroundColor:'rgba(0,0,0,0)',borderWidth:1.75,pointRadius:2,tension:0.3,fill:false,spanGaps:false,order:2,borderDash:[5,3]},
+        {label:'Real Ítem 5 (Gabinetes)',data:item5Vals,borderColor:'#0F766E',backgroundColor:'rgba(15,118,110,0.08)',borderWidth:2,pointRadius:2,tension:0.3,fill:false,spanGaps:true,order:3},
+        {label:'Real Ítem 1 (Bitel)',data:item1Vals,borderColor:'#CA8A04',backgroundColor:'rgba(0,0,0,0)',borderWidth:2,pointRadius:2,tension:0.3,fill:false,spanGaps:true,order:4},
+        {label:'Real Ítem 2 (Claro)',data:item2Vals,borderColor:'#B91C1C',backgroundColor:'rgba(0,0,0,0)',borderWidth:2,pointRadius:2,tension:0.3,fill:false,spanGaps:true,order:5},
+        {label:'Brecha',data:dd.planVals.map((v,i)=>realDespVals[i]!==null&&realDespVals[i]!==undefined?Math.max(0,v-realDespVals[i]):null),borderColor:'rgba(200,50,50,0)',backgroundColor:'rgba(200,50,50,0.08)',borderWidth:0,pointRadius:0,tension:0.4,fill:'origin',order:7,spanGaps:false},
       ]
     },
     options:chartOpts(dd.hoyIdx,745,despLabels)
@@ -2589,12 +2609,12 @@ function guardarDiagramaDatos(D){
   }catch(e){console.error('guardarDiagramaDatos:',e);}
 }
 
-const CLAVE_CURVA_REAL='curva_real_v1';
-function guardarCurvaReal(mig,gab){
-  if(!mig&&!gab)return;
-  try{localStorage.setItem(CLAVE_CURVA_REAL,JSON.stringify({mig,gab}));}catch(e){}
+const CLAVE_CURVA_REAL='curva_real_v2';
+function guardarCurvaReal(series){
+  if(!series)return;
+  try{localStorage.setItem(CLAVE_CURVA_REAL,JSON.stringify(series));}catch(e){}
   try{
-    setDoc(doc(db,'config','curva_real'),{mig:mig||{},gab:gab||{},actualizado:Date.now()})
+    setDoc(doc(db,'config','curva_real'),{...series,actualizado:Date.now()})
       .catch(e=>console.error('guardarCurvaReal:',e));
   }catch(e){console.error('guardarCurvaReal:',e);}
 }
@@ -2602,7 +2622,12 @@ function restaurarCurvaRealLocal(){
   if(window.CURVA_REAL_MIG||window.CURVA_REAL_GAB)return;
   try{
     const raw=localStorage.getItem(CLAVE_CURVA_REAL);
-    if(raw){const o=JSON.parse(raw);window.CURVA_REAL_MIG=o.mig||{};window.CURVA_REAL_GAB=o.gab||{};}
+    if(raw){
+      const o=JSON.parse(raw);
+      window.CURVA_REAL_MIG=o.mig||{};   window.CURVA_REAL_GAB=o.gab||{};
+      window.CURVA_REAL_RACK=o.rack||{}; window.CURVA_REAL_ITEM1=o.item1||{};
+      window.CURVA_REAL_ITEM2=o.item2||{};
+    }
   }catch(e){}
 }
 
@@ -2651,9 +2676,13 @@ async function cargarItemsExternos(){
       if(d.id==='curva_real'){
         const p=d.data();
         if(p&&(p.mig||p.gab)){
-          window.CURVA_REAL_MIG=p.mig||{};
-          window.CURVA_REAL_GAB=p.gab||{};
-          try{localStorage.setItem(CLAVE_CURVA_REAL,JSON.stringify({mig:window.CURVA_REAL_MIG,gab:window.CURVA_REAL_GAB}));}catch(e){}
+          window.CURVA_REAL_MIG=p.mig||{};   window.CURVA_REAL_GAB=p.gab||{};
+          window.CURVA_REAL_RACK=p.rack||{}; window.CURVA_REAL_ITEM1=p.item1||{};
+          window.CURVA_REAL_ITEM2=p.item2||{};
+          try{localStorage.setItem(CLAVE_CURVA_REAL,JSON.stringify({
+            mig:window.CURVA_REAL_MIG,gab:window.CURVA_REAL_GAB,rack:window.CURVA_REAL_RACK,
+            item1:window.CURVA_REAL_ITEM1,item2:window.CURVA_REAL_ITEM2
+          }));}catch(e){}
         }
       }
       if(d.id==='plantilla_tipos'){
@@ -2806,7 +2835,7 @@ function procesarPlantillaNueva(raw){
     const d=new Date(t); return isNaN(d)?null:d;              // ISO (viene así del dataset guardado)
   };
   const dias=d0=>d0?Math.round((HOY-d0)/86400000):null;
-  D.alertas=[]; D.ritmo={gab:[],rack:[],mig:[],enl:[]}; D.quiebres={}; D.envejec={hab:[],rack:[],pru:[]};
+  D.alertas=[]; D.ritmo={gab:[],rack:[],mig:[],enl:[],enl1:[],enl2:[]}; D.quiebres={}; D.envejec={hab:[],rack:[],pru:[]};
   const pres=v=>String(v==null?'':v).replace(/\u00a0/g,' ').trim()!=='';
   let filas=0;
 
@@ -2867,7 +2896,8 @@ function procesarPlantillaNueva(raw){
           f1=fx(r[iE1]), f2=fx(r[iE2]);
     const iso=d0=>d0.toISOString().slice(0,10);
     if(fg)D.ritmo.gab.push(iso(fg)); if(fr)D.ritmo.rack.push(iso(fr)); if(fm)D.ritmo.mig.push(iso(fm));
-    if(f1)D.ritmo.enl.push(iso(f1)); if(f2)D.ritmo.enl.push(iso(f2));
+    if(f1){D.ritmo.enl.push(iso(f1));D.ritmo.enl1.push(iso(f1));}
+    if(f2){D.ritmo.enl.push(iso(f2));D.ritmo.enl2.push(iso(f2));}
     const eN=norm(estado), sede=String(r[iSede]||'').trim(), cod=String(r[iCod]).trim();
     const ultMax=(...fs)=>{const v=fs.filter(Boolean); return v.length?new Date(Math.max.apply(null,v)):null;};
     if(eN.includes('programable')||eN.includes('reprogramacion')){
@@ -2899,7 +2929,13 @@ function procesarPlantillaNueva(raw){
   };
   window.CURVA_REAL_MIG=cumularPorFecha(D.ritmo.mig);
   window.CURVA_REAL_GAB=cumularPorFecha(D.ritmo.gab);
-  guardarCurvaReal(window.CURVA_REAL_MIG,window.CURVA_REAL_GAB);
+  window.CURVA_REAL_RACK=cumularPorFecha(D.ritmo.rack);   // rackeo (incluye las 125 sin enlace)
+  window.CURVA_REAL_ITEM1=cumularPorFecha(D.ritmo.enl1);  // Bitel
+  window.CURVA_REAL_ITEM2=cumularPorFecha(D.ritmo.enl2);  // Claro
+  guardarCurvaReal({
+    mig:window.CURVA_REAL_MIG, gab:window.CURVA_REAL_GAB, rack:window.CURVA_REAL_RACK,
+    item1:window.CURVA_REAL_ITEM1, item2:window.CURVA_REAL_ITEM2
+  });
 
   window.DIAGRAMA_DATOS=D;
   guardarDiagramaDatos(D);
