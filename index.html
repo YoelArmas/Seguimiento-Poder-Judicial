@@ -64,7 +64,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div class="card-title" style="margin:0">Avance Ítems de Soporte (1, 2 y 5)</div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <select class="inp" id="filtro-zona-dash" style="width:auto;font-size:12px;min-width:140px" onchange="window.actualizarFiltrosCascada()">
+        <select class="inp" id="filtro-zona-dash" style="width:auto;font-size:12px;min-width:140px" onchange="window.actualizarFiltrosCascada('zona')">
           <option value="">Todas las zonas</option>
           <option value="Zona Norte">Zona Norte</option>
           <option value="Zona Sur">Zona Sur</option>
@@ -77,7 +77,7 @@
         <select class="inp" id="filtro-dpto-dash" style="width:auto;font-size:12px;min-width:120px" onchange="window.actualizarFiltrosCascada('dpto')">
           <option value="">Todos los dptos.</option>
         </select>
-        <select class="inp" id="filtro-prov-dash" style="width:auto;font-size:12px;min-width:120px" onchange="window.renderTodo()">
+        <select class="inp" id="filtro-prov-dash" style="width:auto;font-size:12px;min-width:120px" onchange="window.actualizarFiltrosCascada('prov')">
           <option value="">Todas las prov.</option>
         </select>
         <span id="fuente-items" style="font-size:11px;color:var(--text3)">Fuente: SEGUIMIENTO_TDR_WAN — actualizado al 13/07/2026</span>
@@ -89,7 +89,7 @@
   <!-- DESPLIEGUE EN CAMPO -->
   <div class="card" style="margin-bottom:16px">
     <div class="flex-between flex-wrap gap-8 mb-16">
-      <div class="card-title" style="margin:0">Flujo de implementacion — 745 sedes</div>
+      <div class="card-title" style="margin:0" id="titulo-flujo">Flujo de implementacion — 745 sedes</div>
       <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
     </div>
 
@@ -985,21 +985,23 @@ function renderTodo(){
   const regionFiltro=document.getElementById('filtro-region-dash')?.value||'';
   const dptoFiltro=document.getElementById('filtro-dpto-dash')?.value||'';
   const provFiltro=document.getElementById('filtro-prov-dash')?.value||'';
-  const zonaInfo=ZONA_UNIVERSO[zonaFiltro]||null;
-  // Determinar el bucket más específico disponible en DIAGRAMA_DATOS
-  const _DD=window.DIAGRAMA_DATOS||null;
-  let _bucket=_DD||null;
-  if(_DD){
-    if(provFiltro&&_DD.porProv&&_DD.porProv[provFiltro])_bucket=_DD.porProv[provFiltro];
-    else if(dptoFiltro&&_DD.porDpto&&_DD.porDpto[dptoFiltro])_bucket=_DD.porDpto[dptoFiltro];
-    else if(regionFiltro&&_DD.porRegion&&_DD.porRegion[regionFiltro])_bucket=_DD.porRegion[regionFiltro];
-    else if(zonaFiltro&&_DD.porZona&&_DD.porZona[zonaFiltro])_bucket=_DD.porZona[zonaFiltro];
-  }
-  window._FILTRO_BUCKET=_bucket;
-  const universo=zonaInfo?zonaInfo.total:TOTAL;
+  const hayFiltroGeo=!!(zonaFiltro||regionFiltro||dptoFiltro||provFiltro);
+  // Universo real del filtro activo (nº de sedes que cumplen los 4 selectores)
+  const _uniFiltrado=typeof window.universoFiltrado==='function'?window.universoFiltrado():null;
+  // zonaInfo se conserva para el caso legado (dataset sin D.sedes)
+  const zonaInfo=(_uniFiltrado==null&&zonaFiltro)?(ZONA_UNIVERSO[zonaFiltro]||null):null;
+  // Etiqueta del ámbito activo, para mostrarla junto a los porcentajes
+  const _ambito=provFiltro||dptoFiltro||regionFiltro||zonaFiltro||'';
+  window._FILTRO_BUCKET=typeof datosDiagramaActivos==='function'?datosDiagramaActivos():null;
+  window._UNIVERSO_ACTIVO=(_uniFiltrado!=null&&hayFiltroGeo)?_uniFiltrado:(zonaInfo?zonaInfo.total:TOTAL);
+  const universo=window._UNIVERSO_ACTIVO;
 
   // Embudo
   document.getElementById('fecha-corte').textContent='Corte: '+new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+  (function(){
+    const tf=document.getElementById('titulo-flujo');
+    if(tf)tf.textContent='Flujo de implementacion — '+universo+' sedes'+(_ambito?' · '+_ambito:'');
+  })();
   
   // Si se cargó Plantilla_Carga, usa esos totales; sino, usa datos de Firebase
   let totalSolo5=t.solo_item5,totalConEnlace=t.con_enlace,totalAltaOp=t.alta;
@@ -1027,11 +1029,12 @@ function renderTodo(){
     {id:'alta',val:totalAltaOp},
   ];
   bloques.forEach(b=>{
-    const universoZona=zonaInfo?zonaInfo.total:TOTAL;
+    const universoZona=universo||TOTAL;
     const p=Math.min(100,Math.round(b.val/universoZona*100));
     const el=document.getElementById('f-'+b.id);if(el)el.textContent=b.val;
     const bar=document.getElementById('b-'+b.id);if(bar)bar.style.width=p+'%';
-    const pctEl=document.getElementById('pct-'+b.id);if(pctEl)pctEl.textContent=p+'% '+(zonaInfo?`(${zonaInfo.total} ${zonaFiltro})`:'del universo (745)');
+    const pctEl=document.getElementById('pct-'+b.id);
+    if(pctEl)pctEl.textContent=p+'% '+(_ambito?`(${universoZona} · ${_ambito})`:'del universo (745)');
   });
   // Desglose por Tipo de sede (Tipo 1/2/3) en Solo Item5 y Alta operativa
   function renderDesglose(elId,porTipoEtapa){
@@ -1076,9 +1079,19 @@ function renderTodo(){
   // Cód. PJ → Zona de la Plantilla; corte 22/08/2026). Reemplaza el 433 anterior,
   // que era un valor heredado sin fuente verificada.
   const CLARO_UNIVERSO_POR_ZONA={'Zona Centro':178,'Zona Norte':68,'Zona Oriente':65,'Zona Sur':121};
-  const UNIVERSO_ITEM = zonaInfo
-    ? {item5:zonaInfo.total, item1:zonaInfo.total, item2:(CLARO_UNIVERSO_POR_ZONA[zonaFiltro]||0)}
-    : {item5:TOTAL, item1:TOTAL, item2:432};
+  let UNIVERSO_ITEM;
+  if(_uniFiltrado!=null&&hayFiltroGeo){
+    // Universo recalculado desde las sedes que cumplen los 4 filtros.
+    // Ítem 2 (Claro) no cubre todas las sedes: su universo es el nº de sedes
+    // del ámbito que tienen enlace Claro contemplado en la plantilla.
+    const _sub=window.sedesFiltradas()||[];
+    const _claro=_sub.filter(s=>s.e2||s.claro).length;
+    UNIVERSO_ITEM={item5:_uniFiltrado, item1:_uniFiltrado, item2:(_claro||_uniFiltrado)};
+  } else if(zonaInfo){
+    UNIVERSO_ITEM={item5:zonaInfo.total, item1:zonaInfo.total, item2:(CLARO_UNIVERSO_POR_ZONA[zonaFiltro]||0)};
+  } else {
+    UNIVERSO_ITEM={item5:TOTAL, item1:TOTAL, item2:432};
+  }
   const tiposCortos=['Tipo 1','Tipo 2','Tipo 3'];
   const filaTipos=clave=>{
     const d=tipoPorItem[clave]||{};
@@ -1696,29 +1709,10 @@ window.handleFile=function(file){
             if(!D.porZona[zona])D.porZona[zona]=nuevoBucket();
             acumular(D.porZona[zona],tipo,gab,e1,e2,inst,alta);
           }
-          if(regionRaw){
-            if(!D.porRegion)D.porRegion={};
-            if(!D.porRegion[regionRaw])D.porRegion[regionRaw]=nuevoBucket();
-            acumular(D.porRegion[regionRaw],tipo,gab,e1,e2,inst,alta);
-          }
-          if(dptoRaw){
-            if(!D.porDpto)D.porDpto={};
-            if(!D.porDpto[dptoRaw])D.porDpto[dptoRaw]=nuevoBucket();
-            acumular(D.porDpto[dptoRaw],tipo,gab,e1,e2,inst,alta);
-          }
-          if(provRaw){
-            if(!D.porProv)D.porProv={};
-            if(!D.porProv[provRaw])D.porProv[provRaw]=nuevoBucket();
-            acumular(D.porProv[provRaw],tipo,gab,e1,e2,inst,alta);
-          }
-          // Guardar meta para los selectores
-          if(zona&&regionRaw){
-            if(!D._meta)D._meta={};
-            if(!D._meta[zona])D._meta[zona]={regiones:{}};
-            if(!D._meta[zona].regiones[regionRaw])D._meta[zona].regiones[regionRaw]={dptos:{}};
-            if(dptoRaw&&!D._meta[zona].regiones[regionRaw].dptos[dptoRaw])D._meta[zona].regiones[regionRaw].dptos[dptoRaw]={provs:{}};
-            if(dptoRaw&&provRaw)D._meta[zona].regiones[regionRaw].dptos[dptoRaw].provs[provRaw]=1;
-          }
+          // ══ FUENTE ÚNICA: registro por sede (formato v1) ══
+          if(!D.sedes)D.sedes=[];
+          D.sedes.push({z:zona,r:regionRaw,d:dptoRaw,p:provRaw,t:tipo,
+                        gab:gab?1:0,e1:e1?1:0,e2:e2?1:0,inst:inst?1:0,alta:alta?1:0,v1:1});
         });
         window.DIAGRAMA_DATOS=D;
         guardarDiagramaDatos(D);
@@ -2113,65 +2107,49 @@ window.showGestionSub=function(name){
 // ============================================================
 window.actualizarFiltrosCascada=function(origen){
   const D=window.DIAGRAMA_DATOS;
-  if(!D){window.renderTodo();return;}
-  const zona=document.getElementById('filtro-zona-dash')?.value||'';
-  const region=document.getElementById('filtro-region-dash')?.value||'';
-  const dpto=document.getElementById('filtro-dpto-dash')?.value||'';
+  const selZ=document.getElementById('filtro-zona-dash');
+  const selR=document.getElementById('filtro-region-dash');
+  const selD=document.getElementById('filtro-dpto-dash');
+  const selP=document.getElementById('filtro-prov-dash');
+  if(!D||!Array.isArray(D.sedes)||!D.sedes.length){ window.renderTodo(); return; }
 
-  const meta=D._meta||null;
-  const hasMeta=meta&&Object.keys(meta).length>0;
+  const zona  = selZ?.value||'';
+  let  region = selR?.value||'';
+  let  dpto   = selD?.value||'';
+  let  prov   = selP?.value||'';
 
-  // Helpers para obtener opciones con fallback a porRegion/porDpto/porProv
-  const regsDisponibles=()=>{
-    if(hasMeta){
-      if(zona&&meta[zona])return Object.keys(meta[zona].regiones||{}).sort();
-      return Object.values(meta).flatMap(z=>Object.keys(z.regiones||{})).filter((v,i,a)=>a.indexOf(v)===i).sort();
-    }
-    return D.porRegion?Object.keys(D.porRegion).sort():[];
-  };
-  const dptosDisponibles=()=>{
-    if(hasMeta){
-      if(zona&&region&&meta[zona]?.regiones[region])return Object.keys(meta[zona].regiones[region].dptos||{}).sort();
-      if(zona&&meta[zona])return Object.values(meta[zona].regiones).flatMap(r=>Object.keys(r.dptos||{})).filter((v,i,a)=>a.indexOf(v)===i).sort();
-      if(region){const ds=[];Object.values(meta).forEach(z=>{const r=z.regiones?.[region];if(r)ds.push(...Object.keys(r.dptos||{}));});return[...new Set(ds)].sort();}
-      return Object.values(meta).flatMap(z=>Object.values(z.regiones||{}).flatMap(r=>Object.keys(r.dptos||{}))).filter((v,i,a)=>a.indexOf(v)===i).sort();
-    }
-    return D.porDpto?Object.keys(D.porDpto).sort():[];
-  };
-  const provsDisponibles=()=>{
-    if(hasMeta){
-      if(zona&&region&&dpto&&meta[zona]?.regiones[region]?.dptos[dpto])return Object.keys(meta[zona].regiones[region].dptos[dpto].provs||{}).sort();
-      if(zona&&region&&meta[zona]?.regiones[region])return Object.values(meta[zona].regiones[region].dptos||{}).flatMap(d=>Object.keys(d.provs||{})).filter((v,i,a)=>a.indexOf(v)===i).sort();
-      if(zona&&meta[zona])return Object.values(meta[zona].regiones).flatMap(r=>Object.values(r.dptos||{}).flatMap(d=>Object.keys(d.provs||{}))).filter((v,i,a)=>a.indexOf(v)===i).sort();
-      return Object.values(meta).flatMap(z=>Object.values(z.regiones||{}).flatMap(r=>Object.values(r.dptos||{}).flatMap(d=>Object.keys(d.provs||{})))).filter((v,i,a)=>a.indexOf(v)===i).sort();
-    }
-    return D.porProv?Object.keys(D.porProv).sort():[];
+  // Al cambiar un nivel superior se invalidan los inferiores
+  if(origen==='zona'  ){ region=''; dpto=''; prov=''; }
+  if(origen==='region'){ dpto='';   prov=''; }
+  if(origen==='dpto'  ){ prov='';   }
+
+  const uniq=(arr)=>[...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  const setOpts=(sel,valorActual,todos,opts)=>{
+    if(!sel)return valorActual;
+    const valido=opts.includes(valorActual)?valorActual:'';
+    sel.innerHTML=`<option value="">${todos}</option>`+
+      opts.map(o=>`<option value="${o}"${o===valido?' selected':''}>${o}</option>`).join('');
+    sel.value=valido;
+    sel.disabled=opts.length===0;
+    return valido;
   };
 
-  // ── Poblar REGIONES
-  if(!origen||origen==='zona'){
-    const selR=document.getElementById('filtro-region-dash');
-    if(selR){
-      const regs=regsDisponibles();
-      selR.innerHTML='<option value="">Todas las regiones</option>'+regs.map(r=>`<option value="${r}">${r}</option>`).join('');
-    }
-  }
-  // ── Poblar DPTOS
-  if(!origen||origen==='zona'||origen==='region'){
-    const selD=document.getElementById('filtro-dpto-dash');
-    if(selD){
-      const dptos=dptosDisponibles();
-      selD.innerHTML='<option value="">Todos los dptos.</option>'+dptos.map(d=>`<option value="${d}">${d}</option>`).join('');
-    }
-  }
-  // ── Poblar PROVINCIAS
-  if(!origen||origen==='zona'||origen==='region'||origen==='dpto'){
-    const selP=document.getElementById('filtro-prov-dash');
-    if(selP){
-      const provs=provsDisponibles();
-      selP.innerHTML='<option value="">Todas las prov.</option>'+provs.map(p=>`<option value="${p}">${p}</option>`).join('');
-    }
-  }
+  // ── REGIONES: dependen de la Zona
+  const optsR=uniq(D.sedes.filter(s=>!zona||s.z===zona).map(s=>s.r));
+  region=setOpts(selR,region,'Todas las regiones',optsR);
+
+  // ── DPTOS: dependen de Zona + Región
+  const optsD=uniq(D.sedes
+    .filter(s=>(!zona||s.z===zona)&&(!region||s.r===region))
+    .map(s=>s.d));
+  dpto=setOpts(selD,dpto,'Todos los dptos.',optsD);
+
+  // ── PROVINCIAS: dependen de Zona + Región + Dpto.
+  const optsP=uniq(D.sedes
+    .filter(s=>(!zona||s.z===zona)&&(!region||s.r===region)&&(!dpto||s.d===dpto))
+    .map(s=>s.p));
+  setOpts(selP,prov,'Todas las prov.',optsP);
+
   window.renderTodo();
 };
 
@@ -2908,15 +2886,136 @@ function totalDatosDiagrama(d){
   return s(d.solo_item5)+s(d.con_enlace?.item1)+s(d.con_enlace?.item2)+s(d.con_enlace?.item1_item2);
 }
 
-// Devuelve el bloque de datos del diagrama según el filtro de zona activo
+// ════════════════════════════════════════════════════════════
+// FUENTE ÚNICA DE FILTRADO
+//   datosGlobales (D.sedes) → filtrosActivos() → sedesFiltradas()
+//                           → datosDiagramaActivos()  [bucket recalculado]
+// Todos los KPIs, cards, flujo y gráficos consumen este bucket.
+// ════════════════════════════════════════════════════════════
+
+// Lee el estado actual de los 4 selectores
+window.filtrosActivos=function(){
+  return {
+    zona  : document.getElementById('filtro-zona-dash')?.value||'',
+    region: document.getElementById('filtro-region-dash')?.value||'',
+    dpto  : document.getElementById('filtro-dpto-dash')?.value||'',
+    prov  : document.getElementById('filtro-prov-dash')?.value||''
+  };
+};
+
+// Devuelve el subconjunto de sedes que cumple TODOS los filtros activos.
+// Acepta un override para poblar selectores dependientes.
+window.sedesFiltradas=function(ov){
+  const D=window.DIAGRAMA_DATOS;
+  if(!D||!Array.isArray(D.sedes))return null;
+  const f=Object.assign(window.filtrosActivos(),ov||{});
+  return D.sedes.filter(s=>
+    (!f.zona  ||s.z===f.zona  )&&
+    (!f.region||s.r===f.region)&&
+    (!f.dpto  ||s.d===f.dpto  )&&
+    (!f.prov  ||s.p===f.prov  )
+  );
+};
+
+// Reconstruye el bucket de KPIs a partir de un conjunto de sedes
+function agregarSedes(sedes,esV1){
+  const z=()=>({'Tipo 1':0,'Tipo 2':0,'Tipo 3':0});
+  const B={universo:z(),gabinete:z(),item3:z(),item3_sin_enlace:z(),
+    item3_con_enlace:{item1:z(),item2:z(),item1_item2:z()},
+    pendientes:z(),pendientes_programables:z(),pendientes_en_espera:z(),
+    programados:z(),reprog_pendiente:z(),agendadas:z(),agend_listo:z(),
+    listo_pruebas:z(),migrado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
+    enlace_item1:z(),enlace_item2:z(),atenciones:0,quebradas:0,reintentos:0};
+
+  sedes.forEach(s=>{
+    const t=s.t; if(!B.universo[t]===undefined)return;
+    B.universo[t]++;
+
+    if(esV1||s.v1){
+      // ── Formato v1: banderas gab/e1/e2/inst/alta
+      if(s.e1)B.enlace_item1[t]++;
+      if(s.e2)B.enlace_item2[t]++;
+      if(s.gab)B.gabinete[t]++;
+      if(s.alta)B.alta[t]++;
+      if(s.inst){
+        B.item3[t]++;
+        if(s.e1&&s.e2)B.item3_con_enlace.item1_item2[t]++;
+        else if(s.e1) B.item3_con_enlace.item1[t]++;
+        else if(s.e2) B.item3_con_enlace.item2[t]++;
+        else          B.item3_sin_enlace[t]++;
+      }
+      if(s.gab&&!s.inst){
+        B.pendientes[t]++;
+        if(s.e1||s.e2)B.pendientes_programables[t]++;
+        else          B.pendientes_en_espera[t]++;
+      }
+      return;
+    }
+
+    // ── Formato v2: estado resuelto en s.st
+    B.atenciones+=(s.at||0); B.quebradas+=(s.qb||0); if((s.at||0)>1)B.reintentos++;
+    if(s.e1)B.enlace_item1[t]++;
+    if(s.e2)B.enlace_item2[t]++;
+    if(s.st==='singab')return;
+    B.gabinete[t]++;
+    if(s.ag)B.agendadas[t]++;
+
+    const rackeada=['racksin','listo','migrado','validacion','conformidad','alta'].includes(s.st);
+    if(rackeada){
+      B.item3[t]++;
+      if(s.st==='alta')             B.alta[t]++;
+      else if(s.st==='conformidad') B.en_conformidad[t]++;
+      else if(s.st==='validacion')  B.en_validacion[t]++;
+      else if(s.st==='migrado')     B.migrado_pend_doc[t]++;
+      else if(s.st==='listo'){      B.listo_pruebas[t]++; if(s.ag)B.agend_listo[t]++; }
+      if(s.e1&&s.e2)B.item3_con_enlace.item1_item2[t]++;
+      else if(s.e1) B.item3_con_enlace.item1[t]++;
+      else if(s.e2) B.item3_con_enlace.item2[t]++;
+      else          B.item3_sin_enlace[t]++;
+      return;
+    }
+    B.pendientes[t]++;
+    if(s.st==='reprog')           B.reprog_pendiente[t]++;
+    else if(s.st==='program')     B.programados[t]++;
+    else if(s.st==='programable') B.pendientes_programables[t]++;
+    else                          B.pendientes_en_espera[t]++;
+  });
+  return B;
+}
+
+// Bucket activo del dashboard — respeta los 4 filtros simultáneamente
 function datosDiagramaActivos(){
   const D=window.DIAGRAMA_DATOS;
   if(!D)return null;
-  const zona=document.getElementById('filtro-zona-dash')?.value||'';
-  if(!zona)return D;
-  if(!D.porZona)return null;            // dataset antiguo: hay que recargar la plantilla
-  return D.porZona[zona]||null;         // zona sin sedes en la plantilla
+  const f=window.filtrosActivos();
+  const hayFiltro=f.zona||f.region||f.dpto||f.prov;
+
+  // Camino nuevo: recalcular desde D.sedes (soporta cualquier combinación)
+  if(Array.isArray(D.sedes)&&D.sedes.length){
+    if(!hayFiltro)return D;
+    const sub=window.sedesFiltradas();
+    if(!sub||!sub.length)return null;
+    const B=agregarSedes(sub,!!D.sedes[0].v1);
+    B.formato=D.formato; B.v=D.v; B.colAlta=D.colAlta;
+    B.alertas=D.alertas; B.ritmo=D.ritmo; B.quiebres=D.quiebres; B.envejec=D.envejec;
+    return B;
+  }
+
+  // Camino legado: dataset viejo sin D.sedes → solo filtro de zona
+  if(!f.zona)return D;
+  if(!D.porZona)return null;
+  return D.porZona[f.zona]||null;
 }
+
+// Universo (nº de sedes) que corresponde al filtro activo
+window.universoFiltrado=function(){
+  const D=window.DIAGRAMA_DATOS;
+  if(D&&Array.isArray(D.sedes)&&D.sedes.length){
+    const sub=window.sedesFiltradas();
+    if(sub)return sub.length;
+  }
+  return null;
+};
 
 // ============================================================
 // PLANTILLA NUEVA: mapea columnas por NOMBRE (no por posición) y
@@ -3032,31 +3131,28 @@ function procesarPlantillaNueva(raw){
     acum(D);
     if(zona){ if(!D.porZona[zona])D.porZona[zona]=nuevo(); acum(D.porZona[zona]); }
 
-    // ── Acumular por Región / Dpto. / Provincia (cols iZona+1, +2, +3)
-    const regRaw=iRegion>=0?String(r[iRegion]||'').trim():'';
-    const dpRaw=iDpto>=0?String(r[iDpto]||'').trim():'';
-    const pvRaw=iProv>=0?String(r[iProv]||'').trim():'';
-    if(regRaw){
-      if(!D.porRegion)D.porRegion={};
-      if(!D.porRegion[regRaw])D.porRegion[regRaw]=nuevo();
-      acum(D.porRegion[regRaw]);
-    }
-    if(dpRaw){
-      if(!D.porDpto)D.porDpto={};
-      if(!D.porDpto[dpRaw])D.porDpto[dpRaw]=nuevo();
-      acum(D.porDpto[dpRaw]);
-    }
-    if(pvRaw){
-      if(!D.porProv)D.porProv={};
-      if(!D.porProv[pvRaw])D.porProv[pvRaw]=nuevo();
-      acum(D.porProv[pvRaw]);
-    }
-    if(zona&&regRaw){
-      if(!D._meta)D._meta={};
-      if(!D._meta[zona])D._meta[zona]={regiones:{}};
-      if(!D._meta[zona].regiones[regRaw])D._meta[zona].regiones[regRaw]={dptos:{}};
-      if(dpRaw&&!D._meta[zona].regiones[regRaw].dptos[dpRaw])D._meta[zona].regiones[regRaw].dptos[dpRaw]={provs:{}};
-      if(dpRaw&&pvRaw)D._meta[zona].regiones[regRaw].dptos[dpRaw].provs[pvRaw]=1;
+    // ══ FUENTE ÚNICA: registro por sede para filtrado transversal ══
+    // Guarda la clasificación ya resuelta de cada sede para poder
+    // re-agregar los KPIs con CUALQUIER combinación de filtros.
+    {
+      const regRaw=iRegion>=0?String(r[iRegion]||'').trim():'';
+      const dpRaw =iDpto  >=0?String(r[iDpto]  ||'').trim():'';
+      const pvRaw =iProv  >=0?String(r[iProv]  ||'').trim():'';
+      const e=norm(estado);
+      let st='espera';
+      if(e.includes('sin gabinete'))                  st='singab';
+      else if(e.includes('alta operativa'))           st='alta';
+      else if(e.includes('conformidad'))              st='conformidad';
+      else if(e.includes('validacion'))               st='validacion';
+      else if(e.includes('migrado'))                  st='migrado';
+      else if(e.includes('listo para pruebas'))       st='listo';
+      else if(e.includes('rackeada sin enlace'))      st='racksin';
+      else if(e.includes('reprogramacion'))           st='reprog';
+      else if(e.includes('visita agendada')||e.includes('programado')) st='program';
+      else if(e.includes('programable'))              st='programable';
+      if(!D.sedes)D.sedes=[];
+      D.sedes.push({z:zona,r:regRaw,d:dpRaw,p:pvRaw,t:tipo,st:st,
+                    e1:e1?1:0,e2:e2?1:0,ag:agendada?1:0,at:nAt,qb:nQb});
     }
 
     // --- datos para la Vista Ejecutiva ---
@@ -3393,13 +3489,19 @@ function renderDiagramaFlujoCompleto(opts) {
   const aviso = txt => { el.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:36px 20px;font-size:13.5px;line-height:1.5">'+txt+'</div>'; };
 
   if (!window.DIAGRAMA_DATOS) { aviso('Carga la Plantilla_Carga para ver el diagrama de flujo'); return; }
-  // Usar el bucket más específico disponible
-  const _dBucket = window._FILTRO_BUCKET || window.DIAGRAMA_DATOS;
-  if (zonaSel && !window.DIAGRAMA_DATOS.porZona) {
+  // Etiqueta del ámbito activo (el filtro más específico seleccionado)
+  const ambitoSel = provSel || dptoSel || regionSel || zonaSel || '';
+  const tieneSedes = Array.isArray(window.DIAGRAMA_DATOS.sedes) && window.DIAGRAMA_DATOS.sedes.length > 0;
+  if (!tieneSedes && (regionSel || dptoSel || provSel)) {
+    aviso('Los filtros por región, departamento y provincia necesitan recalcular la plantilla.<br>Ve a «Registrar y cargar avance» y vuelve a cargar la Plantilla_Carga una vez.');
+    return;
+  }
+  if (!tieneSedes && zonaSel && !window.DIAGRAMA_DATOS.porZona) {
     aviso('El filtro por zona necesita recalcular la plantilla.<br>Ve a «Registrar y cargar avance» y vuelve a cargar la Plantilla_Carga una vez.');
     return;
   }
-  if (!D || sum(D.gabinete) === 0) { aviso('Sin sedes con gabinete en '+(zonaSel||'la selección actual')); return; }
+  if (!D) { aviso('Sin sedes en '+(ambitoSel||'la selección actual')); return; }
+  if (sum(D.gabinete) === 0) { aviso('Sin sedes con gabinete en '+(ambitoSel||'la selección actual')); return; }
 
   const ce = D.item3_con_enlace || {item1:{},item2:{},item1_item2:{}};
   const ceTipo = t => (ce.item1?.[t]||0) + (ce.item2?.[t]||0) + (ce.item1_item2?.[t]||0);
@@ -3558,7 +3660,7 @@ function renderDiagramaFlujoCompleto(opts) {
 
   const resumen =
     '<div class="dfx-top">'+
-      '<div class="dfx-top-i"><span class="dfx-top-l">UNIVERSO</span><span class="dfx-top-v">'+totalUniverso+'</span><span class="dfx-top-s">'+(zonaSel||'745 sedes del contrato')+'</span></div>'+
+      '<div class="dfx-top-i"><span class="dfx-top-l">UNIVERSO</span><span class="dfx-top-v">'+totalUniverso+'</span><span class="dfx-top-s">'+(ambitoSel?(totalUniverso+' sedes · '+ambitoSel):'745 sedes del contrato')+'</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">CON GABINETE</span><span class="dfx-top-v" style="color:'+C.morado+'">'+totalGabinete+'</span><span class="dfx-top-s">Ítem 5 · '+Math.round(totalGabinete/totalUniverso*100)+'% del universo</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">EQUIPO RACKEADO</span><span class="dfx-top-v" style="color:'+C.verde+'">'+totalItem3+'</span><span class="dfx-top-s">Ítem 3 · '+totalConEnlace+' con enlace</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">MIGRADAS</span><span class="dfx-top-v" style="color:'+C.azul+'">'+totalCierre+'</span><span class="dfx-top-s">Servicio activo · '+Math.round(totalCierre/totalUniverso*100)+'%</span></div>'+
