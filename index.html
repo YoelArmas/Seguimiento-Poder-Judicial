@@ -63,13 +63,22 @@
   <div class="card" style="margin-bottom:16px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div class="card-title" style="margin:0">Avance Ítems de Soporte (1, 2 y 5)</div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <select class="inp" id="filtro-zona-dash" style="width:auto;font-size:12px" onchange="window.renderTodo()">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <select class="inp" id="filtro-zona-dash" style="width:auto;font-size:12px;min-width:140px" onchange="window.actualizarFiltrosCascada()">
           <option value="">Todas las zonas</option>
           <option value="Zona Norte">Zona Norte</option>
           <option value="Zona Sur">Zona Sur</option>
           <option value="Zona Centro">Zona Centro</option>
           <option value="Zona Oriente">Zona Oriente</option>
+        </select>
+        <select class="inp" id="filtro-region-dash" style="width:auto;font-size:12px;min-width:120px" onchange="window.actualizarFiltrosCascada('region')">
+          <option value="">Todas las regiones</option>
+        </select>
+        <select class="inp" id="filtro-dpto-dash" style="width:auto;font-size:12px;min-width:120px" onchange="window.actualizarFiltrosCascada('dpto')">
+          <option value="">Todos los dptos.</option>
+        </select>
+        <select class="inp" id="filtro-prov-dash" style="width:auto;font-size:12px;min-width:120px" onchange="window.renderTodo()">
+          <option value="">Todas las prov.</option>
         </select>
         <span id="fuente-items" style="font-size:11px;color:var(--text3)">Fuente: SEGUIMIENTO_TDR_WAN — actualizado al 13/07/2026</span>
       </div>
@@ -665,7 +674,16 @@ function pct(v){return Math.min(100,Math.round(v/TOTAL*100))}
 
 function totalesPorFrente(){
   const zonaFiltro=document.getElementById('filtro-zona-dash')?.value||'';
-  const regs=zonaFiltro?registros.filter(r=>r.zona===zonaFiltro):registros;
+  const regionFiltroR=document.getElementById('filtro-region-dash')?.value||'';
+  const dptoFiltroR=document.getElementById('filtro-dpto-dash')?.value||'';
+  const provFiltroR=document.getElementById('filtro-prov-dash')?.value||'';
+  const regs=registros.filter(r=>{
+    if(zonaFiltro&&r.zona!==zonaFiltro)return false;
+    if(regionFiltroR&&r.region&&r.region!==regionFiltroR)return false;
+    if(dptoFiltroR&&r.dpto&&r.dpto!==dptoFiltroR)return false;
+    if(provFiltroR&&r.provincia&&r.provincia!==provFiltroR)return false;
+    return true;
+  });
   const t={configurados:0,retirados:0,solo_item5:0,con_enlace:0,alta:0};
   // Configurados y retirados: hitos de la línea de producción, no forman parte del embudo de campo mutuamente excluyente
   regs.forEach(r=>{if(r.frente==='configurados'||r.frente==='retirados')t[r.frente]+=r.unidades;});
@@ -964,7 +982,20 @@ function renderTodo(){
 
   // Resumen ejecutivo
   const zonaFiltro=document.getElementById('filtro-zona-dash')?.value||'';
+  const regionFiltro=document.getElementById('filtro-region-dash')?.value||'';
+  const dptoFiltro=document.getElementById('filtro-dpto-dash')?.value||'';
+  const provFiltro=document.getElementById('filtro-prov-dash')?.value||'';
   const zonaInfo=ZONA_UNIVERSO[zonaFiltro]||null;
+  // Determinar el bucket más específico disponible en DIAGRAMA_DATOS
+  const _DD=window.DIAGRAMA_DATOS||null;
+  let _bucket=_DD||null;
+  if(_DD){
+    if(provFiltro&&_DD.porProv&&_DD.porProv[provFiltro])_bucket=_DD.porProv[provFiltro];
+    else if(dptoFiltro&&_DD.porDpto&&_DD.porDpto[dptoFiltro])_bucket=_DD.porDpto[dptoFiltro];
+    else if(regionFiltro&&_DD.porRegion&&_DD.porRegion[regionFiltro])_bucket=_DD.porRegion[regionFiltro];
+    else if(zonaFiltro&&_DD.porZona&&_DD.porZona[zonaFiltro])_bucket=_DD.porZona[zonaFiltro];
+  }
+  window._FILTRO_BUCKET=_bucket;
   const universo=zonaInfo?zonaInfo.total:TOTAL;
 
   // Embudo
@@ -1655,6 +1686,9 @@ window.handleFile=function(file){
           if(!tv.includes(tipo))return;
           const zr=String(r[5]||'').trim();
           const zona=zr?('Zona '+zr.charAt(0).toUpperCase()+zr.slice(1).toLowerCase()):'';
+          const regionRaw=String(r[6]||'').trim();
+          const dptoRaw=String(r[7]||'').trim();
+          const provRaw=String(r[8]||'').trim();
           const gab=pres(r[13]),e1=pres(r[14]),e2=pres(r[15]),inst=pres(r[16]);
           const alta=colAlta>=0?pres(r[colAlta]):false;
           acumular(D,tipo,gab,e1,e2,inst,alta);
@@ -1662,9 +1696,33 @@ window.handleFile=function(file){
             if(!D.porZona[zona])D.porZona[zona]=nuevoBucket();
             acumular(D.porZona[zona],tipo,gab,e1,e2,inst,alta);
           }
+          if(regionRaw){
+            if(!D.porRegion)D.porRegion={};
+            if(!D.porRegion[regionRaw])D.porRegion[regionRaw]=nuevoBucket();
+            acumular(D.porRegion[regionRaw],tipo,gab,e1,e2,inst,alta);
+          }
+          if(dptoRaw){
+            if(!D.porDpto)D.porDpto={};
+            if(!D.porDpto[dptoRaw])D.porDpto[dptoRaw]=nuevoBucket();
+            acumular(D.porDpto[dptoRaw],tipo,gab,e1,e2,inst,alta);
+          }
+          if(provRaw){
+            if(!D.porProv)D.porProv={};
+            if(!D.porProv[provRaw])D.porProv[provRaw]=nuevoBucket();
+            acumular(D.porProv[provRaw],tipo,gab,e1,e2,inst,alta);
+          }
+          // Guardar meta para los selectores
+          if(zona&&regionRaw){
+            if(!D._meta)D._meta={};
+            if(!D._meta[zona])D._meta[zona]={regiones:{}};
+            if(!D._meta[zona].regiones[regionRaw])D._meta[zona].regiones[regionRaw]={dptos:{}};
+            if(dptoRaw&&!D._meta[zona].regiones[regionRaw].dptos[dptoRaw])D._meta[zona].regiones[regionRaw].dptos[dptoRaw]={provs:{}};
+            if(dptoRaw&&provRaw)D._meta[zona].regiones[regionRaw].dptos[dptoRaw].provs[provRaw]=1;
+          }
         });
         window.DIAGRAMA_DATOS=D;
         guardarDiagramaDatos(D);
+        window.poblarSelectoresFiltro&&window.poblarSelectoresFiltro();
       }
 
       // IMPORTANTE: Actualizar dashboard con los nuevos totales (aunque no haya cambios nuevos)
@@ -2049,6 +2107,76 @@ window.showGestionSub=function(name){
   ['registro','carga'].forEach(t=>{const el=document.getElementById('gestion-sub-'+t);if(el)el.style.display=t===name?'block':'none';});
   document.querySelectorAll('.gestion-tab-btn').forEach((b,i)=>b.classList.toggle('active',['registro','carga'][i]===name));
 };
+
+// ============================================================
+// FILTROS EN CASCADA: Zona → Región → Dpto. → Provincia
+// ============================================================
+window.actualizarFiltrosCascada=function(origen){
+  const D=window.DIAGRAMA_DATOS;
+  const zona=document.getElementById('filtro-zona-dash')?.value||'';
+  const regionH=document.getElementById('filtro-region-dash')?.value||'';
+  const dptoH=document.getElementById('filtro-dpto-dash')?.value||'';
+  const provH=document.getElementById('filtro-prov-dash')?.value||'';
+  const region=document.getElementById('filtro-region-dash')?.value||'';
+  const dpto=document.getElementById('filtro-dpto-dash')?.value||'';
+
+  const meta=D?._meta||{};
+
+  // ── Poblar REGIONES según zona seleccionada
+  if(!origen||origen==='zona'){
+    const selR=document.getElementById('filtro-region-dash');
+    if(selR){
+      const regs=zona&&meta[zona]?Object.keys(meta[zona].regiones).sort():
+        Object.values(meta).flatMap(z=>Object.keys(z.regiones||{})).filter((v,i,a)=>a.indexOf(v)===i).sort();
+      selR.innerHTML='<option value="">Todas las regiones</option>'+regs.map(r=>`<option value="${r}">${r}</option>`).join('');
+    }
+  }
+
+  // ── Poblar DPTOS según zona+región
+  if(!origen||origen==='zona'||origen==='region'){
+    const selD=document.getElementById('filtro-dpto-dash');
+    if(selD){
+      let dptos=[];
+      if(zona&&region&&meta[zona]?.regiones[region]){
+        dptos=Object.keys(meta[zona].regiones[region].dptos||{}).sort();
+      } else if(zona&&meta[zona]){
+        dptos=Object.values(meta[zona].regiones).flatMap(r=>Object.keys(r.dptos||{})).filter((v,i,a)=>a.indexOf(v)===i).sort();
+      } else if(region){
+        Object.values(meta).forEach(z=>{const r=z.regiones?.[region];if(r)dptos.push(...Object.keys(r.dptos||{}));});
+        dptos=[...new Set(dptos)].sort();
+      } else {
+        dptos=Object.values(meta).flatMap(z=>Object.values(z.regiones||{}).flatMap(r=>Object.keys(r.dptos||{}))).filter((v,i,a)=>a.indexOf(v)===i).sort();
+      }
+      selD.innerHTML='<option value="">Todos los dptos.</option>'+dptos.map(d=>`<option value="${d}">${d}</option>`).join('');
+    }
+  }
+
+  // ── Poblar PROVINCIAS según zona+región+dpto
+  if(!origen||origen==='zona'||origen==='region'||origen==='dpto'){
+    const selP=document.getElementById('filtro-prov-dash');
+    if(selP){
+      let provs=[];
+      if(zona&&region&&dpto&&meta[zona]?.regiones[region]?.dptos[dpto]){
+        provs=Object.keys(meta[zona].regiones[region].dptos[dpto].provs||{}).sort();
+      } else if(zona&&region&&meta[zona]?.regiones[region]){
+        provs=Object.values(meta[zona].regiones[region].dptos||{}).flatMap(d=>Object.keys(d.provs||{})).filter((v,i,a)=>a.indexOf(v)===i).sort();
+      } else if(zona&&meta[zona]){
+        provs=Object.values(meta[zona].regiones).flatMap(r=>Object.values(r.dptos||{}).flatMap(d=>Object.keys(d.provs||{}))).filter((v,i,a)=>a.indexOf(v)===i).sort();
+      } else {
+        provs=Object.values(meta).flatMap(z=>Object.values(z.regiones||{}).flatMap(r=>Object.values(r.dptos||{}).flatMap(d=>Object.keys(d.provs||{})))).filter((v,i,a)=>a.indexOf(v)===i).sort();
+      }
+      selP.innerHTML='<option value="">Todas las prov.</option>'+provs.map(p=>`<option value="${p}">${p}</option>`).join('');
+    }
+  }
+
+  window.renderTodo();
+};
+
+// Poblar selectores cuando se carga la plantilla
+window.poblarSelectoresFiltro=function(){
+  window.actualizarFiltrosCascada();
+};
+
 window.renderTodo=renderTodo;
 window.renderMetricas=renderMetricas;
 document.getElementById('f-fecha').value=hoy();
@@ -2719,7 +2847,16 @@ function calcularTiposDesdeRegistros(){
   if(!Array.isArray(registros)||!registros.length)return base;
 
   const zonaFiltro=document.getElementById('filtro-zona-dash')?.value||'';
-  const regs=zonaFiltro?registros.filter(r=>r.zona===zonaFiltro):registros;
+  const regionFiltroR=document.getElementById('filtro-region-dash')?.value||'';
+  const dptoFiltroR=document.getElementById('filtro-dpto-dash')?.value||'';
+  const provFiltroR=document.getElementById('filtro-prov-dash')?.value||'';
+  const regs=registros.filter(r=>{
+    if(zonaFiltro&&r.zona!==zonaFiltro)return false;
+    if(regionFiltroR&&r.region&&r.region!==regionFiltroR)return false;
+    if(dptoFiltroR&&r.dpto&&r.dpto!==dptoFiltroR)return false;
+    if(provFiltroR&&r.provincia&&r.provincia!==provFiltroR)return false;
+    return true;
+  });
 
   const ordenEtapa={solo_item5:1,con_enlace:2,alta:3};
   const maxPorSede={},combinacionPorSede={};
@@ -2939,6 +3076,7 @@ function procesarPlantillaNueva(raw){
 
   window.DIAGRAMA_DATOS=D;
   guardarDiagramaDatos(D);
+  window.poblarSelectoresFiltro&&window.poblarSelectoresFiltro();
   window.renderTodo();
   const s=o=>TV.reduce((a,t)=>a+(o[t]||0),0);
   alert('Plantilla cargada ('+filas+' sedes)\n\n'+
@@ -3216,11 +3354,16 @@ function renderDiagramaFlujoCompleto(opts) {
   const TV = ['Tipo 1','Tipo 2','Tipo 3'];
   const sum = o => TV.reduce((a,t) => a + (Number((o||{})[t]) || 0), 0);
   const zonaSel = document.getElementById('filtro-zona-dash')?.value || '';
+  const regionSel = document.getElementById('filtro-region-dash')?.value || '';
+  const dptoSel = document.getElementById('filtro-dpto-dash')?.value || '';
+  const provSel = document.getElementById('filtro-prov-dash')?.value || '';
   const D = datosDiagramaActivos();
 
   const aviso = txt => { el.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:36px 20px;font-size:13.5px;line-height:1.5">'+txt+'</div>'; };
 
   if (!window.DIAGRAMA_DATOS) { aviso('Carga la Plantilla_Carga para ver el diagrama de flujo'); return; }
+  // Usar el bucket más específico disponible
+  const _dBucket = window._FILTRO_BUCKET || window.DIAGRAMA_DATOS;
   if (zonaSel && !window.DIAGRAMA_DATOS.porZona) {
     aviso('El filtro por zona necesita recalcular la plantilla.<br>Ve a «Registrar y cargar avance» y vuelve a cargar la Plantilla_Carga una vez.');
     return;
