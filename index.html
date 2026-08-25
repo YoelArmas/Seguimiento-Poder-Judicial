@@ -2113,66 +2113,68 @@ window.showGestionSub=function(name){
 // ============================================================
 window.actualizarFiltrosCascada=function(origen){
   const D=window.DIAGRAMA_DATOS;
+  if(!D){window.renderTodo();return;}
   const zona=document.getElementById('filtro-zona-dash')?.value||'';
-  const regionH=document.getElementById('filtro-region-dash')?.value||'';
-  const dptoH=document.getElementById('filtro-dpto-dash')?.value||'';
-  const provH=document.getElementById('filtro-prov-dash')?.value||'';
   const region=document.getElementById('filtro-region-dash')?.value||'';
   const dpto=document.getElementById('filtro-dpto-dash')?.value||'';
 
-  const meta=D?._meta||{};
+  const meta=D._meta||null;
+  const hasMeta=meta&&Object.keys(meta).length>0;
 
-  // ── Poblar REGIONES según zona seleccionada
+  // Helpers para obtener opciones con fallback a porRegion/porDpto/porProv
+  const regsDisponibles=()=>{
+    if(hasMeta){
+      if(zona&&meta[zona])return Object.keys(meta[zona].regiones||{}).sort();
+      return Object.values(meta).flatMap(z=>Object.keys(z.regiones||{})).filter((v,i,a)=>a.indexOf(v)===i).sort();
+    }
+    return D.porRegion?Object.keys(D.porRegion).sort():[];
+  };
+  const dptosDisponibles=()=>{
+    if(hasMeta){
+      if(zona&&region&&meta[zona]?.regiones[region])return Object.keys(meta[zona].regiones[region].dptos||{}).sort();
+      if(zona&&meta[zona])return Object.values(meta[zona].regiones).flatMap(r=>Object.keys(r.dptos||{})).filter((v,i,a)=>a.indexOf(v)===i).sort();
+      if(region){const ds=[];Object.values(meta).forEach(z=>{const r=z.regiones?.[region];if(r)ds.push(...Object.keys(r.dptos||{}));});return[...new Set(ds)].sort();}
+      return Object.values(meta).flatMap(z=>Object.values(z.regiones||{}).flatMap(r=>Object.keys(r.dptos||{}))).filter((v,i,a)=>a.indexOf(v)===i).sort();
+    }
+    return D.porDpto?Object.keys(D.porDpto).sort():[];
+  };
+  const provsDisponibles=()=>{
+    if(hasMeta){
+      if(zona&&region&&dpto&&meta[zona]?.regiones[region]?.dptos[dpto])return Object.keys(meta[zona].regiones[region].dptos[dpto].provs||{}).sort();
+      if(zona&&region&&meta[zona]?.regiones[region])return Object.values(meta[zona].regiones[region].dptos||{}).flatMap(d=>Object.keys(d.provs||{})).filter((v,i,a)=>a.indexOf(v)===i).sort();
+      if(zona&&meta[zona])return Object.values(meta[zona].regiones).flatMap(r=>Object.values(r.dptos||{}).flatMap(d=>Object.keys(d.provs||{}))).filter((v,i,a)=>a.indexOf(v)===i).sort();
+      return Object.values(meta).flatMap(z=>Object.values(z.regiones||{}).flatMap(r=>Object.values(r.dptos||{}).flatMap(d=>Object.keys(d.provs||{})))).filter((v,i,a)=>a.indexOf(v)===i).sort();
+    }
+    return D.porProv?Object.keys(D.porProv).sort():[];
+  };
+
+  // ── Poblar REGIONES
   if(!origen||origen==='zona'){
     const selR=document.getElementById('filtro-region-dash');
     if(selR){
-      const regs=zona&&meta[zona]?Object.keys(meta[zona].regiones).sort():
-        Object.values(meta).flatMap(z=>Object.keys(z.regiones||{})).filter((v,i,a)=>a.indexOf(v)===i).sort();
+      const regs=regsDisponibles();
       selR.innerHTML='<option value="">Todas las regiones</option>'+regs.map(r=>`<option value="${r}">${r}</option>`).join('');
     }
   }
-
-  // ── Poblar DPTOS según zona+región
+  // ── Poblar DPTOS
   if(!origen||origen==='zona'||origen==='region'){
     const selD=document.getElementById('filtro-dpto-dash');
     if(selD){
-      let dptos=[];
-      if(zona&&region&&meta[zona]?.regiones[region]){
-        dptos=Object.keys(meta[zona].regiones[region].dptos||{}).sort();
-      } else if(zona&&meta[zona]){
-        dptos=Object.values(meta[zona].regiones).flatMap(r=>Object.keys(r.dptos||{})).filter((v,i,a)=>a.indexOf(v)===i).sort();
-      } else if(region){
-        Object.values(meta).forEach(z=>{const r=z.regiones?.[region];if(r)dptos.push(...Object.keys(r.dptos||{}));});
-        dptos=[...new Set(dptos)].sort();
-      } else {
-        dptos=Object.values(meta).flatMap(z=>Object.values(z.regiones||{}).flatMap(r=>Object.keys(r.dptos||{}))).filter((v,i,a)=>a.indexOf(v)===i).sort();
-      }
+      const dptos=dptosDisponibles();
       selD.innerHTML='<option value="">Todos los dptos.</option>'+dptos.map(d=>`<option value="${d}">${d}</option>`).join('');
     }
   }
-
-  // ── Poblar PROVINCIAS según zona+región+dpto
+  // ── Poblar PROVINCIAS
   if(!origen||origen==='zona'||origen==='region'||origen==='dpto'){
     const selP=document.getElementById('filtro-prov-dash');
     if(selP){
-      let provs=[];
-      if(zona&&region&&dpto&&meta[zona]?.regiones[region]?.dptos[dpto]){
-        provs=Object.keys(meta[zona].regiones[region].dptos[dpto].provs||{}).sort();
-      } else if(zona&&region&&meta[zona]?.regiones[region]){
-        provs=Object.values(meta[zona].regiones[region].dptos||{}).flatMap(d=>Object.keys(d.provs||{})).filter((v,i,a)=>a.indexOf(v)===i).sort();
-      } else if(zona&&meta[zona]){
-        provs=Object.values(meta[zona].regiones).flatMap(r=>Object.values(r.dptos||{}).flatMap(d=>Object.keys(d.provs||{}))).filter((v,i,a)=>a.indexOf(v)===i).sort();
-      } else {
-        provs=Object.values(meta).flatMap(z=>Object.values(z.regiones||{}).flatMap(r=>Object.values(r.dptos||{}).flatMap(d=>Object.keys(d.provs||{})))).filter((v,i,a)=>a.indexOf(v)===i).sort();
-      }
+      const provs=provsDisponibles();
       selP.innerHTML='<option value="">Todas las prov.</option>'+provs.map(p=>`<option value="${p}">${p}</option>`).join('');
     }
   }
-
   window.renderTodo();
 };
 
-// Poblar selectores cuando se carga la plantilla
 window.poblarSelectoresFiltro=function(){
   window.actualizarFiltrosCascada();
 };
@@ -2935,6 +2937,8 @@ function procesarPlantillaNueva(raw){
   const cab=raw[hr].map(norm);
   const col=n=>cab.indexOf(n);
   const iCod=col('cod. pj'), iTipo=col('tipo sede'), iZona=col('zona'),
+        iRegion=col('region'), iDpto=col('dpto.')>=0?col('dpto.'):col('dpto')>=0?col('dpto'):col('departamento'),
+        iProv=col('provincia'),
         iGab=col('fecha gabinete (item 5)'), iE1=col('fecha enlace item 1'),
         iE2=col('fecha enlace item 2'), iEstado=col('estado sede'),
         iAt=col('n.º atenciones')>=0?col('n.º atenciones'):col('n° atenciones'),
@@ -3027,6 +3031,33 @@ function procesarPlantillaNueva(raw){
 
     acum(D);
     if(zona){ if(!D.porZona[zona])D.porZona[zona]=nuevo(); acum(D.porZona[zona]); }
+
+    // ── Acumular por Región / Dpto. / Provincia (cols iZona+1, +2, +3)
+    const regRaw=iRegion>=0?String(r[iRegion]||'').trim():'';
+    const dpRaw=iDpto>=0?String(r[iDpto]||'').trim():'';
+    const pvRaw=iProv>=0?String(r[iProv]||'').trim():'';
+    if(regRaw){
+      if(!D.porRegion)D.porRegion={};
+      if(!D.porRegion[regRaw])D.porRegion[regRaw]=nuevo();
+      acum(D.porRegion[regRaw]);
+    }
+    if(dpRaw){
+      if(!D.porDpto)D.porDpto={};
+      if(!D.porDpto[dpRaw])D.porDpto[dpRaw]=nuevo();
+      acum(D.porDpto[dpRaw]);
+    }
+    if(pvRaw){
+      if(!D.porProv)D.porProv={};
+      if(!D.porProv[pvRaw])D.porProv[pvRaw]=nuevo();
+      acum(D.porProv[pvRaw]);
+    }
+    if(zona&&regRaw){
+      if(!D._meta)D._meta={};
+      if(!D._meta[zona])D._meta[zona]={regiones:{}};
+      if(!D._meta[zona].regiones[regRaw])D._meta[zona].regiones[regRaw]={dptos:{}};
+      if(dpRaw&&!D._meta[zona].regiones[regRaw].dptos[dpRaw])D._meta[zona].regiones[regRaw].dptos[dpRaw]={provs:{}};
+      if(dpRaw&&pvRaw)D._meta[zona].regiones[regRaw].dptos[dpRaw].provs[pvRaw]=1;
+    }
 
     // --- datos para la Vista Ejecutiva ---
     const fg=fx(r[iGabF]), fr=fx(r[iRack]), fm=fx(r[iMig]),
