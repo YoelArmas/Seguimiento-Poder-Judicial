@@ -80,6 +80,11 @@
         <select class="inp" id="filtro-prov-dash" style="width:auto;font-size:12px;min-width:120px" onchange="window.actualizarFiltrosCascada('prov')">
           <option value="">Todas las prov.</option>
         </select>
+        <select class="inp" id="filtro-oper-dash" style="width:auto;font-size:12px;min-width:120px" onchange="window.actualizarFiltrosCascada('oper')">
+          <option value="">Todos los operadores</option>
+          <option value="item1">Ítem 1 — Bitel</option>
+          <option value="item2">Ítem 2 — Claro</option>
+        </select>
         <span id="fuente-items" style="font-size:11px;color:var(--text3)">Fuente: SEGUIMIENTO_TDR_WAN — actualizado al 13/07/2026</span>
       </div>
     </div>
@@ -985,13 +990,16 @@ function renderTodo(){
   const regionFiltro=document.getElementById('filtro-region-dash')?.value||'';
   const dptoFiltro=document.getElementById('filtro-dpto-dash')?.value||'';
   const provFiltro=document.getElementById('filtro-prov-dash')?.value||'';
-  const hayFiltroGeo=!!(zonaFiltro||regionFiltro||dptoFiltro||provFiltro);
+  const operFiltro=document.getElementById('filtro-oper-dash')?.value||'';
+  const operLbl=operFiltro==='item1'?'Ítem 1':operFiltro==='item2'?'Ítem 2':'';
+  const hayFiltroGeo=!!(zonaFiltro||regionFiltro||dptoFiltro||provFiltro||operFiltro);
   // Universo real del filtro activo (nº de sedes que cumplen los 4 selectores)
   const _uniFiltrado=typeof window.universoFiltrado==='function'?window.universoFiltrado():null;
   // zonaInfo se conserva para el caso legado (dataset sin D.sedes)
   const zonaInfo=(_uniFiltrado==null&&zonaFiltro)?(ZONA_UNIVERSO[zonaFiltro]||null):null;
   // Etiqueta del ámbito activo, para mostrarla junto a los porcentajes
-  const _ambito=provFiltro||dptoFiltro||regionFiltro||zonaFiltro||'';
+  const _geo=provFiltro||dptoFiltro||regionFiltro||zonaFiltro||'';
+  const _ambito=[_geo,operLbl].filter(Boolean).join(' · ');
   window._FILTRO_BUCKET=typeof datosDiagramaActivos==='function'?datosDiagramaActivos():null;
   window._UNIVERSO_ACTIVO=(_uniFiltrado!=null&&hayFiltroGeo)?_uniFiltrado:(zonaInfo?zonaInfo.total:TOTAL);
   const universo=window._UNIVERSO_ACTIVO;
@@ -1081,12 +1089,14 @@ function renderTodo(){
   const CLARO_UNIVERSO_POR_ZONA={'Zona Centro':178,'Zona Norte':68,'Zona Oriente':65,'Zona Sur':121};
   let UNIVERSO_ITEM;
   if(_uniFiltrado!=null&&hayFiltroGeo){
-    // Universo recalculado desde las sedes que cumplen los 4 filtros.
-    // Ítem 2 (Claro) no cubre todas las sedes: su universo es el nº de sedes
-    // del ámbito que tienen enlace Claro contemplado en la plantilla.
+    // Universo recalculado desde las sedes que cumplen TODOS los filtros
+    // (geográficos + operador). Ítem 2 (Claro) no cubre todas las sedes:
+    // su universo es el nº de sedes del ámbito con enlace Claro en la plantilla.
     const _sub=window.sedesFiltradas()||[];
-    const _claro=_sub.filter(s=>s.e2||s.claro).length;
-    UNIVERSO_ITEM={item5:_uniFiltrado, item1:_uniFiltrado, item2:(_claro||_uniFiltrado)};
+    const _claro=_sub.filter(s=>s.e2).length;
+    UNIVERSO_ITEM=operFiltro
+      ? {item5:_uniFiltrado, item1:_uniFiltrado, item2:_uniFiltrado}
+      : {item5:_uniFiltrado, item1:_uniFiltrado, item2:(_claro||_uniFiltrado)};
   } else if(zonaInfo){
     UNIVERSO_ITEM={item5:zonaInfo.total, item1:zonaInfo.total, item2:(CLARO_UNIVERSO_POR_ZONA[zonaFiltro]||0)};
   } else {
@@ -2111,19 +2121,31 @@ window.actualizarFiltrosCascada=function(origen){
   const selR=document.getElementById('filtro-region-dash');
   const selD=document.getElementById('filtro-dpto-dash');
   const selP=document.getElementById('filtro-prov-dash');
-  if(!D||!Array.isArray(D.sedes)||!D.sedes.length){ window.renderTodo(); return; }
+  const selO=document.getElementById('filtro-oper-dash');
+
+  // Sin dataset todavía: dejar los dependientes vacíos y esperar a la plantilla
+  if(!D||!Array.isArray(D.sedes)||!D.sedes.length){
+    [selR,selD,selP].forEach(s=>{if(s)s.disabled=true;});
+    window.renderTodo();
+    return;
+  }
+  [selR,selD,selP].forEach(s=>{if(s)s.disabled=false;});
 
   const zona  = selZ?.value||'';
   let  region = selR?.value||'';
   let  dpto   = selD?.value||'';
   let  prov   = selP?.value||'';
+  const oper  = selO?.value||'';
 
   // Al cambiar un nivel superior se invalidan los inferiores
   if(origen==='zona'  ){ region=''; dpto=''; prov=''; }
   if(origen==='region'){ dpto='';   prov=''; }
   if(origen==='dpto'  ){ prov='';   }
 
-  const uniq=(arr)=>[...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
+  // El operador acota el universo de todos los selectores geográficos
+  const porOper=s=>!oper||(oper==='item1'?!!s.e1:oper==='item2'?!!s.e2:true);
+
+  const uniq=arr=>[...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
   const setOpts=(sel,valorActual,todos,opts)=>{
     if(!sel)return valorActual;
     const valido=opts.includes(valorActual)?valorActual:'';
@@ -2134,27 +2156,47 @@ window.actualizarFiltrosCascada=function(origen){
     return valido;
   };
 
-  // ── REGIONES: dependen de la Zona
-  const optsR=uniq(D.sedes.filter(s=>!zona||s.z===zona).map(s=>s.r));
+  // ── REGIONES: dependen de Zona (+ Operador)
+  const optsR=uniq(D.sedes.filter(s=>(!zona||s.z===zona)&&porOper(s)).map(s=>s.r));
   region=setOpts(selR,region,'Todas las regiones',optsR);
 
-  // ── DPTOS: dependen de Zona + Región
+  // ── DPTOS: dependen de Zona + Región (+ Operador)
   const optsD=uniq(D.sedes
-    .filter(s=>(!zona||s.z===zona)&&(!region||s.r===region))
+    .filter(s=>(!zona||s.z===zona)&&(!region||s.r===region)&&porOper(s))
     .map(s=>s.d));
   dpto=setOpts(selD,dpto,'Todos los dptos.',optsD);
 
-  // ── PROVINCIAS: dependen de Zona + Región + Dpto.
+  // ── PROVINCIAS: dependen de Zona + Región + Dpto. (+ Operador)
   const optsP=uniq(D.sedes
-    .filter(s=>(!zona||s.z===zona)&&(!region||s.r===region)&&(!dpto||s.d===dpto))
+    .filter(s=>(!zona||s.z===zona)&&(!region||s.r===region)&&(!dpto||s.d===dpto)&&porOper(s))
     .map(s=>s.p));
   setOpts(selP,prov,'Todas las prov.',optsP);
 
   window.renderTodo();
 };
 
+// Inicializa/repuebla los selectores dependientes.
+// Se invoca en el arranque y cada vez que llega o cambia el dataset,
+// nunca solo desde el evento change del selector de Zona.
 window.poblarSelectoresFiltro=function(){
-  window.actualizarFiltrosCascada();
+  if(typeof window.actualizarFiltrosCascada!=='function')return;
+  window.actualizarFiltrosCascada();   // sin 'origen' → conserva los valores elegidos
+};
+
+// El dataset puede llegar por 3 vías (localStorage, Firestore o carga manual
+// de la plantilla) y en momentos distintos. Este guard vuelve a poblar los
+// selectores cuando el dataset aparece o cambia, sin depender del orden.
+window._initFiltrosHecho=false;
+window.initFiltrosDashboard=function(force){
+  const D=window.DIAGRAMA_DATOS;
+  const listo=D&&Array.isArray(D.sedes)&&D.sedes.length>0;
+  if(!listo)return false;
+  const huella=D.sedes.length+'|'+(D.v||0)+'|'+(D.formato||'');
+  if(!force&&window._initFiltrosHecho&&window._huellaFiltros===huella)return true;
+  window._huellaFiltros=huella;
+  window._initFiltrosHecho=true;
+  window.poblarSelectoresFiltro();
+  return true;
 };
 
 window.renderTodo=renderTodo;
@@ -2899,8 +2941,15 @@ window.filtrosActivos=function(){
     zona  : document.getElementById('filtro-zona-dash')?.value||'',
     region: document.getElementById('filtro-region-dash')?.value||'',
     dpto  : document.getElementById('filtro-dpto-dash')?.value||'',
-    prov  : document.getElementById('filtro-prov-dash')?.value||''
+    prov  : document.getElementById('filtro-prov-dash')?.value||'',
+    oper  : document.getElementById('filtro-oper-dash')?.value||''
   };
+};
+
+// ¿Hay algún filtro activo? (geográfico u operador)
+window.hayFiltroActivo=function(){
+  const f=window.filtrosActivos();
+  return !!(f.zona||f.region||f.dpto||f.prov||f.oper);
 };
 
 // Devuelve el subconjunto de sedes que cumple TODOS los filtros activos.
@@ -2913,7 +2962,8 @@ window.sedesFiltradas=function(ov){
     (!f.zona  ||s.z===f.zona  )&&
     (!f.region||s.r===f.region)&&
     (!f.dpto  ||s.d===f.dpto  )&&
-    (!f.prov  ||s.p===f.prov  )
+    (!f.prov  ||s.p===f.prov  )&&
+    (!f.oper  ||(f.oper==='item1'?!!s.e1:f.oper==='item2'?!!s.e2:true))
   );
 };
 
@@ -2988,7 +3038,7 @@ function datosDiagramaActivos(){
   const D=window.DIAGRAMA_DATOS;
   if(!D)return null;
   const f=window.filtrosActivos();
-  const hayFiltro=f.zona||f.region||f.dpto||f.prov;
+  const hayFiltro=f.zona||f.region||f.dpto||f.prov||f.oper;
 
   // Camino nuevo: recalcular desde D.sedes (soporta cualquier combinación)
   if(Array.isArray(D.sedes)&&D.sedes.length){
@@ -3484,16 +3534,18 @@ function renderDiagramaFlujoCompleto(opts) {
   const regionSel = document.getElementById('filtro-region-dash')?.value || '';
   const dptoSel = document.getElementById('filtro-dpto-dash')?.value || '';
   const provSel = document.getElementById('filtro-prov-dash')?.value || '';
+  const operSel = document.getElementById('filtro-oper-dash')?.value || '';
+  const operLblD = operSel==='item1'?'Ítem 1':operSel==='item2'?'Ítem 2':'';
   const D = datosDiagramaActivos();
 
   const aviso = txt => { el.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:36px 20px;font-size:13.5px;line-height:1.5">'+txt+'</div>'; };
 
   if (!window.DIAGRAMA_DATOS) { aviso('Carga la Plantilla_Carga para ver el diagrama de flujo'); return; }
   // Etiqueta del ámbito activo (el filtro más específico seleccionado)
-  const ambitoSel = provSel || dptoSel || regionSel || zonaSel || '';
+  const ambitoSel = [(provSel||dptoSel||regionSel||zonaSel||''),operLblD].filter(Boolean).join(' · ');
   const tieneSedes = Array.isArray(window.DIAGRAMA_DATOS.sedes) && window.DIAGRAMA_DATOS.sedes.length > 0;
-  if (!tieneSedes && (regionSel || dptoSel || provSel)) {
-    aviso('Los filtros por región, departamento y provincia necesitan recalcular la plantilla.<br>Ve a «Registrar y cargar avance» y vuelve a cargar la Plantilla_Carga una vez.');
+  if (!tieneSedes && (regionSel || dptoSel || provSel || operSel)) {
+    aviso('Los filtros por región, departamento, provincia y operador necesitan recalcular la plantilla.<br>Ve a «Registrar y cargar avance» y vuelve a cargar la Plantilla_Carga una vez.');
     return;
   }
   if (!tieneSedes && zonaSel && !window.DIAGRAMA_DATOS.porZona) {
@@ -3762,8 +3814,26 @@ window.renderDiagramaFlujoCompleto = renderDiagramaFlujoCompleto;
 restaurarPlantillaLocal();
 restaurarDiagramaLocal();
 restaurarCurvaRealLocal();
+
+// Inicializar los filtros dependientes con lo que haya en caché local.
+// Sin esto, Región/Dpto./Provincia arrancan vacíos y solo se pueblan
+// al tocar manualmente el selector de Zona.
+window.initFiltrosDashboard&&window.initFiltrosDashboard();
+
 renderDiagramaFlujoCompleto();
-cargarItemsExternos();
+
+// Firestore responde después: al llegar el dataset se vuelven a poblar.
+cargarItemsExternos().then(()=>{
+  window.initFiltrosDashboard&&window.initFiltrosDashboard();
+}).catch(()=>{});
+
+// Red de seguridad: si el dataset llega por otra vía (o tarda), reintentar
+// unas pocas veces hasta que los selectores queden poblados.
+(function reintentarInitFiltros(n){
+  if(n<=0)return;
+  if(window.initFiltrosDashboard&&window.initFiltrosDashboard())return;
+  setTimeout(()=>reintentarInitFiltros(n-1),600);
+})(8);
 
 </script>
 </body>
