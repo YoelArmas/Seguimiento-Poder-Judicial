@@ -927,7 +927,7 @@ function paginacionHTML(totalItems,paginaActual,totalPags,fnName){
 // ============================================================
 const ITEMS_DEFAULT=[
   {orden:1,lbl:'Produccion — equipos configurados',r:'critico',nota:'20/745 — Fecha límite culminación: 26/07/2026'},
-  {orden:2,lbl:'Sedes migradas — altas operativas PJ',r:'critico',nota:'0/745 aprobadas — Fecha límite: 06/09/2026'},
+  {orden:2,lbl:'Sedes validadas — altas operativas PJ',r:'critico',nota:'0/745 aprobadas — Fecha límite: 06/09/2026'},
   {orden:3,lbl:'Item 1 — Bitel (Sedes)',r:'critico',nota:'Culminación instalación equipos CPE antes del 30/08'},
   {orden:4,lbl:'Item 1 — Bitel (Cabeceras)',r:'alerta',nota:'Pendiente instalación equipos cabecera e integración al SD-WAN'},
   {orden:5,lbl:'Item 2 — Claro (Sedes)',r:'critico',nota:'Culminación instalación equipos CPE antes del 30/08'},
@@ -1016,7 +1016,7 @@ function renderTodo(){
   const _dd=typeof datosDiagramaActivos==='function'?datosDiagramaActivos():null;
   const _sumT=o=>['Tipo 1','Tipo 2','Tipo 3'].reduce((a,k)=>a+(Number((o||{})[k])||0),0);
   if(_dd&&_dd.item3){
-    // Embudo del Ítem 3: instaladas sin enlace -> con enlace (pruebas) -> alta operativa (migración)
+    // Embudo del Ítem 3: instaladas sin enlace -> con enlace (pruebas) -> alta operativa (validación)
     totalSolo5=_sumT(_dd.item3_sin_enlace);
     const ce=_dd.item3_con_enlace||{};
     totalConEnlace=_sumT(ce.item1)+_sumT(ce.item2)+_sumT(ce.item1_item2);
@@ -1676,10 +1676,10 @@ window.handleFile=function(file){
         const nuevoBucket=()=>({universo:z(),gabinete:z(),item3:z(),item3_sin_enlace:z(),pendientes:z(),
           pendientes_programables:z(),pendientes_en_espera:z(),alta:z(),
           item3_con_enlace:{item1:z(),item2:z(),item1_item2:z()}});
-        // Detecta por nombre de cabecera la columna de Migración / Alta operativa (si aún no existe, queda en 0)
+        // Detecta por nombre de cabecera la columna de Validación / Alta operativa (si aún no existe, queda en 0)
         const cab=raw[headerRow]||[];
         let colAlta=-1;
-        cab.forEach((c,i)=>{const s=String(c||'').toLowerCase();if(colAlta<0&&(s.includes('migraci')||s.includes('alta operativa')||s.includes('fecha alta')))colAlta=i;});
+        cab.forEach((c,i)=>{const s=String(c||'').toLowerCase();if(colAlta<0&&(s.includes('validaci')||s.includes('alta operativa')||s.includes('fecha alta')))colAlta=i;});
 
         const D=nuevoBucket();
         D.colAlta=colAlta;
@@ -2312,8 +2312,8 @@ function renderMetricas(){
   // avance), que dejó de alimentarse a fines de julio cuando el criterio cambió a
   // gabinete + enlace y el seguimiento se trasladó por completo a la Plantilla.
   // Por eso la curva se veía plana desde esa fecha, sin mostrar el avance real de
-  // rackeo/migración (incluidas las 125 sedes migradas bajo el criterio antiguo).
-  // Ahora se usa la curva calculada de la Plantilla (Fecha Migración, columna P) en
+  // rackeo/migración (incluidas las 125 sedes validadas bajo el criterio antiguo).
+  // Ahora se usa la curva calculada de la Plantilla (Fecha Validación, columna P) en
   // cuanto exista; si aún no se cargó ninguna, cae al log manual como antes.
   const hayMigReal=window.CURVA_REAL_MIG&&Object.keys(window.CURVA_REAL_MIG).length>0;
   const realDesp=hayMigReal?window.CURVA_REAL_MIG:acumReal('solo_item5');
@@ -2572,7 +2572,7 @@ function renderMetricas(){
 
   // "Nosotros" (Ítem 3): antes salía del log manual "solo_item5" (Registrar y cargar
   // avance), abandonado a fines de julio. Ahora, si ya se cargó la Plantilla, se usa
-  // la Fecha Migración real (columna P) — cierre completo de la sede. `realDesp` ya
+  // la Fecha Validación real (columna P) — cierre completo de la sede. `realDesp` ya
   // eligió la fuente correcta más arriba.
   const realDespVals=serieFF(realDesp);
 
@@ -2599,7 +2599,7 @@ function renderMetricas(){
       labels:despLabels,
       datasets:[
         {label:'Planificado SD-WAN',data:dd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.06)',borderWidth:2,pointRadius:2,tension:0.4,fill:'origin',order:6},
-        {label:'Real SD-WAN — Migración (Ítem 3)',data:realDespVals,borderColor:'#EA580C',backgroundColor:'rgba(234,88,12,0.12)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:'origin',spanGaps:false,order:1},
+        {label:'Real SD-WAN — Validación (Ítem 3)',data:realDespVals,borderColor:'#EA580C',backgroundColor:'rgba(234,88,12,0.12)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:'origin',spanGaps:false,order:1},
         {label:'Real SD-WAN — Rackeo sin enlace (Ítem 3)',data:rackVals,borderColor:'#EA580C',backgroundColor:'rgba(0,0,0,0)',borderWidth:1.75,pointRadius:2,tension:0.3,fill:false,spanGaps:false,order:2,borderDash:[5,3]},
         {label:'Real Ítem 5 (Gabinetes)',data:item5Vals,borderColor:'#0F766E',backgroundColor:'rgba(15,118,110,0.08)',borderWidth:2,pointRadius:2,tension:0.3,fill:false,spanGaps:true,order:3},
         {label:'Real Ítem 1 (Bitel)',data:item1Vals,borderColor:'#CA8A04',backgroundColor:'rgba(0,0,0,0)',borderWidth:2,pointRadius:2,tension:0.3,fill:false,spanGaps:true,order:4},
@@ -2974,7 +2974,7 @@ function agregarSedes(sedes,esV1){
     item3_con_enlace:{item1:z(),item2:z(),item1_item2:z()},
     pendientes:z(),pendientes_programables:z(),pendientes_en_espera:z(),
     programados:z(),reprog_pendiente:z(),agendadas:z(),agend_listo:z(),
-    listo_pruebas:z(),migrado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
+    listo_pruebas:z(),validado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
     enlace_item1:z(),enlace_item2:z(),atenciones:0,quebradas:0,reintentos:0};
 
   sedes.forEach(s=>{
@@ -3010,13 +3010,13 @@ function agregarSedes(sedes,esV1){
     B.gabinete[t]++;
     if(s.ag)B.agendadas[t]++;
 
-    const rackeada=['racksin','listo','migrado','validacion','conformidad','alta'].includes(s.st);
+    const rackeada=['racksin','listo','validado','validacion','conformidad','alta'].includes(s.st);
     if(rackeada){
       B.item3[t]++;
       if(s.st==='alta')             B.alta[t]++;
       else if(s.st==='conformidad') B.en_conformidad[t]++;
       else if(s.st==='validacion')  B.en_validacion[t]++;
-      else if(s.st==='migrado')     B.migrado_pend_doc[t]++;
+      else if(s.st==='validado')     B.validado_pend_doc[t]++;
       else if(s.st==='listo'){      B.listo_pruebas[t]++; if(s.ag)B.agend_listo[t]++; }
       if(s.e1&&s.e2)B.item3_con_enlace.item1_item2[t]++;
       else if(s.e1) B.item3_con_enlace.item1[t]++;
@@ -3100,12 +3100,12 @@ function procesarPlantillaNueva(raw){
     item3_con_enlace:{item1:z(),item2:z(),item1_item2:z()},
     pendientes:z(),pendientes_programables:z(),pendientes_en_espera:z(),
     programados:z(),reprog_pendiente:z(),agendadas:z(),agend_listo:z(),
-    listo_pruebas:z(),migrado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
+    listo_pruebas:z(),validado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
     enlace_item1:z(),enlace_item2:z(),
     atenciones:0,quebradas:0,reintentos:0});
 
   const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2'; D.v=4;   // v4 = buckets de visitas agendadas
-  const iGabF=col('fecha gabinete (item 5)'), iRack=col('fecha rackeo'), iMig=col('fecha migracion'),
+  const iGabF=col('fecha gabinete (item 5)'), iRack=col('fecha rackeo'), iMig=col('fecha validacion'),
         iSede=col('sede'), iMot=col('ult. atencion — motivo'), iResp=col('ult. atencion — responsable'),
         iUlt=col('ult. atencion — estado'), iEstAt=col('estado atencion'), iFProg=col('fecha programada vigente');
   const HOY=new Date(); HOY.setHours(0,0,0,0);
@@ -3152,16 +3152,16 @@ function procesarPlantillaNueva(raw){
       B.gabinete[tipo]++;
       if(agendada)B.agendadas[tipo]++;   // visita con fecha vigente, esté rackeada o no
 
-      // --- Equipo YA rackeado: cadena rackeo -> pruebas -> migracion -> cierre ---
+      // --- Equipo YA rackeado: cadena rackeo -> pruebas -> validacion -> cierre ---
       const rackeada = e.includes('rackeada sin enlace')||e.includes('listo para pruebas')||
-                       e.includes('migrado')||e.includes('validacion')||
+                       e.includes('validado')||e.includes('validacion')||
                        e.includes('conformidad')||e.includes('alta operativa');
       if(rackeada){
         B.item3[tipo]++;
         if(e.includes('alta operativa'))      B.alta[tipo]++;
         else if(e.includes('conformidad'))    B.en_conformidad[tipo]++;
         else if(e.includes('validacion'))     B.en_validacion[tipo]++;
-        else if(e.includes('migrado'))        B.migrado_pend_doc[tipo]++;
+        else if(e.includes('validado'))        B.validado_pend_doc[tipo]++;
         else if(e.includes('listo para pruebas')){ B.listo_pruebas[tipo]++; if(agendada)B.agend_listo[tipo]++; }
         if(e1&&e2)B.item3_con_enlace.item1_item2[tipo]++;
         else if(e1)B.item3_con_enlace.item1[tipo]++;
@@ -3194,7 +3194,7 @@ function procesarPlantillaNueva(raw){
       else if(e.includes('alta operativa'))           st='alta';
       else if(e.includes('conformidad'))              st='conformidad';
       else if(e.includes('validacion'))               st='validacion';
-      else if(e.includes('migrado'))                  st='migrado';
+      else if(e.includes('validado'))                  st='validado';
       else if(e.includes('listo para pruebas'))       st='listo';
       else if(e.includes('rackeada sin enlace'))      st='racksin';
       else if(e.includes('reprogramacion'))           st='reprog';
@@ -3209,7 +3209,7 @@ function procesarPlantillaNueva(raw){
     const fg=fx(r[iGabF]), fr=fx(r[iRack]), fm=fx(r[iMig]),
           f1=fx(r[iE1]), f2=fx(r[iE2]);
     const iso=d0=>d0.toISOString().slice(0,10);
-    if(fg)D.ritmo.gab.push(iso(fg)); if(fr)D.ritmo.rack.push(iso(fr)); if(fm)D.ritmo.mig.push(iso(fm));
+    if(fg)D.ritmo.gab.push(iso(fg)); if(fr)D.ritmo.rack.push(iso(fr)); if(fm)D.ritmo.val.push(iso(fm));
     if(f1){D.ritmo.enl.push(iso(f1));D.ritmo.enl1.push(iso(f1));}
     if(f2){D.ritmo.enl.push(iso(f2));D.ritmo.enl2.push(iso(f2));}
     const eN=norm(estado), sede=String(r[iSede]||'').trim(), cod=String(r[iCod]).trim();
@@ -3229,10 +3229,10 @@ function procesarPlantillaNueva(raw){
   });
 
   // --- Curva S real: cumulativo por fecha, calculado directamente de la Plantilla ---
-  // D.ritmo.mig / D.ritmo.gab ya traen una fecha ISO por cada sede con Fecha Migración /
+  // D.ritmo.val / D.ritmo.gab ya traen una fecha ISO por cada sede con Fecha Validación /
   // Fecha Gabinete. Antes esas fechas solo alimentaban el ritmo semanal de la Vista
   // Ejecutiva; aquí se acumulan por fecha para que la Curva S muestre el avance real
-  // (incluidas las 125 sedes migradas bajo el criterio antiguo, sin gabinete previo).
+  // (incluidas las 125 sedes validadas bajo el criterio antiguo, sin gabinete previo).
   const cumularPorFecha=arr=>{
     const mapa={};
     arr.forEach(f=>{mapa[f]=(mapa[f]||0)+1;});
@@ -3241,7 +3241,7 @@ function procesarPlantillaNueva(raw){
     fechas.forEach(f=>{acum+=mapa[f]; out[f]=acum;});
     return out;
   };
-  window.CURVA_REAL_MIG=cumularPorFecha(D.ritmo.mig);
+  window.CURVA_REAL_MIG=cumularPorFecha(D.ritmo.val);
   window.CURVA_REAL_GAB=cumularPorFecha(D.ritmo.gab);
   window.CURVA_REAL_RACK=cumularPorFecha(D.ritmo.rack);   // rackeo (incluye las 125 sin enlace)
   window.CURVA_REAL_ITEM1=cumularPorFecha(D.ritmo.enl1);  // Bitel
@@ -3261,7 +3261,7 @@ function procesarPlantillaNueva(raw){
         'Equipo rackeado: '+s(D.item3)+'\n'+
         '   · Rackeadas sin enlace: '+s(D.item3_sin_enlace)+'\n'+
         '   · Listo para pruebas: '+s(D.listo_pruebas)+'\n'+
-        '   · Migrado pend. documentación: '+s(D.migrado_pend_doc)+'\n'+
+        '   · Validado pend. documentación: '+s(D.validado_pend_doc)+'\n'+
         '   · En validación Ítem 5: '+s(D.en_validacion)+'\n'+
         '   · En conformidad PJ: '+s(D.en_conformidad)+'\n'+
         '   · Alta operativa: '+s(D.alta)+'\n\n'+
@@ -3301,7 +3301,7 @@ function renderEjecutivo(){
 
   // ---------- METRICAS ----------
   const UNIV=s(D.universo)||745;
-  const gab=s(D.gabinete), rack=s(D.item3), migr=s(D.migrado_pend_doc)+s(D.en_validacion)+s(D.en_conformidad)+s(D.alta);
+  const gab=s(D.gabinete), rack=s(D.item3), migr=s(D.validado_pend_doc)+s(D.en_validacion)+s(D.en_conformidad)+s(D.alta);
   const alta=s(D.alta), sinEnl=s(D.item3_sin_enlace), listoPru=s(D.listo_pruebas);
   const progble=s(D.pendientes_programables), reprog=s(D.reprog_pendiente), agend=s(D.programados), espera=s(D.pendientes_en_espera);
   const pctMig=UNIV?(migr/UNIV*100):0, pctRack=UNIV?(rack/UNIV*100):0, pctGab=UNIV?(gab/UNIV*100):0;
@@ -3309,11 +3309,11 @@ function renderEjecutivo(){
   // ritmo de las ultimas 4 semanas
   const HOY=new Date(); HOY.setHours(0,0,0,0);
   const ritmo4=arr=>{const c=(arr||[]).filter(f=>(HOY-new Date(f))/86400000<=28).length; return c/4;};
-  const rMig=ritmo4(D.ritmo.mig), rGab=ritmo4(D.ritmo.gab), rEnl=ritmo4(D.ritmo.enl), rRack=ritmo4(D.ritmo.rack);
+  const rMig=ritmo4(D.ritmo.val), rGab=ritmo4(D.ritmo.gab), rEnl=ritmo4(D.ritmo.enl), rRack=ritmo4(D.ritmo.rack);
   const faltaMig=UNIV-migr;
   const semanasMig=rMig>0?Math.ceil(faltaMig/rMig):null;
   const ultima=arr=>{const v=(arr||[]).map(f=>new Date(f)).filter(f=>!isNaN(f)); return v.length?new Date(Math.max.apply(null,v)):null;};
-  const ultRack=ultima(D.ritmo.rack), ultMig=ultima(D.ritmo.mig);
+  const ultRack=ultima(D.ritmo.rack), ultMig=ultima(D.ritmo.val);
   const diasSinRack=ultRack?Math.round((HOY-ultRack)/86400000):null;
 
   const ejecutableHoy=progble+reprog+listoPru;
@@ -3367,8 +3367,8 @@ function renderEjecutivo(){
   if(vencidas>0)acciones.push([C.rojo,'Cerrar '+vencidas+' atenciones vencidas sin registrar','Pasó la fecha y nadie registró resultado. El avance real puede ser mayor o menor al que muestra el tablero.']);
   if(agend===0)acciones.push([C.rojo,'No hay ninguna visita agendada a futuro','El pipeline de campo está vacío: sin programaciones nuevas, el avance de las próximas semanas será cero.']);
   if(ejecutableHoy>0)acciones.push([C.ambar,'Agendar '+ejecutableHoy+' sedes que ya son ejecutables','No dependen de terceros: '+progble+' habilitadas + '+reprog+' por reprogramar + '+listoPru+' listas para pruebas.']);
-  if(semanasMig&&semanasMig>40)acciones.push([C.rojo,'Ritmo de migración insuficiente: '+rMig.toFixed(1)+'/semana','A este paso las '+faltaMig+' sedes restantes tomarían ~'+semanasMig+' semanas. Requiere decisión de capacidad.']);
-  if(migr>0&&alta===0)acciones.push([C.ambar,'El ciclo de alta operativa no ha arrancado','Hay '+migr+' sedes migradas y ninguna con documentación cargada. Sin conformidad no hay sede facturable.']);
+  if(semanasMig&&semanasMig>40)acciones.push([C.rojo,'Ritmo de validación insuficiente: '+rMig.toFixed(1)+'/semana','A este paso las '+faltaMig+' sedes restantes tomarían ~'+semanasMig+' semanas. Requiere decisión de capacidad.']);
+  if(migr>0&&alta===0)acciones.push([C.ambar,'El ciclo de alta operativa no ha arrancado','Hay '+migr+' sedes validadas y ninguna con documentación cargada. Sin conformidad no hay sede facturable.']);
   if(envR.length&&prom(envR)>25)acciones.push([C.gris,envR.length+' sedes rackeadas llevan '+prom(envR)+' días esperando enlace','Bloqueo de Ítem 1/2. Documentar para el expediente de Ampliación de Plazo.']);
 
   // ---------- HTML ----------
@@ -3425,15 +3425,15 @@ function renderEjecutivo(){
       '<div class="ejx-h">1 · ¿Cómo va el proyecto?</div>'+
       '<div style="display:flex;align-items:baseline;gap:9px;margin-bottom:2px">'+
         '<div style="font-size:38px;font-weight:800;color:'+semGlobal[1]+';line-height:1">'+pctMig.toFixed(1)+'%</div>'+
-        '<div style="font-size:11px;color:#64748b">'+migr+' de '+UNIV+' sedes migradas<br><span style="font-size:9.5px;color:#94a3b8">Avance real = migración, no rackeo</span></div>'+
+        '<div style="font-size:11px;color:#64748b">'+migr+' de '+UNIV+' sedes validadas<br><span style="font-size:9.5px;color:#94a3b8">Avance real = validación, no rackeo</span></div>'+
       '</div>'+
       barra(pctMig,semGlobal[1])+
       '<div style="margin-top:14px;padding-top:11px;border-top:1px dashed '+C.linea+'">'+
         '<div style="font-size:9px;font-weight:800;color:#94a3b8;letter-spacing:.6px;margin-bottom:7px">CADENA DE VALOR — CADA ETAPA CONTIENE A LA SIGUIENTE</div>'+
         [['1 · Gabinete instalado (Ítem 5)',gab,pctGab,'#7c3aed','depende del Ítem 5'],
          ['2 · Equipo rackeado (Ítem 3)',rack,pctRack,'#0d9488','de los '+gab+' con gabinete'],
-         ['3 · Migradas — servicio activo',migr,pctMig,'#2563eb','de las '+rack+' rackeadas'],
-         ['4 · Alta operativa (conformidad PJ)',alta,UNIV?alta/UNIV*100:0,alta?'#0f766e':'#cbd5e1','de las '+migr+' migradas']]
+         ['3 · Validadas',migr,pctMig,'#2563eb','de las '+rack+' rackeadas'],
+         ['4 · Alta operativa (conformidad PJ)',alta,UNIV?alta/UNIV*100:0,alta?'#0f766e':'#cbd5e1','de las '+migr+' validadas']]
         .map(([l,v,p,c,sub])=>
           '<div style="margin-bottom:7px">'+
             '<div class="ejx-line" style="margin:0"><span style="color:#475569">'+l+'</span><b style="color:'+c+'">'+v+' · '+p.toFixed(0)+'%</b></div>'+
@@ -3450,14 +3450,14 @@ function renderEjecutivo(){
       '<div style="text-align:center;padding:6px 0 10px">'+
         '<span class="ejx-badge" style="color:'+semGlobal[1]+';background:'+semGlobal[2]+'">PROYECCIÓN AL RITMO ACTUAL</span>'+
         '<div style="font-size:34px;font-weight:800;color:'+semGlobal[1]+';line-height:1.1;margin-top:8px">'+(semanasMig?semanasMig+' sem':'—')+'</div>'+
-        '<div style="font-size:10.5px;color:#64748b">para migrar las '+faltaMig+' sedes restantes'+(semanasMig?' (~'+(semanasMig/4.3).toFixed(0)+' meses)':'')+'</div>'+
+        '<div style="font-size:10.5px;color:#64748b">para validar las '+faltaMig+' sedes restantes'+(semanasMig?' (~'+(semanasMig/4.3).toFixed(0)+' meses)':'')+'</div>'+
       '</div>'+
       '<div style="background:#f8fafc;border-radius:8px;padding:9px 11px">'+
         '<div style="font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.5px;margin-bottom:6px">RITMO ÚLTIMAS 4 SEMANAS</div>'+
-        [['Gabinetes Ítem 5',rGab,'#7c3aed'],['Enlaces Ítem 1/2',rEnl,'#2563eb'],['Rackeo Ítem 3',rRack,'#0d9488'],['Migración Ítem 3',rMig,C.rojo]]
+        [['Gabinetes Ítem 5',rGab,'#7c3aed'],['Enlaces Ítem 1/2',rEnl,'#2563eb'],['Rackeo Ítem 3',rRack,'#0d9488'],['Validación Ítem 3',rMig,C.rojo]]
           .map(([l,v,c])=>'<div class="ejx-line" style="margin-top:4px"><span style="color:#475569">'+l+'</span><b style="color:'+c+'">'+v.toFixed(1)+' /sem</b></div>').join('')+
       '</div>'+
-      (diasSinRack!=null&&diasSinRack>7?'<div style="margin-top:9px;font-size:10px;color:'+C.ambar+';background:'+C.bgA+';padding:7px 9px;border-radius:7px;line-height:1.35">Último rackeo hace <b>'+diasSinRack+' días</b>. El equipo cambió a modo migración.</div>':'')+
+      (diasSinRack!=null&&diasSinRack>7?'<div style="margin-top:9px;font-size:10px;color:'+C.ambar+';background:'+C.bgA+';padding:7px 9px;border-radius:7px;line-height:1.35">Último rackeo hace <b>'+diasSinRack+' días</b>. El equipo cambió a modo validación.</div>':'')+
     '</div>'+
 
     // 3. Bloqueos
@@ -3478,7 +3478,7 @@ function renderEjecutivo(){
   '<div class="ejx-grid ejx-r2" style="margin-bottom:14px">'+
     tabla('Habilitadas sin atender','Top '+Math.min(6,envH.length)+' de '+envH.length+' · prom '+prom(envH)+' d',envH.slice(0,6),C.ambar)+
     tabla('Rackeadas esperando enlace','Top '+Math.min(6,envR.length)+' de '+envR.length+' · prom '+prom(envR)+' d',envR.slice(0,6),C.gris)+
-    tabla('Listas para pruebas, sin migrar','Top '+Math.min(6,envP.length)+' de '+envP.length+' · prom '+prom(envP)+' d',envP.slice(0,6),C.azul)+
+    tabla('Listas para pruebas, sin validar','Top '+Math.min(6,envP.length)+' de '+envP.length+' · prom '+prom(envP)+' d',envP.slice(0,6),C.azul)+
   '</div>'+
 
   // ===== FILA 3 =====
@@ -3572,11 +3572,11 @@ function renderDiagramaFlujoCompleto(opts) {
   const totalAgendadas   = sum(D.agendadas||{});
   const totalAgendListo  = sum(D.agend_listo||{});
   const totalListoPru    = sum(D.listo_pruebas);
-  const totalMigradoDoc  = sum(D.migrado_pend_doc);
+  const totalValidadoDoc = sum(D.validado_pend_doc);
   const totalValid       = sum(D.en_validacion);
   const totalConf        = sum(D.en_conformidad);
-  const totalCierre      = totalMigradoDoc+totalValid+totalConf+totalAlta;
-  const migradasTipo = TV.reduce((o,t)=>{o[t]=(D.migrado_pend_doc?.[t]||0)+(D.en_validacion?.[t]||0)+
+  const totalCierre      = totalValidadoDoc+totalValid+totalConf+totalAlta;
+  const validadasTipo = TV.reduce((o,t)=>{o[t]=(D.validado_pend_doc?.[t]||0)+(D.en_validacion?.[t]||0)+
                                               (D.en_conformidad?.[t]||0)+(D.alta?.[t]||0);return o;},{});
   const totalReprog      = sum(D.reprog_pendiente);
   const totalCriterio    = totalConEnlace + totalProgramables + totalProgramados + totalReprog;
@@ -3715,16 +3715,16 @@ function renderDiagramaFlujoCompleto(opts) {
       '<div class="dfx-top-i"><span class="dfx-top-l">UNIVERSO</span><span class="dfx-top-v">'+totalUniverso+'</span><span class="dfx-top-s">'+(ambitoSel?(totalUniverso+' sedes · '+ambitoSel):'745 sedes del contrato')+'</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">CON GABINETE</span><span class="dfx-top-v" style="color:'+C.morado+'">'+totalGabinete+'</span><span class="dfx-top-s">Ítem 5 · '+Math.round(totalGabinete/totalUniverso*100)+'% del universo</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">EQUIPO RACKEADO</span><span class="dfx-top-v" style="color:'+C.verde+'">'+totalItem3+'</span><span class="dfx-top-s">Ítem 3 · '+totalConEnlace+' con enlace</span></div>'+
-      '<div class="dfx-top-i"><span class="dfx-top-l">MIGRADAS</span><span class="dfx-top-v" style="color:'+C.azul+'">'+totalCierre+'</span><span class="dfx-top-s">Servicio activo · '+Math.round(totalCierre/totalUniverso*100)+'%</span></div>'+
+      '<div class="dfx-top-i"><span class="dfx-top-l">VALIDADAS</span><span class="dfx-top-v" style="color:'+C.azul+'">'+totalCierre+'</span><span class="dfx-top-s">Validación completada · '+Math.round(totalCierre/totalUniverso*100)+'%</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">ALTA OPERATIVA</span><span class="dfx-top-v" style="color:'+(totalAlta?C.verde:'#94a3b8')+'">'+totalAlta+'</span><span class="dfx-top-s">Cerradas con conformidad PJ</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">CON VISITA AGENDADA</span><span class="dfx-top-v" style="color:'+(totalAgendadas?C.azul:'#94a3b8')+'">'+totalAgendadas+'</span><span class="dfx-top-s">Fecha vigente en el historial</span></div>'+
     '</div>';
 
   const cierre = (esV2&&totalCierre>0) ?
     '<div class="dfx-cierre">'+
-      '<div class="dfx-cierre-t">FASE DE CIERRE DOCUMENTARIO — continúa con las '+totalCierre+' sedes ya migradas</div>'+
+      '<div class="dfx-cierre-t">FASE DE CIERRE DOCUMENTARIO — continúa con las '+totalCierre+' sedes ya validadas</div>'+
       '<div class="dfx-cadena">'+
-        paso(totalMigradoDoc,'Pend.<br>documentación',C.ambar)+ flecha()+
+        paso(totalValidadoDoc,'Pend.<br>documentación',C.ambar)+ flecha()+
         paso(totalValid,'En validación<br>Ítem 5',C.azul)+ flecha()+
         paso(totalConf,'En conformidad<br>PJ',C.morado)+ flecha()+
         paso(totalAlta,'ALTA<br>OPERATIVA',C.verde,true)+
@@ -3752,15 +3752,15 @@ function renderDiagramaFlujoCompleto(opts) {
               conector([25,75],34)+
               '<div class="dfx-col dfx-ind" style="gap:10px">'+
                 '<div class="dfx-fila">'+
-                  circulo(totalListoPru,'LISTO PARA<br>PRUEBAS','Falta migrar',C.azul,'dfx-md')+
-                  mini('PENDIENTE DE MIGRAR',D.listo_pruebas,C.azul,'#eff6ff','#bfdbfe',
+                  circulo(totalListoPru,'LISTO PARA<br>PRUEBAS','Falta validar',C.azul,'dfx-md')+
+                  mini('PENDIENTE DE VALIDAR',D.listo_pruebas,C.azul,'#eff6ff','#bfdbfe',
                        totalAgendListo>0
                          ? totalAgendListo+' ya tienen visita agendada · '+(sum(D.listo_pruebas)-totalAgendListo)+' sin fecha'
-                         : 'Requieren una salida de pruebas y migración — ninguna tiene fecha agendada')+
+                         : 'Requieren una salida de pruebas y validación — ninguna tiene fecha agendada')+
                 '</div>'+
                 '<div class="dfx-fila">'+
-                  circulo(totalCierre,'MIGRADAS','Servicio activo',C.verde,'dfx-md')+
-                  mini('YA MIGRADAS',migradasTipo,C.verde,'#f0fdfa','#99f6e4','Entran al ciclo de alta operativa')+
+                  circulo(totalCierre,'VALIDADAS','Validación completada',C.verde,'dfx-md')+
+                  mini('YA VALIDADAS',validadasTipo,C.verde,'#f0fdfa','#99f6e4','Entran al ciclo de alta operativa')+
                 '</div>'+
               '</div>'+
             '</div>'+
