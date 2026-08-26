@@ -428,7 +428,7 @@
 
   <!-- Curva S Produccion - PUBLICO -->
   <div class="card">
-    <div class="card-title">Curva S — Configuración de sedes (Línea de Producción NIRQA)</div>
+    <div class="card-title">Curva S — Saldo por configurar (Línea de Producción NIRQA)</div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Planificado 02/07 → 25/07 · 745 sedes · Lun-Sáb sin feriado (23/07)</div>
     <canvas id="chart-prod" style="width:100%;max-height:320px"></canvas>
   </div>
@@ -1009,6 +1009,23 @@ function renderTodo(){
   (function(){
     const tf=document.getElementById('titulo-flujo');
     if(tf)tf.textContent='Flujo de implementacion — '+universo+' sedes'+(_ambito?' · '+_ambito:'');
+    // Aviso visible cuando los datos en pantalla los generó una versión anterior
+    // del parser. Sin esto, un dataset viejo se ve idéntico a uno correcto pero
+    // con sedes de menos, y el error pasa inadvertido.
+    const cont=tf&&tf.parentElement;
+    let av=document.getElementById('aviso-dataset');
+    if(window.datasetDesactualizado&&window.datasetDesactualizado()&&window.DIAGRAMA_DATOS){
+      if(!av&&cont){
+        av=document.createElement('div');
+        av.id='aviso-dataset';
+        av.style.cssText='margin:8px 0 0;padding:8px 12px;border-radius:8px;background:#FEF3C7;'+
+                         'border:1px solid #F59E0B;color:#92400E;font-size:12px;line-height:1.45';
+        av.innerHTML='⚠ <b>Datos desactualizados.</b> Lo que ves lo generó una versión anterior del lector de la plantilla '+
+                     'y puede tener sedes sin contabilizar. Ve a «Registrar y cargar avance» y vuelve a subir '+
+                     'Plantilla_Carga_SDWAN_PJ una vez.';
+        cont.appendChild(av);
+      }
+    } else if(av){ av.remove(); }
   })();
   
   // Si se cargó Plantilla_Carga, usa esos totales; sino, usa datos de Firebase
@@ -2539,19 +2556,41 @@ function renderMetricas(){
     }
   });
 
+  // Opciones para la curva en modo saldo: el eje describe lo pendiente y el
+  // tooltip muestra el % que aún falta, no el % avanzado.
+  const chartOptsSaldo=(hoyIdx,total,labels)=>{
+    const o=chartOpts(hoyIdx,total,labels);
+    o.plugins.tooltip.callbacks.label=ctx=>{
+      if(ctx.parsed.y===null||ctx.parsed.y===undefined)return null;
+      const pct=Math.round(ctx.parsed.y/total*100);
+      return`${ctx.dataset.label}: ${ctx.parsed.y} sedes pendientes (${pct}%)`;
+    };
+    o.scales.y={min:0,max:total,title:{display:true,text:'Sedes pendientes (saldo)'}};
+    return o;
+  };
+
   if(chartProd)chartProd.destroy();
   const prodLabels=pd.planFechas.map(f=>{const d=new Date(f+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'});});
+  // ── Curva S de PRODUCCIÓN en modo SALDO (descendente) ──
+  // El despliegue se mide por lo ejecutado (sube); la producción se lee mejor
+  // como lo que falta por configurar: arranca en 745 y baja hacia 0.
+  // Se invierten las series acumuladas: saldo = 745 − acumulado.
+  const TOTAL_SEDES=745;
+  const aSaldo=arr=>arr.map(v=>(v===null||v===undefined)?null:Math.max(0,TOTAL_SEDES-v));
+  const prodPlanSaldo=aSaldo(pd.planVals);
+  const prodRealSaldo=aSaldo(pd.realVals);
+
   chartProd=new Chart(document.getElementById('chart-prod'),{
     type:'line',
     data:{
       labels:prodLabels,
       datasets:[
-        {label:'Planificado',data:pd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:'origin',order:2},
-        {label:'Real',data:pd.realVals,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.15)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:'origin',spanGaps:false,order:1},
-        {label:'Brecha',data:pd.planVals.map((v,i)=>pd.realVals[i]!==null&&pd.realVals[i]!==undefined?Math.max(0,v-pd.realVals[i]):null),borderColor:'rgba(200,50,50,0)',backgroundColor:'rgba(200,50,50,0.12)',borderWidth:0,pointRadius:0,tension:0.4,fill:'origin',order:3,spanGaps:false},
+        {label:'Saldo planificado',data:prodPlanSaldo,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:false,order:2},
+        {label:'Saldo real por configurar',data:prodRealSaldo,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.12)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:'origin',spanGaps:false,order:1},
+        {label:'Brecha',data:prodPlanSaldo.map((v,i)=>prodRealSaldo[i]!==null&&prodRealSaldo[i]!==undefined?Math.max(0,prodRealSaldo[i]-v):null),borderColor:'rgba(200,50,50,0)',backgroundColor:'rgba(200,50,50,0.12)',borderWidth:0,pointRadius:0,tension:0.4,fill:'-1',order:3,spanGaps:false},
       ]
     },
-    options:chartOpts(pd.hoyIdx,745,prodLabels)
+    options:chartOptsSaldo(pd.hoyIdx,TOTAL_SEDES,prodLabels)
   });
 
   if(chartDesp)chartDesp.destroy();
@@ -2785,7 +2824,7 @@ function restaurarDiagramaLocal(){
   if(window.DIAGRAMA_DATOS)return;
   try{
     const raw=localStorage.getItem(CLAVE_DIAGRAMA);
-    if(raw)window.DIAGRAMA_DATOS=JSON.parse(raw);
+    if(raw)window.DIAGRAMA_DATOS=window.migrarDataset(JSON.parse(raw));
   }catch(e){}
 }
 
@@ -2819,7 +2858,7 @@ async function cargarItemsExternos(){
       if(d.id==='diagrama_datos'){
         const p=d.data();
         if(p&&p.gabinete){
-          window.DIAGRAMA_DATOS=p;
+          window.DIAGRAMA_DATOS=window.migrarDataset(p);
           try{localStorage.setItem(CLAVE_DIAGRAMA,JSON.stringify(p));}catch(e){}
         }
       }
@@ -3010,7 +3049,7 @@ function agregarSedes(sedes,esV1){
     B.gabinete[t]++;
     if(s.ag)B.agendadas[t]++;
 
-    const rackeada=['racksin','listo','validado','validacion','conformidad','alta'].includes(s.st);
+    const rackeada=['racksin','listo','validado','migrado','validacion','conformidad','alta'].includes(s.st);
     if(rackeada){
       B.item3[t]++;
       if(s.st==='alta')             B.alta[t]++;
@@ -3034,6 +3073,39 @@ function agregarSedes(sedes,esV1){
 }
 
 // Bucket activo del dashboard — respeta los 4 filtros simultáneamente
+// ════════════════════════════════════════════════════════════
+// MIGRACIÓN DE ESQUEMA
+// Un dataset guardado antes del cambio de terminología usa las claves
+// 'migrado_pend_doc' y 'ritmo.mig'. Si se lee tal cual, esos buckets
+// quedan en 0 y el Dashboard pierde sedes sin avisar. Aquí se renombran
+// al vuelo para que cualquier caché antiguo siga siendo válido.
+window.SCHEMA_DATASET='v5-validado';
+window.migrarDataset=function(D){
+  if(!D||typeof D!=='object')return D;
+  const fix=b=>{
+    if(!b||typeof b!=='object')return;
+    if(b.migrado_pend_doc&&!b.validado_pend_doc){
+      b.validado_pend_doc=b.migrado_pend_doc; delete b.migrado_pend_doc;
+    }
+    if(b.ritmo&&b.ritmo.mig&&!b.ritmo.val){
+      b.ritmo.val=b.ritmo.mig; delete b.ritmo.mig;
+    }
+  };
+  fix(D);
+  if(D.porZona)Object.values(D.porZona).forEach(fix);
+  if(D.porRegion)Object.values(D.porRegion).forEach(fix);
+  if(D.porDpto)Object.values(D.porDpto).forEach(fix);
+  if(D.porProv)Object.values(D.porProv).forEach(fix);
+  return D;
+};
+
+// ¿El dataset en memoria fue generado por una versión anterior del parser?
+window.datasetDesactualizado=function(){
+  const D=window.DIAGRAMA_DATOS;
+  if(!D)return false;
+  return D.schema!==window.SCHEMA_DATASET;
+};
+
 function datosDiagramaActivos(){
   const D=window.DIAGRAMA_DATOS;
   if(!D)return null;
@@ -3073,6 +3145,16 @@ window.universoFiltrado=function(){
 // Devuelve true si reconoció el formato nuevo y ya lo procesó.
 // ============================================================
 function procesarPlantillaNueva(raw){
+  try{ return _procesarPlantillaNueva(raw); }
+  catch(err){
+    console.error('Plantilla_Carga_Diaria:',err);
+    alert('⚠ No se pudo procesar la plantilla.\n\n'+(err&&err.message?err.message:err)+
+          '\n\nEl Dashboard sigue mostrando los datos anteriores, que pueden estar desactualizados.\n'+
+          'Revisa que los encabezados de Plantilla_Carga_Diaria no hayan cambiado de nombre.');
+    return true;   // formato reconocido: NO caer al parser antiguo (lee por posición)
+  }
+}
+function _procesarPlantillaNueva(raw){
   const norm=s=>String(s==null?'':s).replace(/\u00a0/g,' ')
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
 
@@ -3081,10 +3163,60 @@ function procesarPlantillaNueva(raw){
     const f=raw[i];
     if(Array.isArray(f)&&f.some(c=>norm(c)==='estado sede')&&f.some(c=>norm(c)==='cod. pj')){hr=i;break;}
   }
-  if(hr<0)return false;   // no es el formato nuevo; sigue el camino antiguo
+  if(hr<0){
+    // ¿Se parece a Plantilla_Carga_Diaria pero con algún encabezado renombrado?
+    // Si es así NO debe caer al parser antiguo: ese lee por POSICIÓN y con la
+    // columna «Corte» (o cualquier inserción futura) devolvería datos corridos.
+    for(let i=0;i<Math.min(raw.length,12);i++){
+      const f=raw[i]; if(!Array.isArray(f))continue;
+      const nf=f.map(norm);
+      const pistas=['cod. pj','estado sede','tipo sede','fecha gabinete (item 5)','zona']
+                     .filter(x=>nf.includes(x)).length;
+      if(pistas>=2){
+        const faltan=['cod. pj','estado sede','tipo sede'].filter(x=>!nf.includes(x));
+        alert('⚠ La hoja parece Plantilla_Carga_Diaria pero no se reconocieron todos los encabezados.\n\n'+
+              'Faltan o cambiaron de nombre: '+faltan.join(', ')+'\n\n'+
+              'Corrige los títulos de la fila de encabezados y vuelve a subir el archivo.\n'+
+              'No se cargó nada para no mezclar datos corridos.');
+        return true;
+      }
+    }
+    return false;   // no es el formato nuevo; sigue el camino antiguo
+  }
 
   const cab=raw[hr].map(norm);
-  const col=n=>cab.indexOf(n);
+  // Búsqueda de columna tolerante: exacta → sin puntuación → por sinónimos.
+  // Así un encabezado con punto, tilde o palabra extra sigue encontrándose,
+  // y la posición de la columna dentro de la hoja deja de importar.
+  const limpia=s=>norm(s).replace(/[.\u00ba\u00b0:]/g,'').replace(/\s+/g,' ').trim();
+  const cabL=cab.map(limpia);
+  const SIN={
+    'cod. pj':['cod pj','codigo pj','cod. p.j.','cod pj.'],
+    'tipo sede':['tipo de sede'],
+    'region':['regin','region '],
+    'dpto.':['dpto','departamento'],
+    'fecha gabinete (item 5)':['fecha gabinete item 5','fecha gabinete'],
+    'fecha enlace item 1':['fecha enlace 1','fecha enlace itm 1'],
+    'fecha enlace item 2':['fecha enlace 2','fecha enlace itm 2'],
+    'estado sede':['estado de sede'],
+    'estado atencion':['estado de atencion'],
+    'fecha validacion':['fecha migracion','fecha de validacion'],
+    'fecha rackeo':['fecha de rackeo'],
+    'n.º atenciones':['n° atenciones','nro atenciones','num atenciones','n atenciones'],
+    'atenc. quebradas':['atenciones quebradas','atenc quebradas'],
+    'ult. atencion — motivo':['ult atencion motivo','ultima atencion motivo'],
+    'ult. atencion — responsable':['ult atencion responsable','ultima atencion responsable'],
+    'ult. atencion — estado':['ult atencion estado','ultima atencion estado'],
+    'fecha programada vigente':['fecha programada'],
+    'sede':['nombre sede','nombre de sede']
+  };
+  const col=n=>{
+    let i=cab.indexOf(n); if(i>=0)return i;
+    const nl=limpia(n);
+    i=cabL.indexOf(nl); if(i>=0)return i;
+    for(const alt of (SIN[n]||[])){ i=cabL.indexOf(limpia(alt)); if(i>=0)return i; }
+    return -1;
+  };
   const iCod=col('cod. pj'), iTipo=col('tipo sede'), iZona=col('zona'),
         iRegion=col('region'), iDpto=col('dpto.')>=0?col('dpto.'):col('dpto')>=0?col('dpto'):col('departamento'),
         iProv=col('provincia'),
@@ -3104,7 +3236,7 @@ function procesarPlantillaNueva(raw){
     enlace_item1:z(),enlace_item2:z(),
     atenciones:0,quebradas:0,reintentos:0});
 
-  const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2'; D.v=4;   // v4 = buckets de visitas agendadas
+  const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2'; D.v=4; D.schema=window.SCHEMA_DATASET;   // v4 = buckets de visitas agendadas
   const iGabF=col('fecha gabinete (item 5)'), iRack=col('fecha rackeo'), iMig=col('fecha validacion'),
         iSede=col('sede'), iMot=col('ult. atencion — motivo'), iResp=col('ult. atencion — responsable'),
         iUlt=col('ult. atencion — estado'), iEstAt=col('estado atencion'), iFProg=col('fecha programada vigente');
@@ -3125,7 +3257,7 @@ function procesarPlantillaNueva(raw){
     const d=new Date(t); return isNaN(d)?null:d;              // ISO (viene así del dataset guardado)
   };
   const dias=d0=>d0?Math.round((HOY-d0)/86400000):null;
-  D.alertas=[]; D.ritmo={gab:[],rack:[],mig:[],enl:[],enl1:[],enl2:[]}; D.quiebres={}; D.envejec={hab:[],rack:[],pru:[]};
+  D.alertas=[]; D.ritmo={gab:[],rack:[],val:[],enl:[],enl1:[],enl2:[]}; D.quiebres={}; D.envejec={hab:[],rack:[],pru:[]};
   const pres=v=>String(v==null?'':v).replace(/\u00a0/g,' ').trim()!=='';
   let filas=0;
 
@@ -3154,14 +3286,14 @@ function procesarPlantillaNueva(raw){
 
       // --- Equipo YA rackeado: cadena rackeo -> pruebas -> validacion -> cierre ---
       const rackeada = e.includes('rackeada sin enlace')||e.includes('listo para pruebas')||
-                       e.includes('validado')||e.includes('validacion')||
+                       e.includes('validado')||e.includes('migrado')||e.includes('validacion')||
                        e.includes('conformidad')||e.includes('alta operativa');
       if(rackeada){
         B.item3[tipo]++;
         if(e.includes('alta operativa'))      B.alta[tipo]++;
         else if(e.includes('conformidad'))    B.en_conformidad[tipo]++;
         else if(e.includes('validacion'))     B.en_validacion[tipo]++;
-        else if(e.includes('validado'))        B.validado_pend_doc[tipo]++;
+        else if(e.includes('validado')||e.includes('migrado')) B.validado_pend_doc[tipo]++;
         else if(e.includes('listo para pruebas')){ B.listo_pruebas[tipo]++; if(agendada)B.agend_listo[tipo]++; }
         if(e1&&e2)B.item3_con_enlace.item1_item2[tipo]++;
         else if(e1)B.item3_con_enlace.item1[tipo]++;
@@ -3194,7 +3326,7 @@ function procesarPlantillaNueva(raw){
       else if(e.includes('alta operativa'))           st='alta';
       else if(e.includes('conformidad'))              st='conformidad';
       else if(e.includes('validacion'))               st='validacion';
-      else if(e.includes('validado'))                  st='validado';
+      else if(e.includes('validado')||e.includes('migrado')) st='validado';
       else if(e.includes('listo para pruebas'))       st='listo';
       else if(e.includes('rackeada sin enlace'))      st='racksin';
       else if(e.includes('reprogramacion'))           st='reprog';
