@@ -1556,6 +1556,10 @@ window.cargarMasRecienteDeCarpeta=async function(){
   }catch(e){/* silencioso: si falla, simplemente no se auto-restaura */}
 })();
 
+// Marca de versión del parser — sirve para confirmar en consola (F12) qué archivo está corriendo.
+window.VERSION_PARSER='2026-08-27 · fix hoja por nombre exacto';
+console.log('%c[Parser SD-WAN] '+window.VERSION_PARSER,'background:#0F766E;color:#fff;padding:2px 6px;border-radius:3px');
+
 window.handleFile=function(file){
   if(!file)return;
   const reader=new FileReader();
@@ -1589,7 +1593,18 @@ window.handleFile=function(file){
       if(procesarPlantillaNueva(raw))return;
       let headerRow=-1;
       raw.forEach((r,i)=>{if(Array.isArray(r)&&r.some(c=>String(c).trim()==='ESTADO'))headerRow=i;});
-      if(headerRow<0){alert('No se encontró fila de encabezados. Verifica el archivo.');return;}
+      if(headerRow<0){
+        // Mensaje de diagnóstico: en vez de un aviso ciego, decir QUÉ se leyó realmente.
+        const cabsLeidas=(raw[0]||[]).slice(0,30).map(c=>String(c||'(vacío)')).join(' | ');
+        console.error('[Parser SD-WAN] Hojas del libro:',wb.SheetNames);
+        console.error('[Parser SD-WAN] Primera fila leída:',raw[0]);
+        alert('No se encontró fila de encabezados.\n\n'+
+              'Hoja usada: '+(wb.SheetNames.includes(NOMBRE_HOJA_REAL)?NOMBRE_HOJA_REAL:'(detectada automáticamente)')+'\n'+
+              'Hojas del libro: '+wb.SheetNames.join(', ')+'\n\n'+
+              'Primera fila leída:\n'+cabsLeidas+'\n\n'+
+              'Versión del parser: '+window.VERSION_PARSER);
+        return;
+      }
       let fechaGlobal='',coordGlobal='';
       for(let ri=0;ri<4;ri++){
         const r=raw[ri]||[];
