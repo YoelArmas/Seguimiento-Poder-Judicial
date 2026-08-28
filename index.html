@@ -3020,11 +3020,12 @@ function agregarSedes(sedes,esV1){
     pendientes:z(),pendientes_programables:z(),pendientes_en_espera:z(),
     programados:z(),reprog_pendiente:z(),agendadas:z(),agend_listo:z(),
     listo_pruebas:z(),validado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
-    enlace_item1:z(),enlace_item2:z(),atenciones:0,quebradas:0,reintentos:0};
+    enlace_item1:z(),enlace_item2:z(),atenciones:0,quebradas:0,reintentos:0,rackeoReal:0};
 
   sedes.forEach(s=>{
     const t=s.t; if(!B.universo[t]===undefined)return;
     B.universo[t]++;
+    if(s.rr)B.rackeoReal++;   // base histórica de rackeo (Fecha Rackeo real)
 
     if(esV1||s.v1){
       // ── Formato v1: banderas gab/e1/e2/inst/alta
@@ -3240,7 +3241,7 @@ function _procesarPlantillaNueva(raw){
     programados:z(),reprog_pendiente:z(),agendadas:z(),agend_listo:z(),
     listo_pruebas:z(),validado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
     enlace_item1:z(),enlace_item2:z(),
-    atenciones:0,quebradas:0,reintentos:0});
+    atenciones:0,quebradas:0,reintentos:0,rackeoReal:0});
 
   const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2'; D.v=4; D.schema=window.SCHEMA_DATASET;   // v4 = buckets de visitas agendadas
   const iGabF=col('fecha gabinete (item 5)'), iRack=col('fecha rackeo'), iMig=col('fecha validacion'),
@@ -3339,8 +3340,11 @@ function _procesarPlantillaNueva(raw){
       else if(e.includes('visita agendada')||e.includes('programado')) st='program';
       else if(e.includes('programable'))              st='programable';
       if(!D.sedes)D.sedes=[];
+      // rr = tiene Fecha Rackeo REAL (columna P). Permite que el indicador de base
+      // histórica también responda a los filtros de zona/región/dpto.
       D.sedes.push({z:zona,r:regRaw,d:dpRaw,p:pvRaw,t:tipo,st:st,
-                    e1:e1?1:0,e2:e2?1:0,ag:agendada?1:0,at:nAt,qb:nQb});
+                    e1:e1?1:0,e2:e2?1:0,ag:agendada?1:0,at:nAt,qb:nQb,
+                    rr:fx(r[iRack])?1:0});
     }
 
     // --- datos para la Vista Ejecutiva ---
@@ -3348,6 +3352,10 @@ function _procesarPlantillaNueva(raw){
           f1=fx(r[iE1]), f2=fx(r[iE2]);
     const iso=d0=>d0.toISOString().slice(0,10);
     if(fg)D.ritmo.gab.push(iso(fg)); if(fr)D.ritmo.rack.push(iso(fr)); if(fm)D.ritmo.val.push(iso(fm));
+    // Base histórica de rackeo: cuenta solo las sedes con Fecha Rackeo REAL (columna P).
+    // Tras quitar el fallback de "Validado", esta columna contiene únicamente las sedes
+    // rackeadas bajo el criterio inicial del proyecto (instalar con gabinete, sin enlace).
+    if(fr) D.rackeoReal=(D.rackeoReal||0)+1;
     if(f1){D.ritmo.enl.push(iso(f1));D.ritmo.enl1.push(iso(f1));}
     if(f2){D.ritmo.enl.push(iso(f2));D.ritmo.enl2.push(iso(f2));}
     const eN=norm(estado), sede=String(r[iSede]||'').trim(), cod=String(r[iCod]).trim();
@@ -3396,7 +3404,7 @@ function _procesarPlantillaNueva(raw){
   const s=o=>TV.reduce((a,t)=>a+(o[t]||0),0);
   alert('Plantilla cargada ('+filas+' sedes)\n\n'+
         'Con gabinete (Ítem 5): '+s(D.gabinete)+'\n'+
-        'Equipo rackeado: '+s(D.item3)+'\n'+
+        'Equipo instalado: '+s(D.item3)+'\n'+
         '   · Rackeadas sin enlace: '+s(D.item3_sin_enlace)+'\n'+
         '   · Listo para pruebas: '+s(D.listo_pruebas)+'\n'+
         '   · Validado pend. documentación: '+s(D.validado_pend_doc)+'\n'+
@@ -3569,7 +3577,7 @@ function renderEjecutivo(){
       '<div style="margin-top:14px;padding-top:11px;border-top:1px dashed '+C.linea+'">'+
         '<div style="font-size:9px;font-weight:800;color:#94a3b8;letter-spacing:.6px;margin-bottom:7px">CADENA DE VALOR — CADA ETAPA CONTIENE A LA SIGUIENTE</div>'+
         [['1 · Gabinete instalado (Ítem 5)',gab,pctGab,'#7c3aed','depende del Ítem 5'],
-         ['2 · Equipo rackeado (Ítem 3)',rack,pctRack,'#0d9488','de los '+gab+' con gabinete'],
+         ['2 · Equipo instalado (Ítem 3)',rack,pctRack,'#0d9488','de los '+gab+' con gabinete'],
          ['3 · Validadas',migr,pctMig,'#2563eb','de las '+rack+' rackeadas'],
          ['4 · Alta operativa (conformidad PJ)',alta,UNIV?alta/UNIV*100:0,alta?'#0f766e':'#cbd5e1','de las '+migr+' validadas']]
         .map(([l,v,p,c,sub])=>
@@ -3592,7 +3600,7 @@ function renderEjecutivo(){
       '</div>'+
       '<div style="background:#f8fafc;border-radius:8px;padding:9px 11px">'+
         '<div style="font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.5px;margin-bottom:6px">RITMO ÚLTIMAS 4 SEMANAS</div>'+
-        [['Gabinetes Ítem 5',rGab,'#7c3aed'],['Enlaces Ítem 1/2',rEnl,'#2563eb'],['Rackeo Ítem 3',rRack,'#0d9488'],['Validación Ítem 3',rMig,C.rojo]]
+        [['Gabinetes Ítem 5',rGab,'#7c3aed'],['Enlaces Ítem 1/2',rEnl,'#2563eb'],['Rackeo criterio inicial',rRack,'#0d9488'],['Validación Ítem 3',rMig,C.rojo]]
           .map(([l,v,c])=>'<div class="ejx-line" style="margin-top:4px"><span style="color:#475569">'+l+'</span><b style="color:'+c+'">'+v.toFixed(1)+' /sem</b></div>').join('')+
       '</div>'+
       (diasSinRack!=null&&diasSinRack>7?'<div style="margin-top:9px;font-size:10px;color:'+C.ambar+';background:'+C.bgA+';padding:7px 9px;border-radius:7px;line-height:1.35">Último rackeo hace <b>'+diasSinRack+' días</b>. El equipo cambió a modo validación.</div>':'')+
@@ -3700,6 +3708,9 @@ function renderDiagramaFlujoCompleto(opts) {
   const totalUniverso    = sum(D.universo) || 745;
   const totalGabinete    = sum(D.gabinete);
   const totalItem3       = sum(D.item3);
+  // Base histórica de rackeo bajo el criterio inicial (columna P — Fecha Rackeo real).
+  // No crece con las validaciones: solo si se registra una atención real de rackeo.
+  const totalRackeoReal  = D.rackeoReal || 0;
   const totalConEnlace   = TV.reduce((a,t) => a + ceTipo(t), 0);
   const totalSinEnlace   = sum(D.item3_sin_enlace);
   const totalPendientes  = sum(D.pendientes);
@@ -3852,7 +3863,8 @@ function renderDiagramaFlujoCompleto(opts) {
     '<div class="dfx-top">'+
       '<div class="dfx-top-i"><span class="dfx-top-l">UNIVERSO</span><span class="dfx-top-v">'+totalUniverso+'</span><span class="dfx-top-s">'+(ambitoSel?(totalUniverso+' sedes · '+ambitoSel):'745 sedes del contrato')+'</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">CON GABINETE</span><span class="dfx-top-v" style="color:'+C.morado+'">'+totalGabinete+'</span><span class="dfx-top-s">Ítem 5 · '+Math.round(totalGabinete/totalUniverso*100)+'% del universo</span></div>'+
-      '<div class="dfx-top-i"><span class="dfx-top-l">EQUIPO RACKEADO</span><span class="dfx-top-v" style="color:'+C.verde+'">'+totalItem3+'</span><span class="dfx-top-s">Ítem 3 · '+totalConEnlace+' con enlace</span></div>'+
+      '<div class="dfx-top-i"><span class="dfx-top-l">EQUIPO INSTALADO</span><span class="dfx-top-v" style="color:'+C.verde+'">'+totalItem3+'</span><span class="dfx-top-s">Ítem 3 · '+totalConEnlace+' con enlace</span></div>'+
+      '<div class="dfx-top-i"><span class="dfx-top-l">RACKEO — CRITERIO INICIAL</span><span class="dfx-top-v" style="color:'+C.ambar+'">'+totalRackeoReal+'</span><span class="dfx-top-s">Base histórica · sin enlace</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">VALIDADAS</span><span class="dfx-top-v" style="color:'+C.azul+'">'+totalCierre+'</span><span class="dfx-top-s">Validación completada · '+Math.round(totalCierre/totalUniverso*100)+'%</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">ALTA OPERATIVA</span><span class="dfx-top-v" style="color:'+(totalAlta?C.verde:'#94a3b8')+'">'+totalAlta+'</span><span class="dfx-top-s">Cerradas con conformidad PJ</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">CON VISITA AGENDADA</span><span class="dfx-top-v" style="color:'+(totalAgendadas?C.azul:'#94a3b8')+'">'+totalAgendadas+'</span><span class="dfx-top-s">Fecha vigente en el historial</span></div>'+
@@ -3881,7 +3893,7 @@ function renderDiagramaFlujoCompleto(opts) {
 
         // Rama: equipo ya instalado
         '<div class="dfx-row">'+
-          '<div class="dfx-mid">'+ circulo(totalItem3,'EQUIPO<br>RACKEADO','(Ítem 3)',C.verde,'dfx-lg') +'</div>'+
+          '<div class="dfx-mid">'+ circulo(totalItem3,'EQUIPO<br>INSTALADO','(Ítem 3)',C.verde,'dfx-lg') +'</div>'+
           conector([26,76],36)+
           '<div class="dfx-col dfx-ind" style="justify-content:space-around;gap:14px">'+
 
