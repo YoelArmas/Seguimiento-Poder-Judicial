@@ -1563,13 +1563,25 @@ window.handleFile=function(file){
     const wb=XLSX.read(e.target.result,{type:'array'});
     // Buscar la hoja correcta entre TODAS las del libro (algunos archivos traen hojas extra como "Dashboard" o "Leyenda" antes de la de datos)
     let ws=null,raw=null,esPlantilla=false;
-    for(const nombre of wb.SheetNames){
-      const wsTest=wb.Sheets[nombre];
-      const rawTest=XLSX.utils.sheet_to_json(wsTest,{defval:'',header:1});
-      const esPlantillaTest=rawTest.slice(0,6).some(r=>Array.isArray(r)&&r.some(c=>String(c).includes('ESTADO')||String(c).includes('Cód. PJ')));
-      const esClasicaTest=rawTest.length&&Object.keys(XLSX.utils.sheet_to_json(wsTest,{defval:''})[0]||{}).some(k=>['Fecha','fecha','Coordinador','coordinador'].includes(k));
-      if(esPlantillaTest){ws=wsTest;raw=rawTest;esPlantilla=true;break;}
-      if(esClasicaTest&&!ws){ws=wsTest;raw=rawTest;}
+    // 1) Prioridad absoluta: si existe una hoja con el nombre EXACTO de la plantilla real,
+    //    usarla siempre. Evita que hojas auxiliares como "_aux_analisis" (que también
+    //    tienen "Cód. PJ" en su fila 1) se cuelen antes por orden de aparición en el libro.
+    const NOMBRE_HOJA_REAL='Plantilla_Carga_Diaria';
+    if(wb.SheetNames.includes(NOMBRE_HOJA_REAL)){
+      ws=wb.Sheets[NOMBRE_HOJA_REAL];
+      raw=XLSX.utils.sheet_to_json(ws,{defval:'',header:1});
+      esPlantilla=true;
+    }else{
+      // 2) Si no existe ese nombre exacto (archivo con otro formato), adivinar por contenido,
+      //    mismo criterio de antes.
+      for(const nombre of wb.SheetNames){
+        const wsTest=wb.Sheets[nombre];
+        const rawTest=XLSX.utils.sheet_to_json(wsTest,{defval:'',header:1});
+        const esPlantillaTest=rawTest.slice(0,6).some(r=>Array.isArray(r)&&r.some(c=>String(c).includes('ESTADO')||String(c).includes('Cód. PJ')));
+        const esClasicaTest=rawTest.length&&Object.keys(XLSX.utils.sheet_to_json(wsTest,{defval:''})[0]||{}).some(k=>['Fecha','fecha','Coordinador','coordinador'].includes(k));
+        if(esPlantillaTest){ws=wsTest;raw=rawTest;esPlantilla=true;break;}
+        if(esClasicaTest&&!ws){ws=wsTest;raw=rawTest;}
+      }
     }
     if(!ws){ws=wb.Sheets[wb.SheetNames[0]];raw=XLSX.utils.sheet_to_json(ws,{defval:'',header:1});}
     if(esPlantilla){
