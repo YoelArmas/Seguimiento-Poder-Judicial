@@ -84,6 +84,14 @@
 .vz-subnav button{background:none;border:none;padding:9px 15px;font-size:13px;color:var(--ink2);
   cursor:pointer;border-bottom:2px solid transparent;font-family:inherit}
 .vz-subnav button.on{color:var(--nosotros);border-bottom-color:var(--nosotros);font-weight:650}
+/* --- desglose por tipo: una línea, el detalle al pasar el mouse --- */
+.vz-tipchip{position:relative;cursor:help;color:#52514e;white-space:nowrap}
+.vz-tipchip strong{color:#0b0b0b}
+.vz-tipchip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 9px);left:50%;
+  transform:translateX(-50%);background:rgba(11,11,11,.93);color:#fff;font-size:10.5px;font-weight:600;
+  line-height:1.55;white-space:pre;padding:7px 11px;border-radius:6px;opacity:0;pointer-events:none;
+  transition:opacity .12s;z-index:30}
+.vz-tipchip:hover::after{opacity:1}
 </style>
 </head>
 <body>
@@ -159,8 +167,8 @@
 
   <!-- ===== ¿DE QUIÉN DEPENDE QUE PODAMOS AVANZAR? (terceros, escala propia) ===== -->
   <div class="card viz" style="margin-bottom:16px">
-    <div class="card-title">¿De quién depende que podamos avanzar?</div>
-    <div class="vz-sub">Una sede solo entra a nuestro trabajo cuando tiene gabinete (Ítem 5) y al menos un enlace (Bitel o Claro). Esto es lo que han entregado ellos.</div>
+    <div class="card-title">¿Nos habilitan más rápido de lo que validamos?</div>
+    <div class="vz-sub">Una sede entra a nuestro trabajo cuando tiene gabinete (Ítem 5) y al menos un enlace (Bitel o Claro). La línea azul es lo que hemos validado; la distancia hasta las líneas de arriba es trabajo que ya está disponible y no depende de nadie más.</div>
     <canvas id="chart-terceros" style="width:100%;max-height:300px"></canvas>
     <div class="vz-read" id="vz-lectura-terceros"></div>
   </div>
@@ -1216,9 +1224,14 @@ function renderTodo(){
     UNIVERSO_ITEM={item5:TOTAL, item1:TOTAL, item2:432};
   }
   const tiposCortos=['Tipo 1','Tipo 2','Tipo 3'];
+  // Igual que en el diagrama: el desglose por tipo deja de ocupar tres filas en
+  // cada tarjeta (9 números en pantalla) y pasa al tooltip. Una línea compacta
+  // queda visible para no esconder el dato del todo.
   const filaTipos=clave=>{
     const d=tipoPorItem[clave]||{};
-    return `<div style="display:flex;flex-direction:column;gap:4px;width:100%">${tiposCortos.map(t=>`<div style="display:flex;justify-content:space-between;font-size:11px"><span>${t}</span><strong>${d[t]||0}</strong></div>`).join('')}</div>`;
+    const tip=tiposCortos.map(t=>t+'   '+(d[t]||0)).join('\n');
+    const compacta=tiposCortos.map(t=>'T'+t.slice(-1)+' <strong>'+(d[t]||0)+'</strong>').join(' &nbsp;·&nbsp; ');
+    return `<span class="vz-tipchip" data-tip="${tip}">${compacta}</span>`;
   };
   document.getElementById('cards-items').innerHTML=[
     // Mismos colores que el gráfico «¿De quién depende que podamos avanzar?»:
@@ -1243,7 +1256,7 @@ function renderTodo(){
       <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:8px">
         <span>${pct}%${univ!==TOTAL?' de su universo':' del universo'}</span><span>${x.sub}</span>
       </div>
-      <div style="display:flex;justify-content:center;gap:8px;font-size:11px;color:var(--text2);border-top:1px solid var(--border);padding-top:8px">${filaTipos(x.claveTipo)}</div>
+      <div style="display:flex;justify-content:center;font-size:11px;color:var(--text2);border-top:1px solid var(--border);padding-top:8px">${filaTipos(x.claveTipo)}</div>
     </div>`;
   }).join('');
 
@@ -2886,13 +2899,20 @@ function renderMetricas(){
     chartTerceros=new Chart(cvTer,{
       type:'line',
       plugins:[etiquetaFinal],
+      // Nuestra línea va PRIMERA y más gruesa: el gráfico compara lo que nos
+      // habilitan contra lo que alcanzamos a validar, y la distancia entre
+      // ambas es el trabajo disponible. Orden de color validado en este orden
+      // (azul→naranja→aqua→violeta es el que mejor separa bajo daltonismo).
       data:{labels:despLabels,datasets:[
+        {label:'Validadas por nosotros (Ítem 3)',etiqueta:'Nosotros',data:realDespVals,
+         borderColor:CL.nosotros,backgroundColor:'rgba(42,120,214,.10)',
+         borderWidth:2.5,pointRadius:0,pointHoverRadius:5,tension:.25,fill:'origin',spanGaps:false,order:1},
         {label:'Ítem 5 — Gabinetes',etiqueta:'Ítem 5',data:item5Vals,
-         borderColor:CL.item5,borderWidth:2,pointRadius:0,pointHoverRadius:5,tension:.25,fill:false,spanGaps:true},
+         borderColor:CL.item5,borderWidth:2,pointRadius:0,pointHoverRadius:5,tension:.25,fill:false,spanGaps:true,order:2},
         {label:'Ítem 1 — Bitel',etiqueta:'Bitel',data:item1Vals,
-         borderColor:CL.bitel,borderWidth:2,pointRadius:0,pointHoverRadius:5,tension:.25,fill:false,spanGaps:true},
+         borderColor:CL.bitel,borderWidth:2,pointRadius:0,pointHoverRadius:5,tension:.25,fill:false,spanGaps:true,order:3},
         {label:'Ítem 2 — Claro',etiqueta:'Claro',data:item2Vals,
-         borderColor:CL.claro,borderWidth:2,pointRadius:0,pointHoverRadius:5,tension:.25,fill:false,spanGaps:true}
+         borderColor:CL.claro,borderWidth:2,pointRadius:0,pointHoverRadius:5,tension:.25,fill:false,spanGaps:true,order:4}
       ]},
       options:opcionesLinea(dd.hoyIdx,745,despLabels,true)
     });
@@ -3979,7 +3999,15 @@ function renderDiagramaFlujoCompleto(opts) {
   const esV2             = (window.DIAGRAMA_DATOS||{}).formato === 'v2';
   const hayAlta          = (window.DIAGRAMA_DATOS.colAlta ?? -1) >= 0;
 
-  const C = { morado:'#7c3aed', verde:'#0d9488', azul:'#2563eb', gris:'#94a3b8', naranja:'#ea580c', ambar:'#d97706', rojo:'#b91c1c', linea:'#cbd5e1', texto:'#334155' };
+  // El diagrama pasó de 6 colores compitiendo a una sola idea:
+  //   AZUL  = está en nuestra cancha (y más oscuro = más avanzado)
+  //   GRIS  = no depende de nosotros
+  //   ROJO  = solo para lo que está en alerta
+  // La rampa azul de 4 pasos está validada (monótona, un solo tono, contraste OK).
+  const C = { gris:'#898781', linea:'#d8d7d0', texto:'#334155', rojo:'#d03b3b',
+              az1:'#86b6ef', az2:'#3987e5', az3:'#256abf', az4:'#0d366b',
+              // alias conservados para el resto de la función
+              morado:'#898781', verde:'#0d366b', azul:'#3987e5', naranja:'#898781', ambar:'#2a78d6' };
 
   const circulo = (valor,titulo,sub,color,cls) =>
     '<div class="dfx-c '+cls+'" style="border-color:'+color+'">'+
@@ -4021,11 +4049,28 @@ function renderDiagramaFlujoCompleto(opts) {
     '</div>';
   const flecha = () => '<div class="dfx-fl">→</div>';
 
-  const mini = (titulo,obj,color,bg,borde,pie) =>
+  // El desglose Tipo 1/2/3 se repetía en las 7 cajas: 21 números que ahogaban
+  // la cifra principal. Ahora viaja en el tooltip del círculo (helper tip()).
+  const tipTexto = obj => TV.map(t=>t+'   '+((obj||{})[t]||0)).join('\n');
+
+  // Círculo con el desglose por tipo al pasar el mouse.
+  const circuloT = (valor,titulo,sub,color,cls,obj) =>
+    '<div class="dfx-c dfx-tip '+cls+'" style="border-color:'+color+'" data-tip="'+tipTexto(obj)+'">'+
+      '<div class="dfx-n" style="color:'+color+'">'+valor+'</div>'+
+      '<div class="dfx-t" style="color:'+color+'">'+titulo+'</div>'+
+      (sub?'<div class="dfx-s" style="color:'+color+'">'+sub+'</div>':'')+
+    '</div>';
+
+  // Tarjeta: ahora lleva las LÍNEAS QUE IMPORTAN (el reparto real del grupo),
+  // no la repetición del desglose por tipo.
+  const mini = (titulo,color,bg,borde,lineas,pie) =>
     '<div class="dfx-card dfx-grow" style="background:'+bg+';border-color:'+borde+'">'+
       '<div class="dfx-card-t" style="color:'+color+';margin-bottom:4px">'+titulo+'</div>'+
-      TV.map(function(t){return '<div class="dfx-l"><span>'+t+'</span><strong>'+((obj||{})[t]||0)+'</strong></div>';}).join('')+
-      (pie?'<div class="dfx-pie" style="border-color:'+borde+';color:'+color+'">'+pie+'</div>':'')+
+      (lineas||[]).map(function(l){
+        return '<div class="dfx-l"><span'+(l.alerta?' style="color:#b91c1c;font-weight:700"':'')+'>'+l.t+'</span>'+
+               '<strong'+(l.alerta?' style="color:#b91c1c"':'')+'>'+l.v+'</strong></div>';
+      }).join('')+
+      (pie?'<div class="dfx-pie" style="'+((lineas||[]).length?'border-color:'+borde+';':'border:none;margin-top:0;padding-top:0;')+'color:'+color+'">'+pie+'</div>':'')+
     '</div>';
 
   const estilos =
@@ -4054,6 +4099,16 @@ function renderDiagramaFlujoCompleto(opts) {
   '.dfx-l strong{color:'+C.texto+'}'+
   '.dfx-pie{margin-top:5px;padding-top:4px;border-top:1px dashed;font-size:9px;font-weight:700}'+
   '.dfx-tipo{display:flex;align-items:center;gap:10px}'+
+  '.dfx-tip{cursor:help;position:relative}'+
+  '.dfx-tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 9px);left:50%;'+
+    'transform:translateX(-50%);background:rgba(11,11,11,.93);color:#fff;font-size:10.5px;'+
+    'font-weight:600;line-height:1.55;white-space:pre;padding:7px 11px;border-radius:6px;'+
+    'opacity:0;pointer-events:none;transition:opacity .12s;z-index:30;font-family:inherit}'+
+  '.dfx-tip::before{content:"";position:absolute;bottom:calc(100% + 3px);left:50%;'+
+    'transform:translateX(-50%);border:5px solid transparent;border-top-color:rgba(11,11,11,.93);'+
+    'opacity:0;pointer-events:none;transition:opacity .12s;z-index:30}'+
+  '.dfx-tip:hover::after,.dfx-tip:hover::before{opacity:1}'+
+  '.dfx-nota{margin-top:14px;font-size:10.5px;color:#94a3b8;line-height:1.5}'+
   '.dfx-cmp{padding:4px 0}'+
   '.dfx-cmp .dfx-flow{min-width:860px}'+
   '.dfx-cmp .dfx-xl{width:96px;height:96px}.dfx-cmp .dfx-xl .dfx-n{font-size:28px}'+
@@ -4072,7 +4127,7 @@ function renderDiagramaFlujoCompleto(opts) {
   '.dfx-cierre-t{font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.6px;margin-bottom:8px}'+
   '.dfx-cadena{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'+
   '.dfx-paso{flex:1;min-width:92px;text-align:center;border:2px solid;border-radius:8px;padding:7px 6px;background:#fff}'+
-  '.dfx-paso-f{box-shadow:0 0 0 3px rgba(13,148,136,.12)}'+
+  '.dfx-paso-f{box-shadow:0 0 0 3px rgba(13,54,107,.10)}'+
   '.dfx-fl{color:#cbd5e1;font-size:15px;flex-shrink:0}'+
   '.dfx-foot{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0}'+
   '@media(max-width:900px){'+
@@ -4106,101 +4161,120 @@ function renderDiagramaFlujoCompleto(opts) {
     '<strong>Estos datos son de una carga anterior.</strong> Ve a «Registrar y cargar avance» y sube la Plantilla_Carga_SDWAN_PJ_v6 una vez para actualizar el diagrama.'+
     '</div>';
 
-  // Esta tira se redujo de 6 a 3 datos: «Universo» ya está en el título de la
-  // tarjeta, y «Validadas» y «Alta operativa» están en la tira de portada.
-  // Quedan solo los tres que el diagrama necesita como encabezado y que además
-  // SÍ responden al filtro de zona.
-  const resumen =
-    '<div class="dfx-top">'+
-      '<div class="dfx-top-i"><span class="dfx-top-l">CON GABINETE</span><span class="dfx-top-v" style="color:'+C.morado+'">'+totalGabinete+'</span><span class="dfx-top-s">Ítem 5 · '+Math.round(totalGabinete/totalUniverso*100)+'% de '+totalUniverso+(ambitoSel?' · '+ambitoSel:'')+'</span></div>'+
-      '<div class="dfx-top-i"><span class="dfx-top-l">EQUIPO INSTALADO</span><span class="dfx-top-v" style="color:'+C.verde+'">'+totalItem3+'</span><span class="dfx-top-s">Ítem 3 · '+totalConEnlace+' con enlace</span></div>'+
-      '<div class="dfx-top-i"><span class="dfx-top-l">CON VISITA AGENDADA</span><span class="dfx-top-v" style="color:'+(totalAgendadas?C.azul:'#94a3b8')+'">'+totalAgendadas+'</span><span class="dfx-top-s">Fecha vigente en el historial</span></div>'+
-    '</div>';
+  // La tira de cifras de encabezado se eliminó: repetía exactamente los dos
+  // círculos más grandes del árbol que va justo debajo. Lo único que aporta es
+  // decir qué ámbito está filtrado, así que queda una sola línea de texto.
+  const resumen = ambitoSel
+    ? '<div style="font-size:11.5px;color:#64748b;margin-bottom:14px">Filtrado por <strong>'+ambitoSel+'</strong> · '+totalUniverso+' sedes en el ámbito</div>'
+    : '';
 
   const cierre = (esV2&&totalCierre>0) ?
     '<div class="dfx-cierre">'+
       '<div class="dfx-cierre-t">FASE DE CIERRE DOCUMENTARIO — continúa con las '+totalCierre+' sedes ya validadas</div>'+
       '<div class="dfx-cadena">'+
-        paso(totalValidadoDoc,'Pend.<br>documentación',C.ambar)+ flecha()+
-        paso(totalValid,'En validación<br>Ítem 5',C.azul)+ flecha()+
-        paso(totalConf,'En conformidad<br>PJ',C.morado)+ flecha()+
-        paso(totalAlta,'ALTA<br>OPERATIVA',C.verde,true)+
+        paso(totalValidadoDoc,'Pend.<br>documentación',C.az1)+ flecha()+
+        paso(totalValid,'En validación<br>Ítem 5',C.az2)+ flecha()+
+        paso(totalConf,'En conformidad<br>PJ',C.az3)+ flecha()+
+        paso(totalAlta,'ALTA<br>OPERATIVA',C.az4,true)+
       '</div>'+
       '<div class="dfx-cierre-p">Sin conformidad del Poder Judicial la sede no se considera entregada, aunque el servicio ya esté activo.</div>'+
     '</div>' : '';
+
+  // ============================================================
+  //  ÁRBOL PODADO (2026-09)
+  //  Antes: 10 círculos en 4 niveles. «Programadas», «Reprogramar» y
+  //  «Programables» eran tres círculos para una sola pregunta —¿qué hay que
+  //  agendar?— y «Sin enlace» colgaba aparte aunque ya tiene equipo puesto.
+  //  Ahora: 6 círculos bajo el universo, el reparto vive dentro de la tarjeta
+  //  y el desglose Tipo 1/2/3 viaja en el tooltip de cada círculo.
+  //  El rackeo ya no es una etapa: es historial, y baja a la nota al pie.
+  // ============================================================
+
+  // Grupo 1 — equipo puesto, aún sin validar (pruebas pendientes + las que
+  // esperan enlace: ya tienen el equipo, se regularizan solas).
+  const sinValidar      = totalListoPru + totalSinEnlace;
+  const sinValidarTipo  = TV.reduce((o,t)=>{o[t]=(D.listo_pruebas?.[t]||0)+(D.item3_sin_enlace?.[t]||0);return o;},{});
+
+  // Grupo 2 — todo lo que depende de que alguien salga a campo.
+  const porAgendar      = totalProgramables + totalReprog + totalProgramados;
+  const porAgendarTipo  = TV.reduce((o,t)=>{o[t]=(D.pendientes_programables?.[t]||0)+
+                              (D.reprog_pendiente?.[t]||0)+(D.programados?.[t]||0);return o;},{});
+
+  const notaPie =
+    '<div class="dfx-nota">'+
+      'Pasa el mouse sobre cualquier círculo para ver el desglose por Tipo 1 / 2 / 3.'+
+      (totalRackeoReal>0
+        ? ' · <strong>'+totalRackeoReal+'</strong> sedes se instalaron bajo el criterio inicial (solo gabinete, sin enlace): '+
+          'es una base histórica cerrada, no una etapa del flujo.'
+        : '')+
+    '</div>';
 
   el.innerHTML = estilos +
   '<div class="dfx-wrap'+(compacto?' dfx-cmp':'')+'">'+ avisoViejo + (compacto?'':resumen) +
     '<div class="dfx-flow">'+
 
-      '<div class="dfx-mid">'+ circulo(totalGabinete,'SEDES CON<br>GABINETE','(Ítem 5)',C.morado,'dfx-xl') +'</div>'+
-      conector([30,86],40)+
+      '<div class="dfx-mid">'+ circuloT(totalGabinete,'SEDES CON<br>GABINETE','entregadas por Ítem 5',C.gris,'dfx-xl',D.gabinete) +'</div>'+
+      conector([30,80],40)+
 
-      '<div class="dfx-col dfx-ind" style="gap:20px">'+
+      '<div class="dfx-col dfx-ind" style="gap:22px">'+
 
-        // Rama: equipo ya instalado
+        // ---------- RAMA A: equipo ya instalado ----------
         '<div class="dfx-row">'+
-          '<div class="dfx-mid">'+ circulo(totalItem3,'EQUIPO<br>INSTALADO','(Ítem 3)',C.verde,'dfx-lg') +'</div>'+
-          conector([26,76],36)+
-          '<div class="dfx-col dfx-ind" style="justify-content:space-around;gap:14px">'+
+          '<div class="dfx-mid">'+ circuloT(totalItem3,'EQUIPO<br>INSTALADO','nuestro',C.az3,'dfx-lg',D.item3) +'</div>'+
+          conector([28,74],36)+
+          '<div class="dfx-col dfx-ind" style="gap:12px">'+
 
-            '<div class="dfx-row">'+
-              '<div class="dfx-mid">'+ circulo(totalConEnlace,'CON ENLACE','Habilitadas',C.azul,'dfx-md') +'</div>'+
-              conector([25,75],34)+
-              '<div class="dfx-col dfx-ind" style="gap:10px">'+
-                '<div class="dfx-fila">'+
-                  circulo(totalListoPru,'LISTO PARA<br>PRUEBAS','Falta validar',C.azul,'dfx-md')+
-                  mini('PENDIENTE DE VALIDAR',D.listo_pruebas,C.azul,'#eff6ff','#bfdbfe',
-                       totalAgendListo>0
-                         ? totalAgendListo+' ya tienen visita agendada · '+(sum(D.listo_pruebas)-totalAgendListo)+' sin fecha'
-                         : 'Requieren una salida de pruebas y validación — ninguna tiene fecha agendada')+
-                '</div>'+
-                '<div class="dfx-fila">'+
-                  circulo(totalCierre,'VALIDADAS','Validación completada',C.verde,'dfx-md')+
-                  mini('YA VALIDADAS',validadasTipo,C.verde,'#f0fdfa','#99f6e4','Entran al ciclo de alta operativa')+
-                '</div>'+
-              '</div>'+
+            '<div class="dfx-fila">'+
+              circuloT(sinValidar,'SIN VALIDAR','equipo puesto',C.az1,'dfx-md',sinValidarTipo)+
+              mini('FALTA LA VALIDACIÓN',C.az3,'#eff6ff','#cfe2fa',[
+                {t:'Listo para pruebas',v:totalListoPru},
+                {t:'Esperando enlace (se regulariza sola)',v:totalSinEnlace}
+              ], totalAgendListo>0
+                   ? totalAgendListo+' ya tienen visita agendada'
+                   : 'Ninguna tiene fecha agendada')+
             '</div>'+
 
             '<div class="dfx-fila">'+
-              circulo(totalSinEnlace,'SIN ENLACE','Espera Ítem 1/2',C.gris,'dfx-md')+
-              mini('RACKEADAS SIN ENLACE',D.item3_sin_enlace,'#64748b','#f8fafc','#e2e8f0','Se regularizan al llegar el enlace')+
+              circuloT(totalCierre,'VALIDADAS','pruebas OK',C.az4,'dfx-md',validadasTipo)+
+              mini('YA VALIDADAS',C.az4,'#eef4fd','#cfe2fa',[
+                {t:'Pendiente de documentación',v:totalValidadoDoc},
+                {t:'Alta operativa (conformidad PJ)',v:totalAlta}
+              ],'El detalle del cierre documentario va abajo')+
             '</div>'+
-
 
           '</div>'+
         '</div>'+
 
-        // Rama: sin equipo
+        // ---------- RAMA B: sin equipo ----------
         '<div class="dfx-row">'+
-          '<div class="dfx-mid">'+ circulo(totalPendientes,'SIN EQUIPO','(Ítem 3 no instaló)',C.naranja,'dfx-lg') +'</div>'+
-          conector([28,78],36)+
+          '<div class="dfx-mid">'+ circuloT(totalPendientes,'SIN EQUIPO','aún no instalado',C.gris,'dfx-lg',D.pendientes) +'</div>'+
+          conector([28,74],36)+
           '<div class="dfx-col dfx-ind" style="gap:12px">'+
-            (esV2 ?
-              '<div class="dfx-fila">'+
-                circulo(totalProgramados,'PROGRAMADAS','Sin equipo, con fecha',C.azul,'dfx-md')+
-                mini('AGENDADAS',D.programados,C.azul,'#eff6ff','#bfdbfe','Atención con fecha en el historial')+
-              '</div>'+
-              '<div class="dfx-fila">'+
-                circulo(totalReprog,'REPROGRAMAR','Atención quebrada',C.rojo,'dfx-md')+
-                mini('REQUIEREN FECHA NUEVA',D.reprog_pendiente,C.rojo,'#fef2f2','#fecaca','La última atención no se concretó')+
-              '</div>'
-              : '')+
+
             '<div class="dfx-fila">'+
-              circulo(totalProgramables,'PROGRAMABLES','Ya tienen enlace',C.ambar,'dfx-md')+
-              mini('LISTAS PARA AGENDAR',D.pendientes_programables,C.ambar,'#fffbeb','#fde68a','Criterio vigente: gabinete + enlace')+
+              circuloT(porAgendar,'POR AGENDAR','depende de nosotros',C.az2,'dfx-md',porAgendarTipo)+
+              mini('LISTAS PARA SALIR A CAMPO',C.az3,'#eff6ff','#cfe2fa',[
+                {t:'Nunca visitadas',v:totalProgramables},
+                {t:'Atención quebrada — rehacer fecha',v:totalReprog},
+                {t:'Con fecha vigente',v:totalProgramados,alerta:totalProgramados===0}
+              ], totalProgramados===0
+                   ? '⚠ Pipeline vacío: ninguna de las '+porAgendar+' tiene fecha'
+                   : 'Criterio vigente: gabinete + enlace')+
             '</div>'+
+
             '<div class="dfx-fila">'+
-              circulo(totalEspera,'EN ESPERA','Falta enlace',C.gris,'dfx-md')+
-              mini('SIN ENLACE AÚN',enEspera,'#64748b','#f8fafc','#e2e8f0','Esperan a Ítem 1 o Ítem 2')+
+              circuloT(totalEspera,'ESPERANDO<br>ENLACE','depende de terceros',C.gris,'dfx-md',enEspera)+
+              mini('BLOQUEADAS POR ÍTEM 1 / 2',C.gris,'#f7f7f5','#e4e3dd',[],
+                   'Tienen gabinete pero no enlace. No podemos programarlas hasta que Bitel o Claro entreguen.')+
             '</div>'+
+
           '</div>'+
         '</div>'+
 
       '</div>'+
     '</div>'+
 
-    cierre +
+    cierre + notaPie +
   '</div>';
 }
 
@@ -4361,11 +4435,15 @@ cargarItemsExternos().then(()=>{
     if(l2){
       const g=ult(ctx.item5Vals), b=ult(ctx.item1Vals), c=ult(ctx.item2Vals);
       const espera=sum(D.pendientes_en_espera);
+      const UNI=r.UNIV||745;
+      const habilitadas=UNI-espera;                       // gabinete + al menos un enlace
+      const brecha=Math.max(0,habilitadas-(r.validadas||0));
       const q=D.quiebres||{};
       const terceros=(q['Poder Judicial']||0)+(q['Ítem 1 / Ítem 2']||0)+(q['Item 1 / Item 2']||0);
       l2.innerHTML='Ítem 5 ha entregado <b>'+nf(g)+'</b> gabinetes; Bitel <b>'+nf(b)+'</b> enlaces y Claro <b>'+nf(c)+'</b>. '+
-        'Hoy hay <b>'+nf(espera)+'</b> sedes con gabinete listo que no podemos tocar porque les falta el enlace: '+
-        'esas esperan a Bitel o a Claro, no a nosotros.'+
+        'Entre los tres tenemos <b>'+nf(habilitadas)+'</b> sedes habilitadas y hemos validado <b>'+nf(r.validadas||0)+'</b>: '+
+        'la brecha de <b>'+nf(brecha)+' sedes</b> es trabajo que ya podemos hacer sin esperar a nadie. '+
+        'Las otras <b>'+nf(espera)+'</b> sí esperan a Bitel o a Claro.'+
         (terceros>0?' Además, <b>'+nf(terceros)+'</b> sedes tienen su última atención quebrada por causa de terceros (PJ o Ítems 1/2).':'');
     }
   };
