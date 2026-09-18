@@ -15,6 +15,76 @@
 <link rel="stylesheet" href="css/dashboard.css">
 <link rel="stylesheet" href="css/utilities.css">
 <link rel="stylesheet" href="css/responsive.css">
+<style>
+/* ============================================================
+   CAPA VISUAL NUEVA (2026-09) — autocontenida.
+   Regla de color del tablero:  AZUL = nosotros (Ítem 3).
+   Cualquier otro color = un tercero. Nunca se mezcla.
+   Paleta validada (contraste + daltonismo) antes de usarse.
+   ============================================================ */
+.viz{
+  --nosotros:#2a78d6;      /* Ítem 3 — única serie propia */
+  --item5:#eb6834;         /* Ítem 5 — gabinetes */
+  --bitel:#1baf7a;         /* Ítem 1 — Bitel */
+  --claro:#4a3aa7;         /* Ítem 2 — Claro */
+  --ref:#898781;           /* referencias: plan, metas */
+  --grid:#e1e0d9;
+  --ink:#0b0b0b; --ink2:#52514e; --ink3:#898781;
+  --ok:#0ca30c; --warn:#fab219; --crit:#d03b3b;
+}
+/* --- tira de cifras: 4 datos, sin recuadros --- */
+.vz-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0;
+  border:1px solid var(--grid);border-radius:12px;overflow:hidden;background:#fff;margin-bottom:16px}
+.vz-cell{padding:14px 18px;border-right:1px solid var(--grid)}
+.vz-cell:last-child{border-right:none}
+.vz-cell .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);margin-bottom:6px}
+.vz-cell .v{font-size:27px;font-weight:650;line-height:1.05;color:var(--ink)}
+.vz-cell .s{font-size:11.5px;color:var(--ink2);margin-top:4px;line-height:1.35}
+@media(max-width:640px){.vz-cell{border-right:none;border-bottom:1px solid var(--grid)}
+  .vz-cell:last-child{border-bottom:none}.vz-cell .v{font-size:23px}}
+/* --- reloj del proyecto --- */
+.vz-tl{position:relative;margin:26px 6px 14px;height:124px}
+.vz-tl-line{position:absolute;top:30px;left:0;right:0;height:2px;background:var(--grid)}
+.vz-tl-done{position:absolute;top:30px;left:0;height:2px;background:var(--nosotros)}
+.vz-tl-m{position:absolute;top:0;transform:translateX(-50%);text-align:center;width:132px}
+.vz-tl-m.n1 .vz-tl-lbl,.vz-tl-m.n1 .vz-tl-d{position:relative;top:46px}
+.vz-tl-m.n1::after{content:'';position:absolute;left:50%;top:37px;width:1px;height:44px;background:var(--grid)}
+.vz-tl-dot{width:9px;height:9px;border-radius:50%;margin:26px auto 0;box-shadow:0 0 0 2px #fff}
+.vz-tl-lbl{font-size:10.5px;color:var(--ink2);margin-top:6px;line-height:1.3}
+.vz-tl-d{font-size:11px;font-weight:650;color:var(--ink)}
+.vz-hoy{position:absolute;top:14px;transform:translateX(-50%);text-align:center}
+.vz-hoy-b{font-size:10px;font-weight:700;color:#fff;background:var(--nosotros);
+  padding:2px 7px;border-radius:9px;white-space:nowrap}
+.vz-hoy-s{width:2px;height:20px;background:var(--nosotros);margin:2px auto 0}
+/* En pantalla angosta tres hitos no caben en una línea: pasa a lista vertical. */
+@media(max-width:560px){
+  .vz-tl{height:auto;margin:8px 0 0}
+  .vz-tl-line,.vz-tl-done,.vz-hoy{display:none}
+  .vz-tl-m{position:static;transform:none;width:auto;text-align:left;
+    display:flex;align-items:center;gap:9px;padding:9px 0;border-top:1px solid var(--grid)}
+  .vz-tl-m.n1 .vz-tl-lbl,.vz-tl-m.n1 .vz-tl-d{position:static;top:0}
+  .vz-tl-m.n1::after{display:none}
+  .vz-tl-dot{margin:0;flex:0 0 9px}
+  .vz-tl-d,.vz-tl-lbl{margin:0}
+  .vz-tl-lbl{color:var(--ink2)}
+}
+/* --- nota de lectura bajo cada gráfico --- */
+.vz-read{font-size:12.5px;color:var(--ink2);line-height:1.55;margin-top:12px;
+  padding-top:11px;border-top:1px solid var(--grid)}
+.vz-read b{color:var(--ink);font-weight:650}
+.vz-sub{font-size:12px;color:var(--ink3);margin:-4px 0 14px;line-height:1.5}
+/* --- barra de responsabilidad --- */
+.vz-bars{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+.vz-bar-r{display:grid;grid-template-columns:130px 1fr 42px;align-items:center;gap:10px;font-size:12.5px}
+.vz-bar-t{background:var(--grid);border-radius:3px;height:16px;overflow:hidden}
+.vz-bar-f{height:16px;border-radius:3px}
+.vz-bar-n{text-align:right;font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums}
+/* --- sub-navegación de Datos --- */
+.vz-subnav{display:flex;gap:2px;margin-bottom:16px;border-bottom:1px solid var(--grid);flex-wrap:wrap}
+.vz-subnav button{background:none;border:none;padding:9px 15px;font-size:13px;color:var(--ink2);
+  cursor:pointer;border-bottom:2px solid transparent;font-family:inherit}
+.vz-subnav button.on{color:var(--nosotros);border-bottom-color:var(--nosotros);font-weight:650}
+</style>
 </head>
 <body>
 
@@ -42,22 +112,58 @@
 </div>
 
 <div class="tabs">
-  <button class="tab active" onclick="window.showTab('dashboard')">Dashboard</button>
-  <button class="tab" id="tabbtn-ejecutivo" style="display:none" onclick="window.showTab('ejecutivo')">Vista Ejecutiva</button>
-  <button class="tab" onclick="window.showTab('metricas')">Métricas</button>
-  <button class="tab" id="tabbtn-gestion" style="display:none" onclick="window.showTab('gestion')">Registrar y cargar avance</button>
-  <button class="tab" id="tabbtn-historial" style="display:none" onclick="window.showTab('historial')">Historial</button>
+  <button class="tab active" id="tabbtn-resumen" onclick="window.showGrupo('resumen')">Resumen</button>
+  <button class="tab" id="tabbtn-operacion" style="display:none" onclick="window.showGrupo('operacion')">Operación</button>
+  <button class="tab" id="tabbtn-datos" style="display:none" onclick="window.showGrupo('datos')">Datos</button>
 </div>
 
 <div class="content">
+
+<!-- sub-navegación del grupo «Datos» -->
+<div class="vz-subnav viz" id="datos-subnav" style="display:none">
+  <button data-sub="metricas"  class="on" onclick="window.showTab('metricas')">Avance en el tiempo</button>
+  <button data-sub="gestion"   onclick="window.showTab('gestion')">Cargar plantilla</button>
+  <button data-sub="historial" onclick="window.showTab('historial')">Historial y auditoría</button>
+</div>
+
 
 <!-- VISTA EJECUTIVA -->
 <div id="tab-ejecutivo" style="display:none">
   <div id="ejecutivo-contenido"></div>
 </div>
 
-<!-- DASHBOARD -->
+<!-- RESUMEN -->
 <div id="tab-dashboard">
+
+  <!-- ===== CIFRAS DE PORTADA (4 datos, sin recuadros de colores) ===== -->
+  <div class="viz">
+    <div class="vz-row" id="vz-cifras"></div>
+    <div style="font-size:11px;color:#898781;margin:-10px 0 16px">Cifras del proyecto completo (745 sedes). El filtro por zona de más abajo no afecta a esta tira.</div>
+  </div>
+
+  <!-- ===== RELOJ DEL PROYECTO: las 3 fechas que deciden el contrato ===== -->
+  <div class="card viz" style="margin-bottom:16px">
+    <div class="card-title">Reloj del proyecto</div>
+    <div class="vz-sub">Las tres fechas que definen el contrato, y dónde estamos hoy respecto de ellas.</div>
+    <div id="vz-hitos"></div>
+    <div class="vz-read" id="vz-hitos-lectura"></div>
+  </div>
+
+  <!-- ===== ¿CÓMO VAMOS CONTRA EL PLAN? (una sola serie propia) ===== -->
+  <div class="card viz" style="margin-bottom:16px">
+    <div class="card-title">¿Cómo vamos contra el plan?</div>
+    <div class="vz-sub">Sedes validadas por nosotros (Ítem 3), acumuladas. La línea gris es el plan; la punteada, el ritmo que haría falta desde hoy para llegar al 03/12.</div>
+    <canvas id="chart-desp" style="width:100%;max-height:300px"></canvas>
+    <div class="vz-read" id="vz-lectura-plan"></div>
+  </div>
+
+  <!-- ===== ¿DE QUIÉN DEPENDE QUE PODAMOS AVANZAR? (terceros, escala propia) ===== -->
+  <div class="card viz" style="margin-bottom:16px">
+    <div class="card-title">¿De quién depende que podamos avanzar?</div>
+    <div class="vz-sub">Una sede solo entra a nuestro trabajo cuando tiene gabinete (Ítem 5) y al menos un enlace (Bitel o Claro). Esto es lo que han entregado ellos.</div>
+    <canvas id="chart-terceros" style="width:100%;max-height:300px"></canvas>
+    <div class="vz-read" id="vz-lectura-terceros"></div>
+  </div>
 
   <!-- AVANCE ITEM 1, 2 Y 5 (antes estaba después del embudo; ahora va primero) -->
   <div class="card" style="margin-bottom:16px">
@@ -103,9 +209,10 @@
       <div style="color:#9ca3af;text-align:center;padding:40px;font-size:14px">Carga la Plantilla_Carga para ver el diagrama de flujo</div>
     </div>
 
-    <!-- Bloque Despliegue -->
-    <div class="section-label">Despliegue en campo: Cantidad Sedes Instaladas</div>
-    <div class="desp-grid">
+    <!-- Bloque Despliegue — OCULTO: duplicaba lo que ya muestra el diagrama de flujo.
+         Los nodos se conservan porque renderTodo() escribe en ellos. -->
+    <div class="section-label" style="display:none">Despliegue en campo: Cantidad Sedes Instaladas</div>
+    <div class="desp-grid" style="display:none">
       <div class="funnel-card" style="border-top:3px solid var(--amber)">
         <div style="font-size:18px;margin-bottom:4px">🏗️</div>
         <div class="num" id="f-solo5" style="color:var(--amber)">0</div>
@@ -144,11 +251,12 @@
     </div>
   </div>
 
-  <!-- KPIs rápidos -->
-  <div class="kpi-row" id="kpis-rapidos"></div>
+  <!-- KPIs rápidos — OCULTOS (se alimentaban del registro manual diario, sin uso desde julio).
+       El nodo se conserva porque renderTodo() le escribe innerHTML sin verificar. -->
+  <div class="kpi-row" id="kpis-rapidos" style="display:none"></div>
 
-  <!-- LINEA DE PRODUCCION (antes estaba primero; ahora va donde estaba Avance Ítems de Soporte) -->
-  <div class="card" style="margin-bottom:16px">
+  <!-- LINEA DE PRODUCCION — OCULTA por la misma razón (fuente: log manual abandonado). -->
+  <div class="card" style="margin-bottom:16px;display:none">
     <div class="section-label">Linea de produccion 1 y 2 (NIRQA — TIC+)</div>
     <div class="prod-grid">
       <div class="funnel-card" style="border-top:3px solid var(--teal)">
@@ -426,19 +534,10 @@
     <div id="dias-habiles-container">Cargando...</div>
   </div>
 
-  <!-- Curva S Despliegue - PUBLICO -->
-  <div class="card">
-    <div class="card-title">Curva S — Despliegue SD-WAN (TIC+/NQ)</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Planificado 08/07 → 31/08 · 745 sedes · Lun-Vie sin feriados (23/07, 28-29/07, 04/08, 06/08)</div>
-    <canvas id="chart-desp" style="width:100%;max-height:320px"></canvas>
-  </div>
-
-  <!-- Curva S Produccion - PUBLICO -->
-  <div class="card">
-    <div class="card-title">Curva S — Configuración de sedes (Línea de Producción NIRQA)</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Planificado 02/07 → 25/07 · 745 sedes · Lun-Sáb sin feriado (23/07)</div>
-    <canvas id="chart-prod" style="width:100%;max-height:320px"></canvas>
-  </div>
+  <!-- Las dos Curvas S salieron de aquí:
+       · «Despliegue» se movió a Resumen, partida en dos gráficos legibles.
+       · «Configuración NIRQA» se retiró: se alimentaba del registro manual diario,
+         sin actualizar desde julio, así que mostraba una línea plana falsa. -->
 
   <!-- Avance por coordinador - SOLO LOGUEADOS -->
   <div class="card" id="card-coordinadores" style="display:none">
@@ -808,18 +907,15 @@ function actualizarUI(){
   const bls=document.getElementById('btn-limpiar-semaforo');if(bls)bls.style.display=esAdmin?'inline-flex':'none';
   const crEst=document.getElementById('card-reconstruir-estado');if(crEst)crEst.style.display=esAdmin?'block':'none';
 
-  // Pestañas operativas: solo visibles para coordinadores/admin autorizados
-  const tbGestion=document.getElementById('tabbtn-gestion'),tbHistorial=document.getElementById('tabbtn-historial');
-  if(tbGestion)tbGestion.style.display=esAutorizado?'':'none';
-  if(tbHistorial)tbHistorial.style.display=esAutorizado?'':'none';
-  // Vista Ejecutiva: solo administradores
-  const tbEjec=document.getElementById('tabbtn-ejecutivo');
-  if(tbEjec)tbEjec.style.display=esAdmin?'':'none';
-  if(!esAdmin&&document.getElementById('tab-ejecutivo')?.style.display==='block')window.showTab('dashboard');
-  if(!esAutorizado){
-    const activaOculta=(document.getElementById('tab-gestion')?.style.display==='block')||(document.getElementById('tab-historial')?.style.display==='block');
-    if(activaOculta)window.showTab('dashboard');
-  }
+  // Pestañas: Resumen es pública · Datos requiere autorización · Operación es solo admin
+  const tbDatos=document.getElementById('tabbtn-datos');
+  if(tbDatos)tbDatos.style.display=esAutorizado?'':'none';
+  const tbOper=document.getElementById('tabbtn-operacion');
+  if(tbOper)tbOper.style.display=esAdmin?'':'none';
+  // Si el usuario pierde permisos con una pestaña restringida abierta, regresa a Resumen
+  const abierta=t=>document.getElementById('tab-'+t)?.style.display==='block';
+  if((!esAdmin&&abierta('ejecutivo'))||(!esAutorizado&&(abierta('gestion')||abierta('historial')||abierta('metricas'))))
+    window.showGrupo('resumen');
   if(registros.length)renderTodo();
   renderSemaforo();
   renderEliminados();
@@ -1125,9 +1221,11 @@ function renderTodo(){
     return `<div style="display:flex;flex-direction:column;gap:4px;width:100%">${tiposCortos.map(t=>`<div style="display:flex;justify-content:space-between;font-size:11px"><span>${t}</span><strong>${d[t]||0}</strong></div>`).join('')}</div>`;
   };
   document.getElementById('cards-items').innerHTML=[
-    {lbl:'Ítem 5 — Gabinetes',val:it5,color:'#0F6E56',bg:'#E1F5EE',sub:'Instalación en sede',icon:'🗄️',claveTipo:'item5'},
-    {lbl:'Ítem 1 — Bitel (enlaces)',val:it1,color:'#534AB7',bg:'#EEEDFE',sub:'Enlace principal activo',icon:'📡',claveTipo:'item1'},
-    {lbl:'Ítem 2 — Claro (enlaces)',val:it2,color:'#B07A10',bg:'#FFF8E1',sub:'Enlace activo',icon:'🔗',claveTipo:'item2'},
+    // Mismos colores que el gráfico «¿De quién depende que podamos avanzar?»:
+    // el color sigue al ítem en todo el tablero, no a la posición de la tarjeta.
+    {lbl:'Ítem 5 — Gabinetes',val:it5,color:'#eb6834',bg:'#fdf0eb',sub:'Instalación en sede',icon:'',claveTipo:'item5'},
+    {lbl:'Ítem 1 — Bitel (enlaces)',val:it1,color:'#1baf7a',bg:'#eafaf3',sub:'Enlace principal activo',icon:'',claveTipo:'item1'},
+    {lbl:'Ítem 2 — Claro (enlaces)',val:it2,color:'#4a3aa7',bg:'#eeedfa',sub:'Enlace activo',icon:'',claveTipo:'item2'},
   ].map(x=>{
     const univ=UNIVERSO_ITEM[x.claveTipo]||TOTAL;
     const pct=Math.round(x.val/univ*100);
@@ -2140,12 +2238,29 @@ window.confirmarBorrar=async function(){
 // UI — Navegación por pestañas
 // ============================================================
 const TABS_ORDEN=['dashboard','ejecutivo','metricas','gestion','historial'];
+// Tres grupos visibles; los cinco contenedores internos siguen existiendo intactos.
+const GRUPO_DE={dashboard:'resumen',ejecutivo:'operacion',metricas:'datos',gestion:'datos',historial:'datos'};
+const DATOS_SUB=['metricas','gestion','historial'];
 window.showTab=function(name){
-  TABS_ORDEN.forEach(t=>document.getElementById('tab-'+t).style.display=t===name?'block':'none');
-  document.querySelectorAll('.tabs .tab').forEach((b,i)=>b.classList.toggle('active',TABS_ORDEN[i]===name));
+  TABS_ORDEN.forEach(t=>{const el=document.getElementById('tab-'+t);if(el)el.style.display=t===name?'block':'none';});
+  const g=GRUPO_DE[name]||'resumen';
+  ['resumen','operacion','datos'].forEach(k=>{
+    const b=document.getElementById('tabbtn-'+k); if(b)b.classList.toggle('active',k===g);
+  });
+  // barra de sub-navegación de «Datos»
+  const sn=document.getElementById('datos-subnav');
+  if(sn){
+    sn.style.display=g==='datos'?'flex':'none';
+    sn.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.sub===name));
+  }
+  if(name==='dashboard'){ try{renderMetricas();}catch(e){console.warn('renderMetricas',e);} }
   if(name==='ejecutivo')renderEjecutivo();
   if(name==='metricas')renderMetricas();
   if(name==='historial'){renderEliminados();renderEdiciones();}
+};
+// Punto de entrada de las 3 pestañas: cada grupo abre su contenedor por defecto.
+window.showGrupo=function(g){
+  window.showTab(g==='resumen'?'dashboard':g==='operacion'?'ejecutivo':'metricas');
 };
 window.showSubTab=function(name){
   ['plantilla','subir','seguimiento'].forEach(t=>{const el=document.getElementById('subtab-'+t);if(el)el.style.display=t===name?'block':'none';});
@@ -2244,6 +2359,8 @@ window.initFiltrosDashboard=function(force){
 };
 
 window.renderTodo=renderTodo;
+// Expuesto para que la capa de lectura pueda repintar los gráficos tras cargar la plantilla.
+window.renderMetricas=renderMetricas;
 window.renderMetricas=renderMetricas;
 document.getElementById('f-fecha').value=hoy();
 
@@ -2329,7 +2446,7 @@ function sumarDHMetrica(desdeStr,n){let d=new Date(desdeStr+'T00:00:00'),c=0;whi
 // ============================================================
 // GRÁFICOS — Métricas, curvas S, SPI y avance por coordinador
 // ============================================================
-let chartProd=null,chartDesp=null,chartCoordProd=null,chartCoordDesp=null;
+let chartProd=null,chartDesp=null,chartCoordProd=null,chartCoordDesp=null,chartTerceros=null;
 
 function renderMetricas(){
   const hoyStr=hoy();
@@ -2496,32 +2613,54 @@ function renderMetricas(){
       emptyEl.style.display='block';chartsEl.style.display='none';
     }else{
       emptyEl.style.display='none';chartsEl.style.display='grid';
+      // Ejes compartidos: rejilla de un solo tono, sin título de eje redundante.
+      const ejeBarra=apilado=>({
+        y:{stacked:!!apilado,beginAtZero:true,border:{display:false},
+           grid:{color:'#e1e0d9',drawTicks:false},
+           ticks:{color:'#52514e',font:{size:11},padding:8,maxTicksLimit:6}},
+        x:{stacked:!!apilado,border:{color:'#e1e0d9'},grid:{display:false},
+           ticks:{color:'#52514e',font:{size:11}}}
+      });
+      const tipTexto={backgroundColor:'rgba(11,11,11,.92)',padding:10,cornerRadius:6,
+        titleFont:{size:11.5},bodyFont:{size:12},boxWidth:8,boxHeight:8,
+        callbacks:{title:items=>coords[items[0].dataIndex][0]}};
+
+      // Una sola serie -> un solo color (azul = nosotros) y sin leyenda: el título ya la nombra.
       chartCoordProd=new Chart(canvasProd,{
         type:'bar',
         data:{
           labels:siglas,
-          datasets:[{label:'Configurado',data:coords.map(([,v])=>v.prod),backgroundColor:'#0F6E56'}]
+          datasets:[{label:'Configurado',data:coords.map(([,v])=>v.prod),
+                     backgroundColor:'#2a78d6',borderRadius:4,borderSkipped:'bottom',maxBarThickness:34}]
         },
         options:{
           responsive:true,
-          plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>coords[items[0].dataIndex][0]}}},
-          scales:{y:{beginAtZero:true,title:{display:true,text:'Unidades'}}}
+          plugins:{legend:{display:false},tooltip:tipTexto},
+          scales:ejeBarra(false)
         }
       });
+
+      // Las tres barras son ETAPAS de un mismo embudo, no categorías sueltas: van en
+      // una rampa de un solo tono (más oscuro = más avanzado) en vez de tres colores
+      // que competían entre sí. La separación la da un filete blanco de 1px, no un borde.
       chartCoordDesp=new Chart(canvasDesp,{
         type:'bar',
         data:{
           labels:siglas,
           datasets:[
-            {label:'Solo Item 5',data:coords.map(([,v])=>v.item5),backgroundColor:'#B07A10'},
-            {label:'Con Enlace',data:coords.map(([,v])=>v.enlace),backgroundColor:'#534AB7'},
-            {label:'Alta operativa',data:coords.map(([,v])=>v.alta),backgroundColor:'#185FA5'},
+            {label:'1 · Instalada sin enlace',data:coords.map(([,v])=>v.item5),backgroundColor:'#86b6ef',
+             maxBarThickness:34,borderWidth:1,borderColor:'#fff'},
+            {label:'2 · Con enlace',data:coords.map(([,v])=>v.enlace),backgroundColor:'#2a78d6',
+             maxBarThickness:34,borderWidth:1,borderColor:'#fff'},
+            {label:'3 · Alta operativa',data:coords.map(([,v])=>v.alta),backgroundColor:'#0d366b',
+             maxBarThickness:34,borderWidth:1,borderColor:'#fff'},
           ]
         },
         options:{
           responsive:true,
-          plugins:{legend:{position:'top'},tooltip:{callbacks:{title:items=>coords[items[0].dataIndex][0]}}},
-          scales:{y:{beginAtZero:true,title:{display:true,text:'Unidades'}}}
+          plugins:{legend:{position:'top',labels:{boxWidth:10,boxHeight:10,font:{size:11.5},color:'#52514e'}},
+                   tooltip:tipTexto},
+          scales:ejeBarra(true)
         }
       });
     }
@@ -2583,28 +2722,46 @@ function renderMetricas(){
     }
   });
 
-  if(chartProd)chartProd.destroy();
-  const prodLabels=pd.planFechas.map(f=>{const d=new Date(f+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'});});
-  // ── Curva S de PRODUCCIÓN: acumulado (ascendente), igual que la de Despliegue ──
-  chartProd=new Chart(document.getElementById('chart-prod'),{
-    type:'line',
-    data:{
-      labels:prodLabels,
-      datasets:[
-        {label:'Planificado',data:pd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.08)',borderWidth:2,pointRadius:2,tension:0.4,fill:'origin',order:2},
-        {label:'Real',data:pd.realVals,borderColor:'#0F6E56',backgroundColor:'rgba(15,110,86,0.15)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:'origin',spanGaps:false,order:1},
-        {label:'Brecha',data:pd.planVals.map((v,i)=>pd.realVals[i]!==null&&pd.realVals[i]!==undefined?Math.max(0,v-pd.realVals[i]):null),borderColor:'rgba(200,50,50,0)',backgroundColor:'rgba(200,50,50,0.12)',borderWidth:0,pointRadius:0,tension:0.4,fill:'origin',order:3,spanGaps:false},
-      ]
-    },
-    options:chartOpts(pd.hoyIdx,745,prodLabels)
-  });
+  // ============================================================
+  //  GRÁFICOS DE PORTADA — reescritos 2026-09
+  //  Antes: una sola Curva S con 6 series (plan, validación, rackeo punteado,
+  //  Ítem 5, Bitel, Claro y un área "Brecha" invisible) sobre un eje 0-745.
+  //  Bitel y Claro quedaban aplastados abajo y nadie distinguía qué era de quién.
+  //  Ahora son dos preguntas, un gráfico cada una:
+  //    1. ¿Cómo vamos contra el plan?     -> 1 sola serie nuestra + 2 referencias
+  //    2. ¿De quién depende avanzar?      -> los 3 terceros, escala propia
+  //  Regla de color de todo el tablero: AZUL = nosotros. Otro color = un tercero.
+  // ============================================================
+  const CL={nosotros:'#2a78d6',item5:'#eb6834',bitel:'#1baf7a',claro:'#4a3aa7',
+            ref:'#898781',grid:'#e1e0d9',ink:'#0b0b0b',ink2:'#52514e'};
 
-  if(chartDesp)chartDesp.destroy();
+  // El plan original terminaba el 31/08/2026. Hoy es posterior, así que el eje se
+  // quedaba corto: TODO el avance de septiembre caía fuera del gráfico y el
+  // marcador «hoy» no tenía dónde dibujarse. Se extiende el eje día a día hasta
+  // el 03/12 (término con la Ampliación de Plazo). El plan se deja en null
+  // después del 31/08: terminó ahí, no se inventa continuación.
+  (function extenderEje(){
+    const AP_EJE='2026-12-03';
+    const d=new Date(dd.planFechas[dd.planFechas.length-1]+'T00:00:00');
+    const fin=new Date(AP_EJE+'T00:00:00');
+    while(d<fin){
+      d.setDate(d.getDate()+1);
+      const f=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      dd.planFechas.push(f); dd.planVals.push(null);
+      dd.realVals.push(realDesp[f]!==undefined?realDesp[f]:null);
+    }
+    dd.hoyIdx=dd.planFechas.findIndex(f=>f>=hoyStr);
+  })();
+
+  // La Curva S de Producción (NIRQA) se retiró del tablero: su fuente era el
+  // registro manual diario, sin alimentar desde julio. El canvas ya no existe.
+  if(chartProd){chartProd.destroy();chartProd=null;}
+
   const despLabels=dd.planFechas.map(f=>{const d=new Date(f+'T00:00:00');return d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit'});});
 
-  // Forward-fill genérico: una vez que una fecha tiene dato, se mantiene el último
-  // valor conocido hasta la siguiente fecha con dato (evita que la línea se corte
-  // en cada día sin evento). Solo se proyecta hasta hoy; después queda en null.
+  // Forward-fill: una vez que una fecha tiene dato se mantiene el último valor
+  // conocido hasta la siguiente, para que la línea no se corte en cada día sin
+  // evento. Solo se dibuja hasta hoy; después queda en null.
   const serieFF=mapa=>{
     const claves=Object.keys(mapa||{}).sort();
     let last=0;
@@ -2615,45 +2772,135 @@ function renderMetricas(){
     });
   };
 
-  // "Nosotros" (Ítem 3): antes salía del log manual "solo_item5" (Registrar y cargar
-  // avance), abandonado a fines de julio. Ahora, si ya se cargó la Plantilla, se usa
-  // la Fecha Validación real (columna P) — cierre completo de la sede. `realDesp` ya
-  // eligió la fuente correcta más arriba.
-  const realDespVals=serieFF(realDesp);
-
-  // Rackeo sin enlace (columna Fecha Rackeo): incluye las 125 sedes que se instalaron
-  // solo con gabinete bajo el criterio antiguo, antes de exigir gabinete + enlace.
-  const rackVals=serieFF(window.CURVA_REAL_RACK||{});
-
-  // Ítem 5 (gabinetes): prioriza la curva calculada de la Plantilla sobre el ITEM5_ACUM
-  // heredado (se detiene el 08/07) o el log manual, ambos ya sin actualizar.
+  const realDespVals=serieFF(realDesp);                       // nosotros: Fecha Validación
   const hayGabReal=window.CURVA_REAL_GAB&&Object.keys(window.CURVA_REAL_GAB).length>0;
   const item5MapFallback={};
   (window.ITEM5_ACUM||[]).forEach(([f,v])=>item5MapFallback[f]=v);
   const item5Vals=serieFF(hayGabReal?window.CURVA_REAL_GAB:item5MapFallback);
-
-  // Ítem 1 (Bitel) e Ítem 2 (Claro): fechas de enlace real por operador, calculadas
-  // de la Plantilla (columnas Fecha Enlace Ítem 1 / Ítem 2).
   const item1Vals=serieFF(window.CURVA_REAL_ITEM1||{});
   const item2Vals=serieFF(window.CURVA_REAL_ITEM2||{});
 
-  if(chartDesp)chartDesp.destroy();
-  chartDesp=new Chart(document.getElementById('chart-desp'),{
-    type:'line',
-    data:{
-      labels:despLabels,
-      datasets:[
-        {label:'Planificado SD-WAN',data:dd.planVals,borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,0.06)',borderWidth:2,pointRadius:2,tension:0.4,fill:'origin',order:6},
-        {label:'Real SD-WAN — Validación (Ítem 3)',data:realDespVals,borderColor:'#EA580C',backgroundColor:'rgba(234,88,12,0.12)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:'origin',spanGaps:false,order:1},
-        {label:'Real SD-WAN — Rackeo sin enlace (Ítem 3)',data:rackVals,borderColor:'#EA580C',backgroundColor:'rgba(0,0,0,0)',borderWidth:1.75,pointRadius:2,tension:0.3,fill:false,spanGaps:false,order:2,borderDash:[5,3]},
-        {label:'Real Ítem 5 (Gabinetes)',data:item5Vals,borderColor:'#0F766E',backgroundColor:'rgba(15,118,110,0.08)',borderWidth:2,pointRadius:2,tension:0.3,fill:false,spanGaps:true,order:3},
-        {label:'Real Ítem 1 (Bitel)',data:item1Vals,borderColor:'#CA8A04',backgroundColor:'rgba(0,0,0,0)',borderWidth:2,pointRadius:2,tension:0.3,fill:false,spanGaps:true,order:4},
-        {label:'Real Ítem 2 (Claro)',data:item2Vals,borderColor:'#B91C1C',backgroundColor:'rgba(0,0,0,0)',borderWidth:2,pointRadius:2,tension:0.3,fill:false,spanGaps:true,order:5},
-        {label:'Brecha',data:dd.planVals.map((v,i)=>realDespVals[i]!==null&&realDespVals[i]!==undefined?Math.max(0,v-realDespVals[i]):null),borderColor:'rgba(200,50,50,0)',backgroundColor:'rgba(200,50,50,0.08)',borderWidth:0,pointRadius:0,tension:0.4,fill:'origin',order:7,spanGaps:false},
-      ]
+  // Etiqueta al final de cada línea: así la identidad no depende solo del color
+  // (dos de los tonos no alcanzan 3:1 contra el blanco) y se puede leer sin leyenda.
+  const etiquetaFinal={
+    id:'etiquetaFinal',
+    afterDatasetsDraw(ch){
+      const cx=ch.ctx;
+      ch.data.datasets.forEach((ds,di)=>{
+        if(ds.sinEtiqueta)return;
+        const meta=ch.getDatasetMeta(di); if(meta.hidden)return;
+        let ult=-1;
+        (ds.data||[]).forEach((v,k)=>{if(v!==null&&v!==undefined)ult=k;});
+        if(ult<0)return;
+        const pt=meta.data[ult]; if(!pt)return;
+        cx.save();
+        cx.font='600 11px system-ui,-apple-system,"Segoe UI",sans-serif';
+        cx.textBaseline='middle';
+        const txt=(ds.etiqueta||ds.label)+'  '+ds.data[ult];
+        const x=Math.min(pt.x+7,ch.chartArea.right-cx.measureText(txt).width-2);
+        // Halo del color de la superficie: la línea de «hoy» o una serie vecina
+        // ya no atraviesa el texto.
+        cx.lineWidth=3.5; cx.strokeStyle='#fff'; cx.lineJoin='round';
+        cx.strokeText(txt,x,pt.y);
+        cx.fillStyle=ds.borderColor;
+        cx.fillText(txt,x,pt.y);
+        cx.restore();
+      });
+    }
+  };
+
+  // Opciones comunes: rejilla de un solo tono, sin títulos de eje redundantes,
+  // cruceta al pasar el mouse y tooltip con sedes + porcentaje.
+  const opcionesLinea=(hoyIdx,total,labels,leyenda)=>({
+    responsive:true,
+    layout:{padding:{right:104,top:6}},
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:leyenda?{position:'top',labels:{boxWidth:10,boxHeight:10,usePointStyle:true,
+        pointStyle:'line',font:{size:11.5},color:CL.ink2}}:{display:false},
+      tooltip:{
+        backgroundColor:'rgba(11,11,11,.92)',padding:10,cornerRadius:6,
+        titleFont:{size:11.5},bodyFont:{size:12},displayColors:true,boxWidth:8,boxHeight:8,
+        callbacks:{
+          title:c=>c[0]?labels[c[0].dataIndex]:'',
+          label:c=>{
+            if(c.parsed.y===null||c.parsed.y===undefined)return null;
+            return `${c.dataset.label}: ${c.parsed.y} sedes (${Math.round(c.parsed.y/total*100)}%)`;
+          }
+        }
+      },
+      annotation:hoyIdx>=0?{annotations:{lineaHoy:{
+        type:'line',xMin:hoyIdx,xMax:hoyIdx,borderColor:'#c3c2b7',borderWidth:1.5,
+        label:{content:'hoy',display:true,position:'start',backgroundColor:'rgba(0,0,0,0)',
+               color:CL.ink2,font:{size:10,weight:'600'},padding:2}
+      }}}:{}
     },
-    options:chartOpts(dd.hoyIdx,745,despLabels)
+    scales:{
+      y:{min:0,max:total,border:{display:false},
+         grid:{color:CL.grid,drawTicks:false},
+         ticks:{color:CL.ink2,font:{size:11},padding:8,maxTicksLimit:6}},
+      x:{border:{color:CL.grid},grid:{display:false},
+         ticks:{color:CL.ink2,font:{size:10.5},maxTicksLimit:9,maxRotation:0,autoSkipPadding:14}}
+    }
   });
+
+  // ---------- 1. ¿CÓMO VAMOS CONTRA EL PLAN? ----------
+  // Una sola serie de datos (lo nuestro). El plan y el ritmo necesario son
+  // REFERENCIAS, no series: van en gris, finas, sin relleno ni color propio.
+  const AP_FIN='2026-12-03';                         // fecha resultante de la solicitud de AP
+  const hechasHoy=(()=>{ for(let k=realDespVals.length-1;k>=0;k--)
+      if(realDespVals[k]!==null&&realDespVals[k]!==undefined)return realDespVals[k]; return 0; })();
+  // Recta desde el punto de hoy hasta 745 el 03/12: el ritmo que haría falta.
+  const idxHoy=dd.planFechas.findIndex(f=>f>=hoyStr);
+  const necesario=dd.planFechas.map((f,k)=>{
+    if(idxHoy<0||k<idxHoy)return null;
+    if(f>AP_FIN)return null;
+    const t=(new Date(f)-new Date(dd.planFechas[idxHoy]))/86400000;
+    const T=(new Date(AP_FIN)-new Date(dd.planFechas[idxHoy]))/86400000;
+    return T>0?Math.round(hechasHoy+(745-hechasHoy)*(t/T)):null;
+  });
+
+  const cvDesp=document.getElementById('chart-desp');
+  if(cvDesp){
+    if(chartDesp)chartDesp.destroy();
+    chartDesp=new Chart(cvDesp,{
+      type:'line',
+      plugins:[etiquetaFinal],
+      data:{labels:despLabels,datasets:[
+        {label:'Plan original',etiqueta:'Plan',data:dd.planVals,
+         borderColor:CL.ref,borderWidth:1.5,pointRadius:0,tension:.35,fill:false,order:3},
+        {label:'Ritmo necesario para el 03/12',etiqueta:'Necesario',data:necesario,
+         borderColor:CL.ref,borderWidth:1.5,borderDash:[5,4],pointRadius:0,tension:0,fill:false,order:2},
+        {label:'Validadas por nosotros',etiqueta:'Nosotros',data:realDespVals,
+         borderColor:CL.nosotros,backgroundColor:'rgba(42,120,214,.10)',
+         borderWidth:2,pointRadius:0,pointHoverRadius:5,tension:.25,fill:'origin',spanGaps:false,order:1}
+      ]},
+      options:opcionesLinea(dd.hoyIdx,745,despLabels,true)
+    });
+  }
+
+  // ---------- 2. ¿DE QUIÉN DEPENDE QUE PODAMOS AVANZAR? ----------
+  const cvTer=document.getElementById('chart-terceros');
+  if(cvTer){
+    if(chartTerceros)chartTerceros.destroy();
+    chartTerceros=new Chart(cvTer,{
+      type:'line',
+      plugins:[etiquetaFinal],
+      data:{labels:despLabels,datasets:[
+        {label:'Ítem 5 — Gabinetes',etiqueta:'Ítem 5',data:item5Vals,
+         borderColor:CL.item5,borderWidth:2,pointRadius:0,pointHoverRadius:5,tension:.25,fill:false,spanGaps:true},
+        {label:'Ítem 1 — Bitel',etiqueta:'Bitel',data:item1Vals,
+         borderColor:CL.bitel,borderWidth:2,pointRadius:0,pointHoverRadius:5,tension:.25,fill:false,spanGaps:true},
+        {label:'Ítem 2 — Claro',etiqueta:'Claro',data:item2Vals,
+         borderColor:CL.claro,borderWidth:2,pointRadius:0,pointHoverRadius:5,tension:.25,fill:false,spanGaps:true}
+      ]},
+      options:opcionesLinea(dd.hoyIdx,745,despLabels,true)
+    });
+  }
+
+  // ---------- notas de lectura en palabras ----------
+  if(typeof window.renderLecturasResumen==='function')
+    window.renderLecturasResumen({hechasHoy,item5Vals,item1Vals,item2Vals,realDespVals,planVals:dd.planVals,idxHoy});
 }
 
 // ============================================================
@@ -3859,13 +4106,14 @@ function renderDiagramaFlujoCompleto(opts) {
     '<strong>Estos datos son de una carga anterior.</strong> Ve a «Registrar y cargar avance» y sube la Plantilla_Carga_SDWAN_PJ_v6 una vez para actualizar el diagrama.'+
     '</div>';
 
+  // Esta tira se redujo de 6 a 3 datos: «Universo» ya está en el título de la
+  // tarjeta, y «Validadas» y «Alta operativa» están en la tira de portada.
+  // Quedan solo los tres que el diagrama necesita como encabezado y que además
+  // SÍ responden al filtro de zona.
   const resumen =
     '<div class="dfx-top">'+
-      '<div class="dfx-top-i"><span class="dfx-top-l">UNIVERSO</span><span class="dfx-top-v">'+totalUniverso+'</span><span class="dfx-top-s">'+(ambitoSel?(totalUniverso+' sedes · '+ambitoSel):'745 sedes del contrato')+'</span></div>'+
-      '<div class="dfx-top-i"><span class="dfx-top-l">CON GABINETE</span><span class="dfx-top-v" style="color:'+C.morado+'">'+totalGabinete+'</span><span class="dfx-top-s">Ítem 5 · '+Math.round(totalGabinete/totalUniverso*100)+'% del universo</span></div>'+
+      '<div class="dfx-top-i"><span class="dfx-top-l">CON GABINETE</span><span class="dfx-top-v" style="color:'+C.morado+'">'+totalGabinete+'</span><span class="dfx-top-s">Ítem 5 · '+Math.round(totalGabinete/totalUniverso*100)+'% de '+totalUniverso+(ambitoSel?' · '+ambitoSel:'')+'</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">EQUIPO INSTALADO</span><span class="dfx-top-v" style="color:'+C.verde+'">'+totalItem3+'</span><span class="dfx-top-s">Ítem 3 · '+totalConEnlace+' con enlace</span></div>'+
-      '<div class="dfx-top-i"><span class="dfx-top-l">VALIDADAS</span><span class="dfx-top-v" style="color:'+C.azul+'">'+totalCierre+'</span><span class="dfx-top-s">Validación completada · '+Math.round(totalCierre/totalUniverso*100)+'%</span></div>'+
-      '<div class="dfx-top-i"><span class="dfx-top-l">ALTA OPERATIVA</span><span class="dfx-top-v" style="color:'+(totalAlta?C.verde:'#94a3b8')+'">'+totalAlta+'</span><span class="dfx-top-s">Cerradas con conformidad PJ</span></div>'+
       '<div class="dfx-top-i"><span class="dfx-top-l">CON VISITA AGENDADA</span><span class="dfx-top-v" style="color:'+(totalAgendadas?C.azul:'#94a3b8')+'">'+totalAgendadas+'</span><span class="dfx-top-s">Fecha vigente en el historial</span></div>'+
     '</div>';
 
@@ -3984,6 +4232,178 @@ cargarItemsExternos().then(()=>{
   setTimeout(()=>reintentarInitFiltros(n-1),600);
 })(8);
 
+</script>
+
+<!-- ============================================================
+     CAPA DE LECTURA (2026-09) — independiente del módulo principal.
+     Solo lee window.DIAGRAMA_DATOS y escribe en nodos propios.
+     Si algo falla aquí, el resto del tablero sigue funcionando.
+     ============================================================ -->
+<script>
+(function(){
+  const TV=['Tipo 1','Tipo 2','Tipo 3'];
+  const sum=o=>TV.reduce((a,t)=>a+(Number((o||{})[t])||0),0);
+  const nf=n=>Number(n||0).toLocaleString('es-PE');
+  const HOY=new Date(); HOY.setHours(0,0,0,0);
+  const dia=(a,b)=>Math.round((a-b)/86400000);
+  const fFecha=d=>d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'});
+
+  // Fechas de contrato (ver expediente de Ampliación de Plazo)
+  const INICIO='2026-04-09';   // inicio de plazo contractual
+  const FIN_CONTRATO='2026-09-06';
+  const FIN_AP='2026-12-03';   // término propuesto con los 88 días de AP
+  const FIN_LIC='2026-12-09';  // vence el período de gracia de licencias Fortinet
+  const EJE_FIN='2027-01-10';   // margen a la derecha para que quepan las etiquetas de diciembre
+  const D_=f=>new Date(f+'T00:00:00');
+
+  // Ritmo de las últimas 4 semanas sobre un arreglo de fechas ISO
+  function ritmoSemanal(arr){
+    const n=(arr||[]).filter(f=>dia(HOY,new Date(f))<=28&&dia(HOY,new Date(f))>=0).length;
+    return n/4;
+  }
+
+  window.renderResumenExtras=function(){
+    const D=window.DIAGRAMA_DATOS;
+    const cif=document.getElementById('vz-cifras');
+    if(!cif)return;
+
+    if(!D||D.formato!=='v2'||(D.v||0)<4){
+      cif.innerHTML='<div class="vz-cell" style="grid-column:1/-1"><div class="k">Sin datos</div>'+
+        '<div class="s">Sube la <b>Plantilla_Carga_SDWAN_PJ</b> en «Datos → Cargar plantilla» '+
+        'para calcular las cifras de portada.</div></div>';
+      const h=document.getElementById('vz-hitos'); if(h)h.innerHTML='';
+      return;
+    }
+
+    const UNIV=sum(D.universo)||745;
+    const validadas=sum(D.validado_pend_doc)+sum(D.en_validacion)+sum(D.en_conformidad)+sum(D.alta);
+    const alta=sum(D.alta);
+    const rVal=ritmoSemanal(D.ritmo&&D.ritmo.val);
+    const faltan=UNIV-validadas;
+    const semanas=rVal>0?Math.ceil(faltan/rVal):null;
+    const fProy=semanas!==null?new Date(HOY.getTime()+semanas*7*86400000):null;
+    const semHastaAP=Math.max(1,Math.ceil(dia(D_(FIN_AP),HOY)/7));
+    const necSem=faltan>0?(faltan/semHastaAP):0;
+
+    // 4 cifras. Nada de porcentajes sueltos sin su número absoluto.
+    cif.innerHTML=[
+      {k:'Validadas',v:nf(validadas),
+       s:'de '+nf(UNIV)+' sedes · '+Math.round(validadas/UNIV*100)+'% del universo'},
+      {k:'Alta operativa',v:nf(alta),
+       s:'cerradas con conformidad del PJ · '+Math.round(alta/UNIV*100)+'%'},
+      {k:'Ritmo actual',v:rVal.toFixed(1),
+       s:'sedes validadas por semana (últimas 4 semanas)'},
+      {k:'Al ritmo de hoy',v:fProy?fFecha(fProy).replace(/ de /g,' '):'—',
+       s:fProy?('terminaríamos aquí · el plazo con AP vence el 03 dic 2026'):'sin ritmo medible en las últimas 4 semanas'}
+    ].map(c=>'<div class="vz-cell"><div class="k">'+c.k+'</div><div class="v">'+c.v+'</div>'+
+            '<div class="s">'+c.s+'</div></div>').join('');
+
+    // ---------- reloj del proyecto ----------
+    const t0=D_(INICIO).getTime(), t1=D_(EJE_FIN).getTime();
+    const pos=t=>Math.max(0,Math.min(100,(t-t0)/(t1-t0)*100));
+    const pHoy=pos(HOY.getTime());
+    const hitos=[
+      {f:FIN_CONTRATO,t:'Término contractual',c:'#d03b3b'},
+      {f:FIN_AP,      t:'Término con AP',c:'#2a78d6'},
+      {f:FIN_LIC,     t:'Gracia de licencias',c:'#fab219'}
+    ];
+    // Hitos muy próximos (03/12 y 09/12 distan 6 días) se pisaban las etiquetas.
+    // Se escalonan en dos niveles cuando quedan a menos de 11% del eje.
+    const conPos=hitos.map(h=>({...h,p:pos(D_(h.f).getTime())})).sort((a,b)=>a.p-b.p);
+    let prev=-99, nivel=0;
+    conPos.forEach(h=>{ nivel=(h.p-prev<11)?1-nivel:0; h.n=nivel; prev=h.p; });
+
+    const el=document.getElementById('vz-hitos');
+    el.innerHTML='<div class="vz-tl">'+
+      '<div class="vz-tl-line"></div>'+
+      '<div class="vz-tl-done" style="width:'+pHoy+'%"></div>'+
+      conPos.map(h=>'<div class="vz-tl-m'+(h.n?' n1':'')+'" style="left:'+h.p+'%">'+
+        '<div class="vz-tl-dot" style="background:'+h.c+'"></div>'+
+        '<div class="vz-tl-d">'+fFecha(D_(h.f)).replace(/ de /g,' ')+'</div>'+
+        '<div class="vz-tl-lbl">'+h.t+'</div></div>').join('')+
+      '<div class="vz-hoy" style="left:'+pHoy+'%"><div class="vz-hoy-b">hoy</div><div class="vz-hoy-s"></div></div>'+
+      '</div>';
+
+    const dVenc=dia(HOY,D_(FIN_CONTRATO));
+    const dAP=dia(D_(FIN_AP),HOY);
+    const dLic=dia(D_(FIN_LIC),HOY);
+    document.getElementById('vz-hitos-lectura').innerHTML=
+      'El plazo contractual venció hace <b>'+dVenc+' días</b> (06 sep). Con la Ampliación de Plazo solicitada '+
+      'quedan <b>'+dAP+' días</b> para cerrar las <b>'+nf(faltan)+'</b> sedes que faltan, y <b>'+dLic+' días</b> '+
+      'antes de que las licencias no activadas empiecen a consumir vigencia por sí solas.';
+
+    window._vzResumen={validadas,alta,UNIV,rVal,faltan,necSem,fProy,D};
+  };
+
+  // Notas de lectura de los dos gráficos, en palabras.
+  window.renderLecturasResumen=function(ctx){
+    const D=window.DIAGRAMA_DATOS; if(!D)return;
+    const r=window._vzResumen||{};
+    const UNIV=r.UNIV||745;
+
+    const planHoy=(function(){
+      if(ctx.idxHoy==null||ctx.idxHoy<0)return null;
+      return ctx.planVals[Math.max(0,ctx.idxHoy)];
+    })();
+    const l1=document.getElementById('vz-lectura-plan');
+    if(l1){
+      const hechas=ctx.hechasHoy||0;
+      const atraso=planHoy!=null?Math.max(0,planHoy-hechas):null;
+      l1.innerHTML='Llevamos <b>'+nf(hechas)+'</b> sedes validadas. '+
+        (atraso!=null&&atraso>0?'El plan original pedía <b>'+nf(planHoy)+'</b> a esta fecha: estamos <b>'+nf(atraso)+' sedes por debajo</b>. ':'')+
+        'El ritmo de las últimas 4 semanas es de <b>'+(r.rVal||0).toFixed(1)+' sedes por semana</b>; '+
+        'para llegar al 03 de diciembre haría falta <b>'+(r.necSem||0).toFixed(1)+' por semana</b>'+
+        ((r.necSem||0)>(r.rVal||0)?' — es decir, '+((r.rVal||0)>0?((r.necSem/r.rVal).toFixed(1)+' veces el ritmo actual'):'un ritmo que hoy no existe')+'.':'.');
+    }
+
+    const ult=a=>{for(let k=(a||[]).length-1;k>=0;k--)if(a[k]!=null)return a[k];return 0;};
+    const l2=document.getElementById('vz-lectura-terceros');
+    if(l2){
+      const g=ult(ctx.item5Vals), b=ult(ctx.item1Vals), c=ult(ctx.item2Vals);
+      const espera=sum(D.pendientes_en_espera);
+      const q=D.quiebres||{};
+      const terceros=(q['Poder Judicial']||0)+(q['Ítem 1 / Ítem 2']||0)+(q['Item 1 / Item 2']||0);
+      l2.innerHTML='Ítem 5 ha entregado <b>'+nf(g)+'</b> gabinetes; Bitel <b>'+nf(b)+'</b> enlaces y Claro <b>'+nf(c)+'</b>. '+
+        'Hoy hay <b>'+nf(espera)+'</b> sedes con gabinete listo que no podemos tocar porque les falta el enlace: '+
+        'esas esperan a Bitel o a Claro, no a nosotros.'+
+        (terceros>0?' Además, <b>'+nf(terceros)+'</b> sedes tienen su última atención quebrada por causa de terceros (PJ o Ítems 1/2).':'');
+    }
+  };
+
+  // La responsabilidad de los quiebres NO se agrega aquí: la Vista Ejecutiva
+  // (panel 4 · «Riesgos y trazabilidad») ya la muestra con su propio desglose
+  // por responsable y su nota de terceros vs. propio. Duplicarla era ruido.
+  window.renderOperacionExtras=function(){};
+
+  // Enganche sin tocar el módulo: se envuelven las funciones ya publicadas.
+  function envolver(){
+    if(typeof window.showTab==='function'&&!window.showTab.__vz){
+      const o=window.showTab;
+      window.showTab=function(n){
+        const res=o.apply(this,arguments);
+        try{
+          if(n==='dashboard')window.renderResumenExtras();
+          if(n==='ejecutivo')window.renderOperacionExtras();
+        }catch(e){console.warn('extras',e);}
+        return res;
+      };
+      window.showTab.__vz=1;
+    }
+    if(typeof window.renderTodo==='function'&&!window.renderTodo.__vz){
+      const o=window.renderTodo;
+      window.renderTodo=function(){
+        const res=o.apply(this,arguments);
+        try{window.renderResumenExtras();}catch(e){console.warn('extras',e);}
+        try{if(window.renderMetricas)window.renderMetricas();}catch(e){console.warn('metricas',e);}
+        return res;
+      };
+      window.renderTodo.__vz=1;
+    }
+  }
+  let intentos=0;
+  const t=setInterval(()=>{envolver();if(++intentos>40||(window.showTab&&window.showTab.__vz&&window.renderTodo&&window.renderTodo.__vz))clearInterval(t);},250);
+  window.addEventListener('load',()=>{envolver();try{window.renderResumenExtras();}catch(e){}});
+})();
 </script>
 </body>
 </html>
