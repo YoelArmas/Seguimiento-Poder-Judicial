@@ -288,31 +288,16 @@
   <!-- Semaforo -->
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
-      <div class="card-title" style="margin:0">Semaforo de riesgo</div>
+      <div class="card-title" style="margin:0">Semáforo de riesgo</div>
       <button id="btn-limpiar-semaforo" style="display:none;font-size:11px;background:#FCEBEB;color:#791F1F;border:1px solid #E8B4B4;border-radius:6px;padding:4px 10px;cursor:pointer" onclick="window.limpiarDuplicadosSemaforo()">🧹 Limpiar duplicados</button>
     </div>
+    <div style="font-size:12px;color:var(--text3);margin:0 0 12px;line-height:1.5">Los ítems <b>automáticos</b> se recalculan solos cada vez que se sube la plantilla. Los <b>manuales</b> cubren lo que la plantilla no registra (cabeceras, LAN, puesta en marcha) y los edita un administrador.</div>
     <div id="semaforo">Cargando...</div>
   </div>
 
-  <!-- Ultimas entradas -->
-  <div class="card">
-    <div class="flex-between flex-wrap gap-8 mb-12">
-      <div class="card-title" style="margin:0">Entradas registradas</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <input type="date" class="inp" id="filtro-log-fecha" style="width:auto;font-size:12px" onchange="window.renderLogDashboard()">
-        <select class="inp" id="filtro-log-tipo" style="width:auto;font-size:12px" onchange="window.renderLogDashboard()">
-          <option value="">Todos los tipos</option>
-          <option value="configurados">Configuradas</option>
-          <option value="retirados">Retiradas</option>
-          <option value="solo_item5">Solo Ítem 5</option>
-          <option value="con_enlace">Con enlace</option>
-          <option value="alta">Alta operativa</option>
-        </select>
-        <button class="btn" style="font-size:11px;padding:4px 8px" onclick="document.getElementById('filtro-log-fecha').value='';document.getElementById('filtro-log-tipo').value='';window.renderLogDashboard()">✕ Limpiar</button>
-      </div>
-    </div>
-    <div id="log-dashboard">Cargando...</div>
-  </div>
+  <!-- «Entradas registradas» se retiró (2026-09-22): mostraba el registro manual
+       diario, que dejó de alimentarse cuando el seguimiento pasó a la Plantilla.
+       renderLogDashboard() sale sin hacer nada si el nodo no existe. -->
 </div>
 
 <!-- GESTION: Registrar avance + Carga masiva (fusionadas) -->
@@ -535,6 +520,21 @@
 
 <!-- HISTORIAL -->
 <div id="tab-metricas" style="display:none">
+
+  <!-- DESEMPEÑO DE CAMPO — lee Historial_Atenciones y Tiempos Atenciones de la plantilla -->
+  <div class="card viz" id="card-campo" style="margin-bottom:16px">
+    <div class="flex-between flex-wrap gap-8 mb-12">
+      <div class="card-title" style="margin:0">Desempeño de campo</div>
+      <select class="inp" id="filtro-campo-periodo" style="width:auto;font-size:12px" onchange="window.renderCampo()">
+        <option value="0">Todo el proyecto</option>
+        <option value="7">Últimos 7 días</option>
+        <option value="14">Últimos 14 días</option>
+        <option value="28">Últimas 4 semanas</option>
+      </select>
+    </div>
+    <div class="vz-sub">Atenciones en campo leídas de las hojas <b>Tiempos Atenciones</b> e <b>Historial_Atenciones</b> de la plantilla. Se actualiza cada vez que se sube el archivo.</div>
+    <div id="campo-contenido">Cargando...</div>
+  </div>
 
   <!-- Dias habiles consumidos vs restantes - PUBLICO -->
   <div class="card" id="card-dias-habiles">
@@ -861,7 +861,7 @@ function proyectar(completadas,frente){
 function colorR(r){
   if(r==='ok')return{bg:'#E1F5EE',tx:'#085041',lbl:'Controlado'};
   if(r==='alerta')return{bg:'#FAEEDA',tx:'#633806',lbl:'Riesgo medio'};
-  return{bg:'#FCEBEB',tx:'#791F1F',lbl:'Riesgo critico'};
+  return{bg:'#FCEBEB',tx:'#791F1F',lbl:'Riesgo crítico'};
 }
 
 
@@ -1358,22 +1358,33 @@ const isMobileHist=window.innerWidth<=640;
 // TABLAS — Semáforo de riesgo
 // ============================================================
 function renderSemaforo(){
-  const items=itemsRiesgo.length?itemsRiesgo:ITEMS_DEFAULT;
-  const rGen=items.some(i=>i.r==='critico')?'critico':items.some(i=>i.r==='alerta')?'alerta':'ok';
+  const el=document.getElementById('semaforo'); if(!el)return;
+  // 1) Automáticos: se recalculan con cada plantilla (ver calcSemaforoAuto / UMBRALES_SEMAFORO)
+  let auto=null;
+  try{ auto=calcSemaforoAuto(); }catch(e){ console.warn('semaforo auto',e); }
+  // 2) Manuales (Firestore, editables por admin). Los que ya se calculan solos se ocultan.
+  const manualesTodos=itemsRiesgo.length?itemsRiesgo:ITEMS_DEFAULT;
+  const manuales=manualesTodos.filter(i=>!(auto&&(SEM_REEMPLAZADOS_ID.includes(i.id)||SEM_REEMPLAZADOS_LBL.includes(i.lbl))));
+  const todos=(auto||[]).concat(manuales);
+  const rGen=todos.some(i=>i.r==='critico')?'critico':todos.some(i=>i.r==='alerta')?'alerta':'ok';
   const cg=colorR(rGen);
-  document.getElementById('semaforo').innerHTML=`
-    <div class="flex-between flex-wrap gap-8 mb-12">
-      <div style="display:inline-flex;align-items:center;gap:8px;background:${cg.bg};color:${cg.tx};padding:6px 14px;border-radius:20px;font-weight:600;font-size:13px">Estado general: ${cg.lbl}</div>
-      ${esAdmin?`<button onclick="window.abrirNuevoItem()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:500">+ Agregar ítem</button>`:''}
-    </div>
-    ${items.map(i=>{const c=colorR(i.r);return`
+  const seccion=t=>`<div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin:14px 0 4px">${t}</div>`;
+  const fila=i=>{const c=colorR(i.r);return`
     <div class="semaforo-row">
       <div class="dot-sm" style="background:${c.tx};flex-shrink:0"></div>
       <span style="font-weight:500;font-size:13px;min-width:200px;flex-shrink:0">${i.lbl}</span>
       <span class="badge" style="background:${c.bg};color:${c.tx};white-space:nowrap;flex-shrink:0">${c.lbl}</span>
-      <span class="semaforo-nota">${i.nota}</span>
-      ${esAdmin?`<button onclick="window.editarItem('${i.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--navy);white-space:nowrap;flex-shrink:0">✏️ Editar</button>`:''}
-    </div>`}).join('')}`;
+      <span class="semaforo-nota">${i.nota||''}</span>
+      ${(!i.auto&&esAdmin&&i.id)?`<button onclick="window.editarItem('${i.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--navy);white-space:nowrap;flex-shrink:0">✏️ Editar</button>`:''}
+    </div>`;};
+  el.innerHTML=`
+    <div class="flex-between flex-wrap gap-8 mb-12">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:${cg.bg};color:${cg.tx};padding:6px 14px;border-radius:20px;font-weight:600;font-size:13px">Estado general: ${cg.lbl}</div>
+      ${esAdmin?`<button onclick="window.abrirNuevoItem()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:500">+ Agregar ítem manual</button>`:''}
+    </div>
+    ${auto?seccion('Automático · según la última plantilla cargada')+auto.map(fila).join('')
+          :`<div style="font-size:12px;color:var(--text3);padding:6px 0">Sube la plantilla (Datos → Cargar plantilla) para calcular los ítems automáticos.</div>`}
+    ${manuales.length?seccion('Manual · lo que la plantilla no registra')+manuales.map(fila).join(''):''}`;
 }
 window.renderSemaforo=renderSemaforo;
 
@@ -1668,7 +1679,7 @@ window.cargarMasRecienteDeCarpeta=async function(){
 })();
 
 // Marca de versión del parser — sirve para confirmar en consola (F12) qué archivo está corriendo.
-window.VERSION_PARSER='2026-08-27 · fix hoja por nombre exacto';
+window.VERSION_PARSER='2026-09-22 · avance = validadas (sin rackeo) + Historial y Tiempos';
 console.log('%c[Parser SD-WAN] '+window.VERSION_PARSER,'background:#0F766E;color:#fff;padding:2px 6px;border-radius:3px');
 
 window.handleFile=function(file){
@@ -1701,6 +1712,9 @@ window.handleFile=function(file){
     if(!ws){ws=wb.Sheets[wb.SheetNames[0]];raw=XLSX.utils.sheet_to_json(ws,{defval:'',header:1});}
     if(esPlantilla){
       // ¿Es la plantilla NUEVA (con Historial_Atenciones y columna ESTADO SEDE)?
+      // Hojas de campo (Historial_Atenciones + Tiempos Atenciones). Se procesan ANTES
+      // para que el semáforo y Métricas ya las tengan cuando se redibuje el tablero.
+      try{ procesarCampo(wb,raw); }catch(e){ console.error('[Campo] No se pudo leer Historial/Tiempos:',e); }
       if(procesarPlantillaNueva(raw))return;
       let headerRow=-1;
       raw.forEach((r,i)=>{if(Array.isArray(r)&&r.some(c=>String(c).trim()==='ESTADO'))headerRow=i;});
@@ -2463,12 +2477,13 @@ let chartProd=null,chartDesp=null,chartCoordProd=null,chartCoordDesp=null,chartT
 
 function renderMetricas(){
   const hoyStr=hoy();
+  try{ if(window.renderCampo)window.renderCampo(); }catch(e){ console.warn('renderCampo',e); }
 
   // Mostrar/ocultar cards segun rol
   const cardCoord=document.getElementById('card-coordinadores');
   const cardSpi=document.getElementById('card-spi');
   const cardAdmin=document.getElementById('card-admin-metrics');
-  if(cardCoord)cardCoord.style.display=esAutorizado?'block':'none';
+  if(cardCoord)cardCoord.style.display='none';   // reemplazado por «Desempeño de campo»
   if(cardSpi)cardSpi.style.display='block';
   if(cardAdmin)cardAdmin.style.display=esAdmin?'block':'none';
 
@@ -2534,7 +2549,7 @@ function renderMetricas(){
   const spiDespData=calcSPI(DESP_PLAN,realDesp);
 
   function spiColor(v){return v===null?'#888':v>=0.95?'#0F6E56':v>=0.8?'#B07A10':'#A32D2D';}
-  function spiLbl(v){return v===null?'Sin datos':v>=0.95?'Controlado':v>=0.8?'Riesgo medio':'Riesgo critico';}
+  function spiLbl(v){return v===null?'Sin datos':v>=0.95?'Controlado':v>=0.8?'Riesgo medio':'Riesgo crítico';}
 
   // Variacion en dias (SV = EV - PV, convertido a dias habiles)
   function variacionDias(spiData,plan,totalDias){
@@ -2583,8 +2598,8 @@ function renderMetricas(){
         </div>`;}).join('')}
     </div>`;
 
-  if(esAutorizado){
-    // Avance por coordinador con filtro
+  if(esAutorizado&&cardCoord&&cardCoord.style.display!=='none'){
+    // Avance por coordinador con filtro (registro manual — en desuso)
     const periodo=document.getElementById('filtro-periodo')?.value||'7';
     let fechaDesde,fechaHasta='';
     if(periodo==='semana'){
@@ -3147,6 +3162,13 @@ async function cargarItemsExternos(){
           }));}catch(e){}
         }
       }
+      if(d.id==='campo_datos'){
+        const p=d.data();
+        if(p&&(Array.isArray(p.tiem)||Array.isArray(p.hist))){
+          window.CAMPO_DATOS=p;
+          try{localStorage.setItem(CLAVE_CAMPO,JSON.stringify(p));}catch(e){}
+        }
+      }
       if(d.id==='plantilla_tipos'){
         const p=d.data();
         if(p&&p.solo_item5){
@@ -3287,12 +3309,12 @@ function agregarSedes(sedes,esV1){
     pendientes:z(),pendientes_programables:z(),pendientes_en_espera:z(),
     programados:z(),reprog_pendiente:z(),agendadas:z(),agend_listo:z(),
     listo_pruebas:z(),validado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
-    enlace_item1:z(),enlace_item2:z(),atenciones:0,quebradas:0,reintentos:0,rackeoReal:0};
+    enlace_item1:z(),enlace_item2:z(),migradas:z(),atenciones:0,quebradas:0,reintentos:0,rackeoReal:0};
 
   sedes.forEach(s=>{
-    const t=s.t; if(!B.universo[t]===undefined)return;
+    const t=s.t; if(B.universo[t]===undefined)return;
     B.universo[t]++;
-    if(s.rr)B.rackeoReal++;   // base histórica de rackeo (Fecha Rackeo real)
+    if(s.mg)B.migradas[t]++;   // informativo: tiene Fecha Migración SDWAN
 
     if(esV1||s.v1){
       // ── Formato v1: banderas gab/e1/e2/inst/alta
@@ -3323,14 +3345,14 @@ function agregarSedes(sedes,esV1){
     B.gabinete[t]++;
     if(s.ag)B.agendadas[t]++;
 
-    const rackeada=['racksin','listo','validado','migrado','validacion','conformidad','alta'].includes(s.st);
-    if(rackeada){
+    // Avance del Ítem 3 = SOLO sedes validadas. El rackeo dejó de contarse (2026-09-22).
+    const validada=['validado','migrado','validacion','conformidad','alta'].includes(s.st);
+    if(validada){
       B.item3[t]++;
       if(s.st==='alta')             B.alta[t]++;
       else if(s.st==='conformidad') B.en_conformidad[t]++;
       else if(s.st==='validacion')  B.en_validacion[t]++;
-      else if(s.st==='validado')     B.validado_pend_doc[t]++;
-      else if(s.st==='listo'){      B.listo_pruebas[t]++; if(s.ag)B.agend_listo[t]++; }
+      else                          B.validado_pend_doc[t]++;
       if(s.e1&&s.e2)B.item3_con_enlace.item1_item2[t]++;
       else if(s.e1) B.item3_con_enlace.item1[t]++;
       else if(s.e2) B.item3_con_enlace.item2[t]++;
@@ -3340,8 +3362,8 @@ function agregarSedes(sedes,esV1){
     B.pendientes[t]++;
     if(s.st==='reprog')           B.reprog_pendiente[t]++;
     else if(s.st==='program')     B.programados[t]++;
-    else if(s.st==='programable') B.pendientes_programables[t]++;
-    else                          B.pendientes_en_espera[t]++;
+    else if(s.st==='programable'||s.st==='listo') B.pendientes_programables[t]++;  // 'listo' = dataset antiguo
+    else                          B.pendientes_en_espera[t]++;                     // incluye 'racksin' antiguo
   });
   return B;
 }
@@ -3353,7 +3375,7 @@ function agregarSedes(sedes,esV1){
 // 'migrado_pend_doc' y 'ritmo.mig'. Si se lee tal cual, esos buckets
 // quedan en 0 y el Dashboard pierde sedes sin avisar. Aquí se renombran
 // al vuelo para que cualquier caché antiguo siga siendo válido.
-window.SCHEMA_DATASET='v5-validado';
+window.SCHEMA_DATASET='v6-validadas-sin-rackeo';
 window.migrarDataset=function(D){
   if(!D||typeof D!=='object')return D;
   const fix=b=>{
@@ -3412,6 +3434,383 @@ window.universoFiltrado=function(){
   }
   return null;
 };
+
+// ============================================================
+// CAMPO (2026-09-22) — Historial_Atenciones + Tiempos Atenciones
+//   procesarCampo(wb)  -> window.CAMPO_DATOS (se guarda en Firestore config/campo_datos)
+//   metricasCampo(d)   -> cálculos compartidos por Métricas y el semáforo
+//   renderCampo()      -> tarjeta «Desempeño de campo» (pestaña Datos → Avance en el tiempo)
+// Replica las fórmulas de las hojas del Excel; no depende de valores cacheados
+// salvo «Tipo» y «Responsable Quiebre», que tienen respaldo propio.
+// ============================================================
+const CLAVE_CAMPO='campo_datos_v1';
+const METAS_CAMPO_DEF={hab:[20,12,12],conf:[50,40,40],cierre:[30,20,20],ventana:[180,150,150]};
+const _nrm=s=>String(s==null?'':s).replace(/ /g,' ').normalize('NFD').replace(/[̀-ͯ]/g,'')
+  .toLowerCase().replace(/\s+/g,' ').trim();
+const _esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// Fecha Excel (serial, Date o dd/mm/aaaa) -> 'AAAA-MM-DD'
+function _fISO(v){
+  if(v===null||v===undefined||v==='')return '';
+  if(v instanceof Date)return isNaN(v)?'':fmtLocalYMD(v);
+  if(typeof v==='number'){
+    if(v<20000||v>80000)return '';
+    return new Date(Math.round((Math.floor(v)-25569)*86400000)).toISOString().slice(0,10);
+  }
+  const t=String(v).trim();
+  const m=t.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if(m){let y=+m[3];if(y<100)y+=2000;return y+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[1]).padStart(2,'0');}
+  const m2=t.match(/^(\d{4})-(\d{2})-(\d{2})/); return m2?m2[0]:'';
+}
+// Hora Excel (fracción de día, Date o 'hh:mm') -> minutos desde medianoche
+function _minDia(v){
+  if(v===null||v===undefined||v==='')return null;
+  if(v instanceof Date)return isNaN(v)?null:v.getHours()*60+v.getMinutes();
+  if(typeof v==='number'){ if(v<0)return null; return Math.round((v-Math.floor(v))*1440)%1440; }
+  const m=String(v).trim().match(/^(\d{1,2}):(\d{2})/); return m?(+m[1])*60+(+m[2]):null;
+}
+
+function procesarCampo(wb,rawPlantilla){
+  const leer=pred=>{const k=wb.SheetNames.find(pred);return k?XLSX.utils.sheet_to_json(wb.Sheets[k],{defval:'',header:1}):null;};
+  const cabecera=(raw,req)=>{
+    for(let i=0;i<Math.min(raw.length,15);i++){const f=(raw[i]||[]).map(_nrm);if(req.every(x=>f.includes(x)))return i;}
+    return -1;
+  };
+  const indices=(fila,nombres)=>{const f=fila.map(_nrm);const o={};Object.entries(nombres).forEach(([k,n])=>{o[k]=f.indexOf(n);});return o;};
+  const val=(r,i)=>i>=0?r[i]:'';
+  const txt=(r,i)=>String(val(r,i)==null?'':val(r,i)).replace(/ /g,' ').trim();
+
+  // Tipo de sede por código, desde la propia Plantilla (respaldo si «Tipo» no tiene valor calculado)
+  const tipoPorCod={};
+  if(Array.isArray(rawPlantilla)){
+    const h=cabecera(rawPlantilla,['cod. pj','tipo sede']);
+    if(h>=0){const ix=indices(rawPlantilla[h],{c:'cod. pj',t:'tipo sede'});
+      rawPlantilla.slice(h+1).forEach(r=>{const c=txt(r,ix.c);if(c)tipoPorCod[c]=txt(r,ix.t);});}
+  }
+
+  // ---------- Tiempos Atenciones ----------
+  const tiem=[];
+  const rawT=leer(n=>_nrm(n)==='tiempos atenciones')||leer(n=>_nrm(n).includes('tiempos aten'));
+  if(rawT){
+    const h=cabecera(rawT,['cod. pj','estatus','entrada dc']);
+    if(h>=0){
+      const ix=indices(rawT[h],{c:'cod. pj',t:'tipo',f:'fecha de atencion',co:'coordinador',e:'estatus',
+        mo:'motivo atencion',g:'hora programada',hh:'llegada ticmas',i:'entrada dc',j:'inicio nirqa',
+        k:'fin nirqa',l:'salida ticmas',ca:'categoria de causa'});
+      rawT.slice(h+1).forEach(r=>{
+        const c=txt(r,ix.c); if(!c||_nrm(c)==='total')return;
+        let t=txt(r,ix.t); if(!/^Tipo [123]$/.test(t))t=tipoPorCod[c]||'';
+        tiem.push({c,t,f:_fISO(val(r,ix.f)),co:txt(r,ix.co),e:txt(r,ix.e),
+          g:_minDia(val(r,ix.g)),h:_minDia(val(r,ix.hh)),i:_minDia(val(r,ix.i)),
+          j:_minDia(val(r,ix.j)),k:_minDia(val(r,ix.k)),l:_minDia(val(r,ix.l))});
+      });
+    }
+  }
+
+  // ---------- Listas: Motivo de quiebre -> Responsable (respaldo de «Responsable Quiebre») ----------
+  const respPorMotivo={};
+  const rawL=leer(n=>_nrm(n)==='listas');
+  if(rawL&&rawL[0]){
+    const f=rawL[0].map(_nrm); const im=f.indexOf('motivo'), ir=f.indexOf('responsable');
+    if(im>=0&&ir>=0)rawL.slice(1).forEach(r=>{const m=_nrm(r[im]);if(m)respPorMotivo[m]=String(r[ir]||'').trim();});
+  }
+
+  // ---------- Historial_Atenciones ----------
+  const hist=[];
+  const rawH=leer(n=>_nrm(n)==='historial_atenciones')||leer(n=>_nrm(n).includes('historial'));
+  if(rawH){
+    const h=cabecera(rawH,['cod. pj','motivo de atencion','fecha de culminacion']);
+    if(h>=0){
+      const ix=indices(rawH[h],{c:'cod. pj',ct:'contrata',m:'motivo de atencion',fp:'fecha programada',
+        fc:'fecha de culminacion',co:'coordinador',q:'motivo de quiebre',r:'responsable quiebre'});
+      rawH.slice(h+1).forEach(r=>{
+        const c=txt(r,ix.c); if(!c)return;
+        const q=txt(r,ix.q);
+        let resp=txt(r,ix.r);
+        if(!resp||resp.includes('⚠'))resp=q?(respPorMotivo[_nrm(q)]||''):'';
+        if(resp.includes('⚠'))resp='';
+        hist.push({c,m:txt(r,ix.m),fp:_fISO(val(r,ix.fp)),fc:_fISO(val(r,ix.fc)),q,r:resp});
+      });
+    }
+  }
+
+  // ---------- Metas por tipo (hoja «Análisis Atenciones», parámetros editables) ----------
+  const metas=JSON.parse(JSON.stringify(METAS_CAMPO_DEF));
+  const rawA=leer(n=>_nrm(n).includes('nalisis atenciones'));
+  if(rawA){
+    const pref={hab:'meta habilitacion',conf:'meta configuracion',cierre:'meta cierre',ventana:'ventana comprometida'};
+    rawA.forEach(r=>{
+      if(!Array.isArray(r))return;
+      const et=_nrm(r[1]);
+      Object.entries(pref).forEach(([k,p])=>{
+        if(et.startsWith(p)){const v=[r[2],r[3],r[4]].map(Number);if(v.every(n=>isFinite(n)&&n>0))metas[k]=v;}
+      });
+    });
+  }
+
+  if(!tiem.length&&!hist.length){console.warn('[Campo] El libro no trae Historial_Atenciones ni Tiempos Atenciones');window.CAMPO_DATOS=null;return;}
+  window.CAMPO_DATOS={v:1,tiem,hist,metas,actualizado:Date.now()};
+  guardarCampo(window.CAMPO_DATOS);
+  console.log('[Campo] Tiempos:',tiem.length,'· Historial:',hist.length,'· metas:',metas);
+}
+
+function guardarCampo(C){
+  if(!C)return;
+  try{localStorage.setItem(CLAVE_CAMPO,JSON.stringify(C));}catch(e){}
+  try{ setDoc(doc(db,'config','campo_datos'),C).catch(e=>console.error('guardarCampo:',e)); }
+  catch(e){console.error('guardarCampo:',e);}
+}
+function restaurarCampoLocal(){
+  if(window.CAMPO_DATOS)return;
+  try{const raw=localStorage.getItem(CLAVE_CAMPO); if(raw)window.CAMPO_DATOS=JSON.parse(raw);}catch(e){}
+}
+
+// Estado de una atención del historial (misma regla que la columna «Estado Atención» del Excel)
+function estadoHist(x,hoyS){
+  const m=_nrm(x.m);
+  if(x.fc){
+    if(x.q)return 'Quebrada';
+    if(!m)return 'Falta tipo';
+    if(m==='rackeo de equipo')return 'Rackeado';
+    if(m==='instalacion de equipo y pruebas'||m==='pruebas logicas')return 'Validado';
+    if(m==='validacion + migracion'||m==='migracion')return 'Migrado';
+    return 'Regularizada';
+  }
+  if(x.q)return 'Anulada';
+  if(!x.fp)return 'Sin fecha';
+  return x.fp>=hoyS?'Programado':'Vencida sin registrar';
+}
+
+// dias = 0 -> todo el proyecto; n -> últimos n días (incluye hoy)
+function metricasCampo(dias){
+  const C=window.CAMPO_DATOS||{};
+  const metas=C.metas||METAS_CAMPO_DEF;
+  const hoyS=hoy();
+  let desde=''; if(dias>0){const d=new Date();d.setDate(d.getDate()-dias+1);desde=fmtLocalYMD(d);}
+  const enP=f=>!!f&&(!desde||(f>=desde&&f<=hoyS));
+  const ti=t=>t==='Tipo 1'?0:t==='Tipo 3'?2:1;
+  const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):null;
+
+  // --- Tiempos Atenciones ---
+  const T={ejec:0,val:0,queb:0,puntN:0,puntOk:0,ventanaN:0,ventanaOk:0,revisar:0,wpos:[]};
+  const F={acc:[[],[],[]],hab:[[],[],[]],conf:[[],[],[]],cie:[[],[],[]],w:[[],[],[]]};
+  const CO={};
+  (C.tiem||[]).forEach(x=>{
+    if(!enP(x.f))return;
+    const e=_nrm(x.e), k=ti(x.t), esV=e==='validado', esQ=e==='quiebre';
+    if(esV||esQ){T.ejec++; if(esV)T.val++; else T.queb++;}
+    const p  =(x.g!=null&&x.h!=null)?x.h-x.g:null;
+    const acc=(x.i!=null&&x.h!=null&&x.g!=null)?Math.max(0,x.i-Math.max(x.h,x.g)):null;
+    const hab=(x.i!=null&&x.j!=null)?x.j-x.i:null;
+    const cnf=(x.j!=null&&x.k!=null)?x.k-x.j:null;
+    const cie=(x.k!=null&&x.l!=null)?x.l-x.k:null;
+    const w  =(x.i!=null&&x.l!=null)?x.l-x.i:null;
+    if(p!=null){T.puntN++; if(p<=0)T.puntOk++;}
+    if(acc!=null)F.acc[k].push(acc); if(hab!=null)F.hab[k].push(hab);
+    if(cnf!=null)F.conf[k].push(cnf); if(cie!=null)F.cie[k].push(cie);
+    if(w!=null){
+      if(w<0)T.revisar++; else {T.ventanaN++; if(w<=metas.ventana[k])T.ventanaOk++;}
+      if(w>0){T.wpos.push(w);F.w[k].push(w);}
+    }
+    const nom=x.co||'Sin coordinador';
+    const c=CO[nom]||(CO[nom]={n:0,v:0,pN:0,pOk:0,hab:[],cie:[],w:[]});
+    if(esV||esQ){c.n++; if(esV)c.v++;}
+    if(p!=null){c.pN++; if(p<=0)c.pOk++;}
+    if(hab!=null)c.hab.push(hab); if(cie!=null)c.cie.push(cie); if(w!=null&&w>0)c.w.push(w);
+  });
+  T.efect=T.ejec?T.val/T.ejec*100:null;
+  T.pctPunt=T.puntN?T.puntOk/T.puntN*100:null;
+  T.pctVentana=T.ventanaN?T.ventanaOk/T.ventanaN*100:null;
+  T.ventanaProm=avg(T.wpos);
+
+  // --- Historial_Atenciones ---
+  const TERC=['item 1 / item 2','poder judicial','causas externas'], ONE=['tic+','nirqa','on empresas'];
+  const H={cerradas:0,quebradas:0,terceros:0,on:0,sinAsignar:0,porResp:{},porMot:{},vencidas:0};
+  const motLbl={};
+  (C.hist||[]).forEach(x=>{
+    const est=estadoHist(x,hoyS);
+    if(est==='Vencida sin registrar')H.vencidas++;
+    if(!x.fc||!enP(x.fc))return;
+    H.cerradas++;
+    if(est!=='Quebrada')return;
+    H.quebradas++;
+    const resp=x.r||'Sin asignar', nr=_nrm(resp);
+    H.porResp[resp]=(H.porResp[resp]||0)+1;
+    if(TERC.includes(nr))H.terceros++; else if(ONE.includes(nr))H.on++; else H.sinAsignar++;
+    const km=_nrm(x.q)||'sin motivo';
+    if(!motLbl[km])motLbl[km]=x.q?x.q.charAt(0).toUpperCase()+x.q.slice(1):'Sin motivo';
+    H.porMot[motLbl[km]]=(H.porMot[motLbl[km]]||0)+1;
+  });
+  H.pctQ=H.cerradas?H.quebradas/H.cerradas*100:0;
+
+  const fases={};
+  Object.keys(F).forEach(k=>{fases[k]=F[k].map(avg);});
+  const coords=Object.entries(CO).map(([nom,c])=>({nom,n:c.n,
+    efect:c.n?c.v/c.n*100:null,punt:c.pN?c.pOk/c.pN*100:null,
+    hab:avg(c.hab),cie:avg(c.cie),w:avg(c.w)})).sort((a,b)=>b.n-a.n);
+  return {t:T,hist:H,fases,coords,metas,desde};
+}
+
+window.renderCampo=function(){
+  const el=document.getElementById('campo-contenido'); if(!el)return;
+  const C=window.CAMPO_DATOS;
+  if(!C||(!(C.tiem||[]).length&&!(C.hist||[]).length)){
+    el.innerHTML='<div style="color:var(--text3);text-align:center;padding:24px;font-size:13px;line-height:1.5">'+
+      'Aún no hay datos de campo. Sube la plantilla completa (con las hojas <b>Historial_Atenciones</b> y '+
+      '<b>Tiempos Atenciones</b>) en «Cargar plantilla».</div>';
+    return;
+  }
+  const dias=parseInt(document.getElementById('filtro-campo-periodo')?.value||'0',10)||0;
+  const m=metricasCampo(dias);
+  const nf=n=>Number(n||0).toLocaleString('es-PE');
+  const pc=v=>v==null?'—':Math.round(v)+'%';
+  const mn=v=>v==null?'—':v+' min';
+
+  const cifras=[
+    {k:'Atenciones ejecutadas',v:nf(m.t.ejec),s:nf(m.t.val)+' operativas · '+nf(m.t.queb)+' quiebres'},
+    {k:'% Efectividad',v:pc(m.t.efect),s:'operativas ÷ ejecutadas'},
+    {k:'% Puntualidad',v:pc(m.t.pctPunt),s:'llegada a la hora pactada o antes'},
+    {k:'% En ventana',v:pc(m.t.pctVentana),s:'Entrada DC → salida TICMAS dentro de la meta'},
+    {k:'Ventana promedio',v:mn(m.t.ventanaProm),s:'Entrada DC → salida TICMAS'},
+    {k:'Quiebres (historial)',v:nf(m.hist.quebradas),s:'de '+nf(m.hist.cerradas)+' atenciones cerradas · '+pc(m.hist.pctQ)}
+  ].map(c=>'<div class="vz-cell"><div class="k">'+c.k+'</div><div class="v">'+c.v+'</div><div class="s">'+c.s+'</div></div>').join('');
+
+  const barras=(obj,colorDe)=>{
+    const ent=Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+    if(!ent.length)return '<div style="color:var(--text3);font-size:12px;padding:8px 0">Sin quiebres en el período.</div>';
+    const max=ent[0][1]||1;
+    return '<div class="vz-bars">'+ent.map(([k,v])=>
+      '<div class="vz-bar-r" style="grid-template-columns:minmax(120px,190px) 1fr 42px">'+
+        '<span title="'+_esc(k)+'" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_esc(k)+'</span>'+
+        '<div class="vz-bar-t"><div class="vz-bar-f" style="width:'+(v/max*100)+'%;background:'+colorDe(k)+'"></div></div>'+
+        '<span class="vz-bar-n">'+v+'</span></div>').join('')+'</div>';
+  };
+  const colorResp=k=>{const n=_nrm(k);
+    if(['tic+','nirqa','on empresas'].includes(n))return '#2a78d6';
+    if(n==='sin asignar')return '#d03b3b';
+    return '#898781';};
+
+  const sub=t=>'<div style="font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#898781;margin:0 0 8px">'+t+'</div>';
+  const H=m.hist;
+  const lectura='<div class="vz-read">'+
+    (H.quebradas?'<b>'+nf(H.terceros)+' de '+nf(H.quebradas)+'</b> quiebres ('+pc(H.terceros/H.quebradas*100)+') son atribuibles a terceros '+
+      '(Ítem 1/2, Poder Judicial o causas externas) y <b>'+nf(H.on)+'</b> al ecosistema ON (TIC+, NIRQA, ON Empresas)'+
+      (H.sinAsignar?'; <b>'+nf(H.sinAsignar)+'</b> no tienen responsable asignado':'')+'. ':'')+
+    (H.vencidas?'Hay <b>'+nf(H.vencidas)+'</b> visitas programadas vencidas sin resultado registrado en el historial.':'')+
+    '</div>';
+
+  const tabla=(cab,filas,izq)=>'<div style="overflow-x:auto"><table class="cmp-t"><thead><tr>'+
+    cab.map((c,i)=>'<th'+((izq||[0]).includes(i)?' style="text-align:left"':'')+'>'+c+'</th>').join('')+
+    '</tr></thead><tbody>'+filas.join('')+'</tbody></table></div>';
+  const F=m.fases, MT=m.metas;
+  const celda=(v,meta)=>'<td'+(v!=null&&meta!=null&&v>meta?' class="cmp-exc" title="Supera la meta de '+meta+' min"':'')+'>'+mn(v)+'</td>';
+  const filaFase=(nom,resp,k,mk)=>'<tr><td class="cmp-l">'+nom+'</td><td class="cmp-r">'+resp+'</td>'+
+    [0,1,2].map(i=>celda(F[k][i],mk?MT[mk][i]:null)).join('')+
+    '<td class="cmp-r">'+(mk?MT[mk].join(' / ')+' min':'—')+'</td></tr>';
+  const tFases=tabla(['Fase','Responsable','Tipo 1','Tipo 2','Tipo 3','Meta T1 / T2 / T3'],[
+    filaFase('Espera de acceso','Poder Judicial','acc',null),
+    filaFase('Habilitación de equipos','TICMAS','hab','hab'),
+    filaFase('Configuración','NIRQA','conf','conf'),
+    filaFase('Cierre','TICMAS','cie','cierre'),
+    filaFase('Ventana total (Entrada DC → Salida)','—','w','ventana')
+  ],[0,1,5]);
+  const tCoord=tabla(['Coordinador','Atenciones','% Efectividad','% Puntualidad','Habilitación prom.','Cierre prom.','Ventana prom.'],
+    m.coords.map(c=>'<tr><td class="cmp-l">'+_esc(c.nom)+'</td><td>'+nf(c.n)+'</td><td>'+pc(c.efect)+'</td><td>'+pc(c.punt)+
+      '</td><td>'+mn(c.hab)+'</td><td>'+mn(c.cie)+'</td><td>'+mn(c.w)+'</td></tr>'));
+
+  el.innerHTML=
+    '<style>'+
+    '.cmp-t{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}'+
+    '.cmp-t th{text-align:right;font-size:10.5px;font-weight:700;color:#898781;padding:6px 8px;border-bottom:1px solid #e1e0d9;white-space:nowrap}'+
+
+    '.cmp-t td{text-align:right;padding:6px 8px;border-bottom:1px solid #f0efea;color:#0b0b0b;white-space:nowrap}'+
+    '.cmp-t td.cmp-l{text-align:left;font-weight:600}'+
+    '.cmp-t td.cmp-r{text-align:left;color:#52514e}'+
+    '.cmp-t td.cmp-exc{color:#d03b3b;font-weight:650}'+
+    '.cmp-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px;margin-bottom:6px}'+
+    '</style>'+
+    '<div class="vz-row">'+cifras+'</div>'+
+    '<div class="cmp-g">'+
+      '<div>'+sub('Quiebres por responsable')+barras(H.porResp,colorResp)+'</div>'+
+      '<div>'+sub('Quiebres por motivo')+barras(H.porMot,()=>'#86b6ef')+'</div>'+
+    '</div>'+ lectura +
+    '<div style="margin-top:20px">'+sub('Tiempo promedio por fase (en rojo: supera la meta de su tipo)')+tFases+'</div>'+
+    '<div style="margin-top:20px">'+sub('Desempeño por coordinador')+tCoord+'</div>'+
+    '<div style="margin-top:12px;font-size:11px;color:#898781;line-height:1.5">'+
+      'Fuente: plantilla cargada el '+new Date(C.actualizado||Date.now()).toLocaleString('es-PE')+' · '+
+      nf((C.tiem||[]).length)+' registros en Tiempos Atenciones · '+nf((C.hist||[]).length)+' atenciones en Historial_Atenciones. '+
+      'Efectividad, puntualidad, ventana y fases salen de Tiempos Atenciones; los quiebres, del Historial. '+
+      'Las metas por tipo se leen de los parámetros de la hoja de análisis del Excel.'+
+      (m.t.revisar?' '+m.t.revisar+' registros con salida anterior a la entrada al DC se excluyen de la ventana (revisar horas).':'')+
+    '</div>';
+};
+
+// ============================================================
+// SEMÁFORO AUTOMÁTICO — se calcula de la última plantilla cargada
+// Umbrales: valor <= ok -> verde · <= alerta -> amarillo · mayor -> rojo
+// ============================================================
+const UMBRALES_SEMAFORO={
+  pendAlta:{ok:30,alerta:100},   // validadas que aún no tienen alta operativa
+  sinGab:{ok:5,alerta:30},       // sedes sin gabinete (Ítem 5)
+  espera:{ok:20,alerta:60},      // sedes con gabinete que esperan enlace (Ítem 1/2)
+  margenAPdias:21,               // validación: amarillo si al ritmo actual se termina a menos de 21 días del 03/12
+  quiebrePct:{ok:20,alerta:35},  // % de atenciones quebradas, últimas 4 semanas
+  ventanaPct:{ok:80,alerta:60}   // % dentro de la ventana, últimas 4 semanas (aquí MAYOR es mejor)
+};
+const SEM_FIN_AP='2026-12-03';
+// Ítems manuales por defecto que ahora se calculan solos: se ocultan para no duplicar.
+const SEM_REEMPLAZADOS_ID=['item-1','item-2','item-3','item-5','item-8'];
+const SEM_REEMPLAZADOS_LBL=ITEMS_DEFAULT.filter(i=>[1,2,3,5,8].includes(i.orden)).map(i=>i.lbl);
+const _nivel=(v,u)=>v<=u.ok?'ok':v<=u.alerta?'alerta':'critico';
+
+function calcSemaforoAuto(){
+  const D=window.DIAGRAMA_DATOS;
+  if(!D||D.formato!=='v2'||(D.v||0)<5)return null;
+  const TV=['Tipo 1','Tipo 2','Tipo 3'];
+  const s=o=>TV.reduce((a,t)=>a+(Number((o||{})[t])||0),0);
+  const nf=n=>Number(n||0).toLocaleString('es-PE');
+  const UNIV=s(D.universo)||TOTAL;
+  const validadas=s(D.validado_pend_doc)+s(D.en_validacion)+s(D.en_conformidad)+s(D.alta);
+  const alta=s(D.alta), gab=s(D.gabinete), espera=s(D.pendientes_en_espera);
+  const programados=s(D.programados), porAgendar=s(D.pendientes_programables)+s(D.reprog_pendiente);
+  const vencidas=(D.alertas||[]).filter(a=>a.tipo==='vencida').length;
+  const HOYd=new Date(); HOYd.setHours(0,0,0,0);
+  const r4=((D.ritmo&&D.ritmo.val)||[]).filter(f=>{const d=Math.round((HOYd-new Date(f))/86400000);return d>=0&&d<=28;}).length/4;
+  const faltan=Math.max(0,UNIV-validadas);
+  const fin=new Date(SEM_FIN_AP+'T00:00:00');
+  const semHasta=Math.max(1,Math.ceil((fin-HOYd)/(7*86400000)));
+  const nec=faltan/semHasta;
+  const fProy=r4>0?new Date(HOYd.getTime()+Math.ceil(faltan/r4)*7*86400000):null;
+  let rVal='ok';
+  if(faltan>0){ if(!fProy||fProy>fin)rVal='critico'; else if((fin-fProy)/86400000<UMBRALES_SEMAFORO.margenAPdias)rVal='alerta'; }
+  const fF=d=>d.toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const items=[
+    {lbl:'Ítem 3 — Ritmo de validación',r:rVal,
+     nota:nf(validadas)+'/'+nf(UNIV)+' validadas ('+Math.round(validadas/UNIV*100)+'%) · ritmo '+r4.toFixed(1)+'/sem · '+
+          'se necesitan '+nec.toFixed(1)+'/sem para el 03/12 · al ritmo actual: '+(fProy?fF(fProy):'sin ritmo medible')},
+    {lbl:'Cierre documentario — alta operativa',r:_nivel(validadas-alta,UMBRALES_SEMAFORO.pendAlta),
+     nota:nf(alta)+' con alta operativa · '+nf(validadas-alta)+' validadas esperan documentación, Ítem 5 o conformidad PJ'},
+    {lbl:'Ítem 5 — Gabinetes',r:_nivel(UNIV-gab,UMBRALES_SEMAFORO.sinGab),
+     nota:nf(gab)+'/'+nf(UNIV)+' sedes con gabinete · faltan '+nf(UNIV-gab)},
+    {lbl:'Ítem 1 / Ítem 2 — Enlaces',r:_nivel(espera,UMBRALES_SEMAFORO.espera),
+     nota:nf(espera)+' sedes con gabinete esperan enlace · entregados: Bitel '+nf(s(D.enlace_item1))+' · Claro '+nf(s(D.enlace_item2))},
+    {lbl:'Programación de campo',r:(porAgendar>0&&programados===0)?'critico':(vencidas>0?'alerta':'ok'),
+     nota:nf(programados)+' con visita vigente · '+nf(porAgendar)+' habilitadas por agendar · '+nf(vencidas)+' vencidas sin registrar'}
+  ];
+  if(window.CAMPO_DATOS){
+    const m=metricasCampo(28);
+    if(m.hist.cerradas>0)items.push({lbl:'Efectividad en campo (últimas 4 semanas)',
+      r:_nivel(m.hist.pctQ,UMBRALES_SEMAFORO.quiebrePct),
+      nota:nf(m.hist.cerradas)+' atenciones cerradas · '+nf(m.hist.quebradas)+' quiebres ('+m.hist.pctQ.toFixed(0)+'%) · '+
+           nf(m.hist.terceros)+' atribuibles a terceros'});
+    if(m.t.ventanaN>0){
+      const p=m.t.pctVentana, u=UMBRALES_SEMAFORO.ventanaPct;
+      items.push({lbl:'Ventana de atención (últimas 4 semanas)',r:p>=u.ok?'ok':p>=u.alerta?'alerta':'critico',
+        nota:p.toFixed(0)+'% de las atenciones dentro de la ventana comprometida · promedio '+(m.t.ventanaProm!=null?m.t.ventanaProm+' min':'—')});
+    }
+  }
+  return items.map((x,i)=>({...x,auto:true,id:'auto-'+i}));
+}
 
 // ============================================================
 // PLANTILLA NUEVA: mapea columnas por NOMBRE (no por posición) y
@@ -3474,7 +3873,8 @@ function _procesarPlantillaNueva(raw){
     'fecha enlace item 2':['fecha enlace 2','fecha enlace itm 2'],
     'estado sede':['estado de sede'],
     'estado atencion':['estado de atencion'],
-    'fecha validacion':['fecha migracion','fecha de validacion'],
+    'fecha validacion':['fecha de validacion'],
+    'fecha migracion sdwan':['fecha migracion sd-wan','fecha de migracion sdwan','fecha migracion'],
     'fecha rackeo':['fecha de rackeo'],
     'n.º atenciones':['n° atenciones','nro atenciones','num atenciones','n atenciones'],
     'atenc. quebradas':['atenciones quebradas','atenc quebradas'],
@@ -3507,13 +3907,15 @@ function _procesarPlantillaNueva(raw){
     pendientes:z(),pendientes_programables:z(),pendientes_en_espera:z(),
     programados:z(),reprog_pendiente:z(),agendadas:z(),agend_listo:z(),
     listo_pruebas:z(),validado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
-    enlace_item1:z(),enlace_item2:z(),
+    enlace_item1:z(),enlace_item2:z(),migradas:z(),
     atenciones:0,quebradas:0,reintentos:0,rackeoReal:0});
 
-  const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2'; D.v=4; D.schema=window.SCHEMA_DATASET;   // v4 = buckets de visitas agendadas
+  // v5 = el avance cuenta SOLO validadas (sin rackeo) + migradas informativas
+  const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2'; D.v=5; D.schema=window.SCHEMA_DATASET;
   const iGabF=col('fecha gabinete (item 5)'), iRack=col('fecha rackeo'), iMig=col('fecha validacion'),
         iSede=col('sede'), iMot=col('ult. atencion — motivo'), iResp=col('ult. atencion — responsable'),
-        iUlt=col('ult. atencion — estado'), iEstAt=col('estado atencion'), iFProg=col('fecha programada vigente');
+        iUlt=col('ult. atencion — estado'), iEstAt=col('estado atencion'), iFProg=col('fecha programada vigente'),
+        iMigSD=col('fecha migracion sdwan');
   const HOY=new Date(); HOY.setHours(0,0,0,0);
   // SheetJS entrega las fechas como SERIAL de Excel (46202), no como Date.
   // new Date(46202) daría 1970 -> de ahí salían antigüedades de ~20.681 días y ritmos en 0.
@@ -3531,7 +3933,27 @@ function _procesarPlantillaNueva(raw){
     const d=new Date(t); return isNaN(d)?null:d;              // ISO (viene así del dataset guardado)
   };
   const dias=d0=>d0?Math.round((HOY-d0)/86400000):null;
-  D.alertas=[]; D.ritmo={gab:[],rack:[],val:[],enl:[],enl1:[],enl2:[]}; D.quiebres={}; D.envejec={hab:[],rack:[],pru:[]};
+  D.alertas=[]; D.ritmo={gab:[],rack:[],val:[],enl:[],enl1:[],enl2:[],migsd:[]}; D.quiebres={}; D.envejec={hab:[],esp:[],doc:[]};
+  // Clasificación ÚNICA de cada sede (la usan el bucket global, el de zona y los filtros).
+  // Sin rackeo: «Listo para pruebas» y «Rackeada sin enlace» ya no son una etapa propia.
+  //   · Listo para pruebas  -> habilitada por validar; se reparte según su última atención
+  //   · Rackeada sin enlace -> esperando enlace (igual que cualquier sede sin Ítem 1/2)
+  const clasificar=(e,ultE)=>{
+    if(e.includes('sin gabinete'))        return 'singab';
+    if(e.includes('alta operativa'))      return 'alta';
+    if(e.includes('conformidad'))         return 'conformidad';
+    if(e.includes('validacion'))          return 'validacion';
+    if(e.includes('validado')||e.includes('migrado')) return 'validado';
+    if(e.includes('reprogramacion'))      return 'reprog';
+    if(e.includes('visita agendada')||e.includes('programado')) return 'program';
+    if(e.includes('programable'))         return 'programable';
+    if(e.includes('listo para pruebas')){
+      if(ultE.includes('quebrada')||ultE.includes('anulada')||ultE.includes('vencida')) return 'reprog';
+      if(ultE.includes('programado'))     return 'program';
+      return 'programable';
+    }
+    return 'espera';   // en espera de enlace / rackeada sin enlace
+  };
   const pres=v=>String(v==null?'':v).replace(/\u00a0/g,' ').trim()!=='';
   let filas=0;
 
@@ -3547,28 +3969,27 @@ function _procesarPlantillaNueva(raw){
     const nAt=iAt>=0?(Number(r[iAt])||0):0, nQb=iQb>=0?(Number(r[iQb])||0):0;
     const estAt=iEstAt>=0?norm(String(r[iEstAt]||'')):'';
     const agendada=estAt.includes('visita agendada');
+    const ultE0=iUlt>=0?norm(String(r[iUlt]||'')):'';
+    const st=clasificar(norm(estado),ultE0);
+    const migSD=iMigSD>=0&&!!fx(r[iMigSD]);
 
     const acum=B=>{
       B.universo[tipo]++;
       B.atenciones+=nAt; B.quebradas+=nQb; if(nAt>1)B.reintentos++;
       if(e1)B.enlace_item1[tipo]++;
       if(e2)B.enlace_item2[tipo]++;
-      const e=norm(estado);
-      if(e.includes('sin gabinete'))return;
+      if(migSD)B.migradas[tipo]++;       // informativo: tiene Fecha Migración SDWAN
+      if(st==='singab')return;
       B.gabinete[tipo]++;
-      if(agendada)B.agendadas[tipo]++;   // visita con fecha vigente, esté rackeada o no
+      if(agendada)B.agendadas[tipo]++;   // visita con fecha vigente
 
-      // --- Equipo YA rackeado: cadena rackeo -> pruebas -> validacion -> cierre ---
-      const rackeada = e.includes('rackeada sin enlace')||e.includes('listo para pruebas')||
-                       e.includes('validado')||e.includes('migrado')||e.includes('validacion')||
-                       e.includes('conformidad')||e.includes('alta operativa');
-      if(rackeada){
+      // --- VALIDADAS: único avance que cuenta para el Ítem 3 ---
+      if(['validado','validacion','conformidad','alta'].includes(st)){
         B.item3[tipo]++;
-        if(e.includes('alta operativa'))      B.alta[tipo]++;
-        else if(e.includes('conformidad'))    B.en_conformidad[tipo]++;
-        else if(e.includes('validacion'))     B.en_validacion[tipo]++;
-        else if(e.includes('validado')||e.includes('migrado')) B.validado_pend_doc[tipo]++;
-        else if(e.includes('listo para pruebas')){ B.listo_pruebas[tipo]++; if(agendada)B.agend_listo[tipo]++; }
+        if(st==='alta')             B.alta[tipo]++;
+        else if(st==='conformidad') B.en_conformidad[tipo]++;
+        else if(st==='validacion')  B.en_validacion[tipo]++;
+        else                        B.validado_pend_doc[tipo]++;
         if(e1&&e2)B.item3_con_enlace.item1_item2[tipo]++;
         else if(e1)B.item3_con_enlace.item1[tipo]++;
         else if(e2)B.item3_con_enlace.item2[tipo]++;
@@ -3576,12 +3997,12 @@ function _procesarPlantillaNueva(raw){
         return;
       }
 
-      // --- Sin equipo todavia ---
+      // --- POR VALIDAR (con gabinete) ---
       B.pendientes[tipo]++;
-      if(e.includes('reprogramacion'))        B.reprog_pendiente[tipo]++;
-      else if(e.includes('visita agendada')||e.includes('programado')) B.programados[tipo]++;
-      else if(e.includes('programable'))      B.pendientes_programables[tipo]++;
-      else                                    B.pendientes_en_espera[tipo]++;
+      if(st==='reprog')           B.reprog_pendiente[tipo]++;
+      else if(st==='program')     B.programados[tipo]++;
+      else if(st==='programable') B.pendientes_programables[tipo]++;
+      else                        B.pendientes_en_espera[tipo]++;
     };
 
     acum(D);
@@ -3594,24 +4015,10 @@ function _procesarPlantillaNueva(raw){
       const regRaw=iRegion>=0?String(r[iRegion]||'').trim():'';
       const dpRaw =iDpto  >=0?String(r[iDpto]  ||'').trim():'';
       const pvRaw =iProv  >=0?String(r[iProv]  ||'').trim():'';
-      const e=norm(estado);
-      let st='espera';
-      if(e.includes('sin gabinete'))                  st='singab';
-      else if(e.includes('alta operativa'))           st='alta';
-      else if(e.includes('conformidad'))              st='conformidad';
-      else if(e.includes('validacion'))               st='validacion';
-      else if(e.includes('validado')||e.includes('migrado')) st='validado';
-      else if(e.includes('listo para pruebas'))       st='listo';
-      else if(e.includes('rackeada sin enlace'))      st='racksin';
-      else if(e.includes('reprogramacion'))           st='reprog';
-      else if(e.includes('visita agendada')||e.includes('programado')) st='program';
-      else if(e.includes('programable'))              st='programable';
       if(!D.sedes)D.sedes=[];
-      // rr = tiene Fecha Rackeo REAL (columna P). Permite que el indicador de base
-      // histórica también responda a los filtros de zona/región/dpto.
       D.sedes.push({z:zona,r:regRaw,d:dpRaw,p:pvRaw,t:tipo,st:st,
                     e1:e1?1:0,e2:e2?1:0,ag:agendada?1:0,at:nAt,qb:nQb,
-                    rr:fx(r[iRack])?1:0});
+                    mg:migSD?1:0});
     }
 
     // --- datos para la Vista Ejecutiva ---
@@ -3619,21 +4026,20 @@ function _procesarPlantillaNueva(raw){
           f1=fx(r[iE1]), f2=fx(r[iE2]);
     const iso=d0=>d0.toISOString().slice(0,10);
     if(fg)D.ritmo.gab.push(iso(fg)); if(fr)D.ritmo.rack.push(iso(fr)); if(fm)D.ritmo.val.push(iso(fm));
-    // Base histórica de rackeo: cuenta solo las sedes con Fecha Rackeo REAL (columna P).
-    // Tras quitar el fallback de "Validado", esta columna contiene únicamente las sedes
-    // rackeadas bajo el criterio inicial del proyecto (instalar con gabinete, sin enlace).
-    if(fr) D.rackeoReal=(D.rackeoReal||0)+1;
+    const fMigSD=iMigSD>=0?fx(r[iMigSD]):null; if(fMigSD)D.ritmo.migsd.push(iso(fMigSD));
+    // El rackeo ya no se contabiliza como avance (2026-09-22): D.rackeoReal queda en 0.
     if(f1){D.ritmo.enl.push(iso(f1));D.ritmo.enl1.push(iso(f1));}
     if(f2){D.ritmo.enl.push(iso(f2));D.ritmo.enl2.push(iso(f2));}
     const eN=norm(estado), sede=String(r[iSede]||'').trim(), cod=String(r[iCod]).trim();
     const ultMax=(...fs)=>{const v=fs.filter(Boolean); return v.length?new Date(Math.max.apply(null,v)):null;};
-    if(eN.includes('programable')||eN.includes('reprogramacion')){
+    // Envejecimiento: habilitadas sin validar · esperando enlace · validadas sin alta
+    if(st==='programable'||st==='reprog'){
       const dd=dias(ultMax(fg,f1,f2));
       if(dd!=null)D.envejec.hab.push({cod,sede,zona:zr,tipo,dias:dd,estado});
-    } else if(eN.includes('rackeada sin enlace')){
-      const dd=dias(fr); if(dd!=null)D.envejec.rack.push({cod,sede,zona:zr,tipo,dias:dd,estado});
-    } else if(eN.includes('listo para pruebas')){
-      const dd=dias(ultMax(fr,f1,f2)); if(dd!=null)D.envejec.pru.push({cod,sede,zona:zr,tipo,dias:dd,estado});
+    } else if(st==='espera'){
+      const dd=dias(fg); if(dd!=null)D.envejec.esp.push({cod,sede,zona:zr,tipo,dias:dd,estado});
+    } else if(st==='validado'||st==='validacion'||st==='conformidad'){
+      const dd=dias(fm); if(dd!=null)D.envejec.doc.push({cod,sede,zona:zr,tipo,dias:dd,estado});
     }
     const mot=String(r[iMot]||'').trim(), resp=String(r[iResp]||'').trim();
     if(mot){ D.quiebres[resp||'Por definir']=(D.quiebres[resp||'Por definir']||0)+1; }
@@ -3669,19 +4075,21 @@ function _procesarPlantillaNueva(raw){
   window.poblarSelectoresFiltro&&window.poblarSelectoresFiltro();
   window.renderTodo();
   const s=o=>TV.reduce((a,t)=>a+(o[t]||0),0);
+  const _cmp=window.CAMPO_DATOS;
   alert('Plantilla cargada ('+filas+' sedes)\n\n'+
         'Con gabinete (Ítem 5): '+s(D.gabinete)+'\n'+
-        'Equipo instalado: '+s(D.item3)+'\n'+
-        '   · Rackeadas sin enlace: '+s(D.item3_sin_enlace)+'\n'+
-        '   · Listo para pruebas: '+s(D.listo_pruebas)+'\n'+
+        'Validadas (Ítem 3): '+s(D.item3)+'\n'+
         '   · Validado pend. documentación: '+s(D.validado_pend_doc)+'\n'+
         '   · En validación Ítem 5: '+s(D.en_validacion)+'\n'+
         '   · En conformidad PJ: '+s(D.en_conformidad)+'\n'+
         '   · Alta operativa: '+s(D.alta)+'\n\n'+
-        'Sin equipo: '+s(D.pendientes)+'\n'+
+        'Por validar: '+s(D.pendientes)+'\n'+
         '   · Agendadas: '+s(D.programados)+'   · Reagendar: '+s(D.reprog_pendiente)+'\n'+
-        '   · Programables: '+s(D.pendientes_programables)+'   · En espera de enlace: '+s(D.pendientes_en_espera)+'\n\n'+
-        'Atenciones: '+D.atenciones+'   ·   Quebradas: '+D.quebradas);
+        '   · Listas para agendar: '+s(D.pendientes_programables)+'   · En espera de enlace: '+s(D.pendientes_en_espera)+'\n\n'+
+        'Migradas SD-WAN (informativo): '+s(D.migradas)+'\n'+
+        'Atenciones: '+D.atenciones+'   ·   Quebradas: '+D.quebradas+
+        (_cmp?'\n\nHistorial_Atenciones: '+(_cmp.hist||[]).length+' filas · Tiempos Atenciones: '+(_cmp.tiem||[]).length+' filas':
+              '\n\n⚠ No se encontraron las hojas Historial_Atenciones / Tiempos Atenciones.'));
   return true;
 }
 
@@ -3702,7 +4110,7 @@ function renderEjecutivo(){
   }
   // Los datos guardados antes de la corrección de fechas traen antigüedades y ritmos inválidos.
   // Preferible no mostrar nada a mostrar cifras equivocadas.
-  if((D.v||0)<4){
+  if((D.v||0)<5){
     el.innerHTML='<div class="card" style="padding:34px 26px;max-width:620px;margin:0 auto">'+
       '<div style="font-size:15px;font-weight:700;color:#b45309;margin-bottom:10px">Hay que recalcular los datos</div>'+
       '<div style="font-size:13px;color:#475569;line-height:1.6">Los datos guardados vienen de una carga anterior y sus fechas quedaron mal interpretadas: '+
@@ -3714,28 +4122,28 @@ function renderEjecutivo(){
 
   // ---------- METRICAS ----------
   const UNIV=s(D.universo)||745;
-  const gab=s(D.gabinete), rack=s(D.item3), migr=s(D.validado_pend_doc)+s(D.en_validacion)+s(D.en_conformidad)+s(D.alta);
-  const alta=s(D.alta), sinEnl=s(D.item3_sin_enlace), listoPru=s(D.listo_pruebas);
+  // (2026-09-22) Sin rackeo: el avance del Ítem 3 son solo las validadas.
+  const gab=s(D.gabinete), migr=s(D.validado_pend_doc)+s(D.en_validacion)+s(D.en_conformidad)+s(D.alta);
+  const alta=s(D.alta);
   const progble=s(D.pendientes_programables), reprog=s(D.reprog_pendiente), agend=s(D.programados), espera=s(D.pendientes_en_espera);
-  const pctMig=UNIV?(migr/UNIV*100):0, pctRack=UNIV?(rack/UNIV*100):0, pctGab=UNIV?(gab/UNIV*100):0;
+  const pctMig=UNIV?(migr/UNIV*100):0, pctGab=UNIV?(gab/UNIV*100):0;
 
   // ritmo de las ultimas 4 semanas
   const HOY=new Date(); HOY.setHours(0,0,0,0);
-  const ritmo4=arr=>{const c=(arr||[]).filter(f=>(HOY-new Date(f))/86400000<=28).length; return c/4;};
-  const rMig=ritmo4(D.ritmo.val), rGab=ritmo4(D.ritmo.gab), rEnl=ritmo4(D.ritmo.enl), rRack=ritmo4(D.ritmo.rack);
+  // Misma regla que la portada: días redondeados, ventana 0..28 (antes difería en ±0.5/sem)
+  const ritmo4=arr=>{const c=(arr||[]).filter(f=>{const d=Math.round((HOY-new Date(f))/86400000);return d>=0&&d<=28;}).length; return c/4;};
+  const rMig=ritmo4(D.ritmo.val), rGab=ritmo4(D.ritmo.gab), rEnl=ritmo4(D.ritmo.enl);
   const faltaMig=UNIV-migr;
   const semanasMig=rMig>0?Math.ceil(faltaMig/rMig):null;
   const ultima=arr=>{const v=(arr||[]).map(f=>new Date(f)).filter(f=>!isNaN(f)); return v.length?new Date(Math.max.apply(null,v)):null;};
-  const ultRack=ultima(D.ritmo.rack), ultMig=ultima(D.ritmo.val);
-  const diasSinRack=ultRack?Math.round((HOY-ultRack)/86400000):null;
+  const ultMig=ultima(D.ritmo.val);
 
-  const ejecutableHoy=progble+reprog+listoPru;
-  const bloqTerceros=espera+sinEnl+s(D.universo)-gab-espera-progble-reprog-agend-rack; // se recalcula abajo
+  const ejecutableHoy=progble+reprog;
   const sinGab=UNIV-gab;
 
   const envH=(D.envejec.hab||[]).slice().sort((a,b)=>b.dias-a.dias);
-  const envR=(D.envejec.rack||[]).slice().sort((a,b)=>b.dias-a.dias);
-  const envP=(D.envejec.pru||[]).slice().sort((a,b)=>b.dias-a.dias);
+  const envE=(D.envejec.esp||[]).slice().sort((a,b)=>b.dias-a.dias);
+  const envD=(D.envejec.doc||[]).slice().sort((a,b)=>b.dias-a.dias);
   const prom=a=>a.length?Math.round(a.reduce((x,y)=>x+y.dias,0)/a.length):0;
   const vencidas=(D.alertas||[]).filter(a=>a.tipo==='vencida').length;
 
@@ -3771,18 +4179,21 @@ function renderEjecutivo(){
     '</div>';
 
   // ---------- quiebres ----------
-  const qEnt=Object.entries(D.quiebres||{}).sort((a,b)=>b[1]-a[1]);
+  // Con Historial_Atenciones cargado se cuentan TODAS las atenciones quebradas (no solo la última por sede).
+  const _mc=window.CAMPO_DATOS?metricasCampo(0):null;
+  const qFuente=_mc&&_mc.hist.quebradas?_mc.hist.porResp:(D.quiebres||{});
+  const qEnt=Object.entries(qFuente).sort((a,b)=>b[1]-a[1]);
   const qTot=qEnt.reduce((a,b)=>a+b[1],0);
-  const terceros=qEnt.filter(([k])=>/item|ítem|poder judicial|pj/i.test(k)).reduce((a,b)=>a+b[1],0);
+  const terceros=qEnt.filter(([k])=>/item|ítem|poder judicial|pj|causas externas/i.test(k)).reduce((a,b)=>a+b[1],0);
 
   // ---------- acciones ----------
   const acciones=[];
   if(vencidas>0)acciones.push([C.rojo,'Cerrar '+vencidas+' atenciones vencidas sin registrar','Pasó la fecha y nadie registró resultado. El avance real puede ser mayor o menor al que muestra el tablero.']);
   if(agend===0)acciones.push([C.rojo,'No hay ninguna visita agendada a futuro','El pipeline de campo está vacío: sin programaciones nuevas, el avance de las próximas semanas será cero.']);
-  if(ejecutableHoy>0)acciones.push([C.ambar,'Agendar '+ejecutableHoy+' sedes que ya son ejecutables','No dependen de terceros: '+progble+' habilitadas + '+reprog+' por reprogramar + '+listoPru+' listas para pruebas.']);
+  if(ejecutableHoy>0)acciones.push([C.ambar,'Agendar '+ejecutableHoy+' sedes que ya son ejecutables','No dependen de terceros: '+progble+' listas para agendar + '+reprog+' por reprogramar.']);
   if(semanasMig&&semanasMig>40)acciones.push([C.rojo,'Ritmo de validación insuficiente: '+rMig.toFixed(1)+'/semana','A este paso las '+faltaMig+' sedes restantes tomarían ~'+semanasMig+' semanas. Requiere decisión de capacidad.']);
   if(migr>0&&alta===0)acciones.push([C.ambar,'El ciclo de alta operativa no ha arrancado','Hay '+migr+' sedes validadas y ninguna con documentación cargada. Sin conformidad no hay sede facturable.']);
-  if(envR.length&&prom(envR)>25)acciones.push([C.gris,envR.length+' sedes rackeadas llevan '+prom(envR)+' días esperando enlace','Bloqueo de Ítem 1/2. Documentar para el expediente de Ampliación de Plazo.']);
+  if(envE.length&&prom(envE)>25)acciones.push([C.gris,envE.length+' sedes con gabinete llevan '+prom(envE)+' días esperando enlace','Bloqueo de Ítem 1/2. Documentar para el expediente de Ampliación de Plazo.']);
 
   // ---------- HTML ----------
   el.innerHTML =
@@ -3838,15 +4249,14 @@ function renderEjecutivo(){
       '<div class="ejx-h">1 · ¿Cómo va el proyecto?</div>'+
       '<div style="display:flex;align-items:baseline;gap:9px;margin-bottom:2px">'+
         '<div style="font-size:38px;font-weight:800;color:'+semGlobal[1]+';line-height:1">'+pctMig.toFixed(1)+'%</div>'+
-        '<div style="font-size:11px;color:#64748b">'+migr+' de '+UNIV+' sedes validadas<br><span style="font-size:9.5px;color:#94a3b8">Avance real = validación, no rackeo</span></div>'+
+        '<div style="font-size:11px;color:#64748b">'+migr+' de '+UNIV+' sedes validadas<br><span style="font-size:9.5px;color:#94a3b8">Avance real = solo validadas</span></div>'+
       '</div>'+
       barra(pctMig,semGlobal[1])+
       '<div style="margin-top:14px;padding-top:11px;border-top:1px dashed '+C.linea+'">'+
         '<div style="font-size:9px;font-weight:800;color:#94a3b8;letter-spacing:.6px;margin-bottom:7px">CADENA DE VALOR — CADA ETAPA CONTIENE A LA SIGUIENTE</div>'+
         [['1 · Gabinete instalado (Ítem 5)',gab,pctGab,'#7c3aed','depende del Ítem 5'],
-         ['2 · Equipo instalado (Ítem 3)',rack,pctRack,'#0d9488','de los '+gab+' con gabinete'],
-         ['3 · Validadas',migr,pctMig,'#2563eb','de las '+rack+' rackeadas'],
-         ['4 · Alta operativa (conformidad PJ)',alta,UNIV?alta/UNIV*100:0,alta?'#0f766e':'#cbd5e1','de las '+migr+' validadas']]
+         ['2 · Validadas (Ítem 3)',migr,pctMig,'#2563eb','de las '+gab+' con gabinete'],
+         ['3 · Alta operativa (conformidad PJ)',alta,UNIV?alta/UNIV*100:0,alta?'#0f766e':'#cbd5e1','de las '+migr+' validadas']]
         .map(([l,v,p,c,sub])=>
           '<div style="margin-bottom:7px">'+
             '<div class="ejx-line" style="margin:0"><span style="color:#475569">'+l+'</span><b style="color:'+c+'">'+v+' · '+p.toFixed(0)+'%</b></div>'+
@@ -3867,10 +4277,10 @@ function renderEjecutivo(){
       '</div>'+
       '<div style="background:#f8fafc;border-radius:8px;padding:9px 11px">'+
         '<div style="font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.5px;margin-bottom:6px">RITMO ÚLTIMAS 4 SEMANAS</div>'+
-        [['Gabinetes Ítem 5',rGab,'#7c3aed'],['Enlaces Ítem 1/2',rEnl,'#2563eb'],['Rackeo criterio inicial',rRack,'#0d9488'],['Validación Ítem 3',rMig,C.rojo]]
+        [['Gabinetes Ítem 5',rGab,'#7c3aed'],['Enlaces Ítem 1/2',rEnl,'#2563eb'],['Validación Ítem 3',rMig,C.rojo]]
           .map(([l,v,c])=>'<div class="ejx-line" style="margin-top:4px"><span style="color:#475569">'+l+'</span><b style="color:'+c+'">'+v.toFixed(1)+' /sem</b></div>').join('')+
       '</div>'+
-      (diasSinRack!=null&&diasSinRack>7?'<div style="margin-top:9px;font-size:10px;color:'+C.ambar+';background:'+C.bgA+';padding:7px 9px;border-radius:7px;line-height:1.35">Último rackeo hace <b>'+diasSinRack+' días</b>. El equipo cambió a modo validación.</div>':'')+
+
     '</div>'+
 
     // 3. Bloqueos
@@ -3878,11 +4288,10 @@ function renderEjecutivo(){
       '<div class="ejx-h">3 · ¿Qué está bloqueado y por qué?</div>'+
       [[sinGab,'Sin gabinete','Depende del Ítem 5','#7c3aed'],
        [espera,'Con gabinete, sin enlace','Depende de Ítem 1 / Ítem 2','#2563eb'],
-       [sinEnl,'Rackeadas sin enlace','Equipo puesto, espera operador','#64748b'],
        [ejecutableHoy,'EJECUTABLES HOY','No dependen de nadie más',C.verde]]
        .map(([n,t,sub,c])=>'<div class="ejx-blq"><div class="ejx-blq-n" style="color:'+c+'">'+n+'</div><div><div class="ejx-blq-t">'+t+'</div><div class="ejx-blq-s">'+sub+'</div></div></div>').join('')+
       '<div style="margin-top:9px;padding-top:9px;border-top:1px dashed '+C.linea+';font-size:10px;color:#64748b;line-height:1.4">'+
-        '<b style="color:'+C.texto+'">'+(sinGab+espera+sinEnl)+' de '+UNIV+'</b> sedes ('+((sinGab+espera+sinEnl)/UNIV*100).toFixed(0)+'%) están detenidas por terceros, no por el Ítem 3.</div>'+
+        '<b style="color:'+C.texto+'">'+(sinGab+espera)+' de '+UNIV+'</b> sedes ('+((sinGab+espera)/UNIV*100).toFixed(0)+'%) están detenidas por terceros, no por el Ítem 3.</div>'+
     '</div>'+
 
   '</div>'+
@@ -3890,8 +4299,8 @@ function renderEjecutivo(){
   // ===== FILA 2: envejecimiento =====
   '<div class="ejx-grid ejx-r2" style="margin-bottom:14px">'+
     tabla('Habilitadas sin atender','Top '+Math.min(6,envH.length)+' de '+envH.length+' · prom '+prom(envH)+' d',envH.slice(0,6),C.ambar)+
-    tabla('Rackeadas esperando enlace','Top '+Math.min(6,envR.length)+' de '+envR.length+' · prom '+prom(envR)+' d',envR.slice(0,6),C.gris)+
-    tabla('Listas para pruebas, sin validar','Top '+Math.min(6,envP.length)+' de '+envP.length+' · prom '+prom(envP)+' d',envP.slice(0,6),C.azul)+
+    tabla('Con gabinete, esperando enlace','Top '+Math.min(6,envE.length)+' de '+envE.length+' · prom '+prom(envE)+' d',envE.slice(0,6),C.gris)+
+    tabla('Validadas sin alta operativa','Top '+Math.min(6,envD.length)+' de '+envD.length+' · prom '+prom(envD)+' d',envD.slice(0,6),C.azul)+
   '</div>'+
 
   // ===== FILA 3 =====
@@ -3913,14 +4322,14 @@ function renderEjecutivo(){
         kpi(D.quebradas||0,'Quiebres',(qTot?((D.quebradas/(D.atenciones||1))*100).toFixed(0)+'% del total':'—'),C.ambar,C.bgA)+
         kpi(D.reintentos||0,'Con reintento','sedes >1 visita',C.rojo,C.bgR)+
       '</div>'+
-      '<div style="font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.5px;margin-bottom:6px">RESPONSABLE DEL QUIEBRE</div>'+
+      '<div style="font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.5px;margin-bottom:6px">RESPONSABLE DEL QUIEBRE'+(_mc&&_mc.hist.quebradas?' · TODAS LAS ATENCIONES (HISTORIAL)':' · ÚLTIMA ATENCIÓN POR SEDE')+'</div>'+
       (qEnt.length?qEnt.map(([k,v])=>{
         const pct=qTot?(v/qTot*100):0;
-        const esT=/item|ítem|poder judicial|pj/i.test(k);
+        const esT=/item|ítem|poder judicial|pj|causas externas/i.test(k);
         return '<div style="margin-bottom:7px"><div class="ejx-line" style="margin:0"><span style="color:#475569">'+k+'</span><b>'+v+'</b></div>'+barra(pct,esT?C.rojo:C.gris)+'</div>';
       }).join('')+
       '<div style="margin-top:8px;font-size:10px;color:#64748b;background:'+C.bgR+';padding:8px 10px;border-radius:7px;line-height:1.4">'+
-        '<b style="color:'+C.rojo+'">'+terceros+' de '+qTot+'</b> quiebres son atribuibles a terceros (Ítem 1/2 o PJ). Es evidencia directa para el expediente de Ampliación de Plazo.</div>'
+        '<b style="color:'+C.rojo+'">'+terceros+' de '+qTot+'</b> quiebres son atribuibles a terceros (Ítem 1/2, PJ o causas externas). Es evidencia directa para el expediente de Ampliación de Plazo.</div>'
         :'<div class="ejx-vacio">Sin quiebres registrados</div>')+
     '</div>'+
 
@@ -3974,10 +4383,6 @@ function renderDiagramaFlujoCompleto(opts) {
 
   const totalUniverso    = sum(D.universo) || 745;
   const totalGabinete    = sum(D.gabinete);
-  const totalItem3       = sum(D.item3);
-  // Base histórica de rackeo bajo el criterio inicial (columna P — Fecha Rackeo real).
-  // No crece con las validaciones: solo si se registra una atención real de rackeo.
-  const totalRackeoReal  = D.rackeoReal || 0;
   const totalConEnlace   = TV.reduce((a,t) => a + ceTipo(t), 0);
   const totalSinEnlace   = sum(D.item3_sin_enlace);
   const totalPendientes  = sum(D.pendientes);
@@ -4190,23 +4595,18 @@ function renderDiagramaFlujoCompleto(opts) {
   //  El rackeo ya no es una etapa: es historial, y baja a la nota al pie.
   // ============================================================
 
-  // Grupo 1 — equipo puesto, aún sin validar (pruebas pendientes + las que
-  // esperan enlace: ya tienen el equipo, se regularizan solas).
-  const sinValidar      = totalListoPru + totalSinEnlace;
-  const sinValidarTipo  = TV.reduce((o,t)=>{o[t]=(D.listo_pruebas?.[t]||0)+(D.item3_sin_enlace?.[t]||0);return o;},{});
+  // (2026-09-22) El rackeo dejó de ser etapa y de contarse: el árbol es
+  //   Con gabinete -> VALIDADAS | POR VALIDAR -> (por agendar | esperando enlace)
 
-  // Grupo 2 — todo lo que depende de que alguien salga a campo.
+  // Todo lo que depende de que alguien salga a campo.
   const porAgendar      = totalProgramables + totalReprog + totalProgramados;
   const porAgendarTipo  = TV.reduce((o,t)=>{o[t]=(D.pendientes_programables?.[t]||0)+
                               (D.reprog_pendiente?.[t]||0)+(D.programados?.[t]||0);return o;},{});
 
   const notaPie =
     '<div class="dfx-nota">'+
-      'Pasa el mouse sobre cualquier círculo para ver el desglose por Tipo 1 / 2 / 3.'+
-      (totalRackeoReal>0
-        ? ' · <strong>'+totalRackeoReal+'</strong> sedes se instalaron bajo el criterio inicial (solo gabinete, sin enlace): '+
-          'es una base histórica cerrada, no una etapa del flujo.'
-        : '')+
+      'Pasa el mouse sobre cualquier círculo para ver el desglose por Tipo 1 / 2 / 3. '+
+      'El avance del Ítem 3 se mide solo con sedes validadas; el rackeo no se contabiliza.'+
     '</div>';
 
   el.innerHTML = estilos +
@@ -4218,43 +4618,31 @@ function renderDiagramaFlujoCompleto(opts) {
 
       '<div class="dfx-col dfx-ind" style="gap:22px">'+
 
-        // ---------- RAMA A: equipo ya instalado ----------
+        // ---------- RAMA A: validadas (único avance que cuenta) ----------
         '<div class="dfx-row">'+
-          '<div class="dfx-mid">'+ circuloT(totalItem3,'EQUIPO<br>INSTALADO','nuestro',C.az3,'dfx-lg',D.item3) +'</div>'+
-          conector([28,74],36)+
-          '<div class="dfx-col dfx-ind" style="gap:12px">'+
-
+          '<div class="dfx-mid">'+ circuloT(totalCierre,'VALIDADAS','avance Ítem 3',C.az4,'dfx-lg',validadasTipo) +'</div>'+
+          conector([50],36)+
+          '<div class="dfx-col dfx-ind" style="gap:12px;justify-content:center">'+
             '<div class="dfx-fila">'+
-              circuloT(sinValidar,'SIN VALIDAR','equipo puesto',C.az1,'dfx-md',sinValidarTipo)+
-              mini('FALTA LA VALIDACIÓN',C.az3,'#eff6ff','#cfe2fa',[
-                {t:'Listo para pruebas',v:totalListoPru},
-                {t:'Esperando enlace (se regulariza sola)',v:totalSinEnlace}
-              ], totalAgendListo>0
-                   ? totalAgendListo+' ya tienen visita agendada'
-                   : 'Ninguna tiene fecha agendada')+
-            '</div>'+
-
-            '<div class="dfx-fila">'+
-              circuloT(totalCierre,'VALIDADAS','pruebas OK',C.az4,'dfx-md',validadasTipo)+
               mini('YA VALIDADAS',C.az4,'#eef4fd','#cfe2fa',[
                 {t:'Pendiente de documentación',v:totalValidadoDoc},
+                {t:'En validación Ítem 5 / conformidad PJ',v:totalValid+totalConf},
                 {t:'Alta operativa (conformidad PJ)',v:totalAlta}
               ],'El detalle del cierre documentario va abajo')+
             '</div>'+
-
           '</div>'+
         '</div>'+
 
-        // ---------- RAMA B: sin equipo ----------
+        // ---------- RAMA B: por validar ----------
         '<div class="dfx-row">'+
-          '<div class="dfx-mid">'+ circuloT(totalPendientes,'SIN EQUIPO','aún no instalado',C.gris,'dfx-lg',D.pendientes) +'</div>'+
+          '<div class="dfx-mid">'+ circuloT(totalPendientes,'POR<br>VALIDAR','con gabinete',C.gris,'dfx-lg',D.pendientes) +'</div>'+
           conector([28,74],36)+
           '<div class="dfx-col dfx-ind" style="gap:12px">'+
 
             '<div class="dfx-fila">'+
               circuloT(porAgendar,'POR AGENDAR','depende de nosotros',C.az2,'dfx-md',porAgendarTipo)+
               mini('LISTAS PARA SALIR A CAMPO',C.az3,'#eff6ff','#cfe2fa',[
-                {t:'Nunca visitadas',v:totalProgramables},
+                {t:'Sin fecha — listas para agendar',v:totalProgramables},
                 {t:'Atención quebrada — rehacer fecha',v:totalReprog},
                 {t:'Con fecha vigente',v:totalProgramados,alerta:totalProgramados===0}
               ], totalProgramados===0
@@ -4285,6 +4673,7 @@ window.renderDiagramaFlujoCompleto = renderDiagramaFlujoCompleto;
 restaurarPlantillaLocal();
 restaurarDiagramaLocal();
 restaurarCurvaRealLocal();
+restaurarCampoLocal();
 
 // Inicializar los filtros dependientes con lo que haya en caché local.
 // Sin esto, Región/Dpto./Provincia arrancan vacíos y solo se pueblan
@@ -4352,6 +4741,7 @@ cargarItemsExternos().then(()=>{
     const UNIV=sum(D.universo)||745;
     const validadas=sum(D.validado_pend_doc)+sum(D.en_validacion)+sum(D.en_conformidad)+sum(D.alta);
     const alta=sum(D.alta);
+    const migradas=D.migradas?sum(D.migradas):null;   // null = dataset anterior a v5
     const rVal=ritmoSemanal(D.ritmo&&D.ritmo.val);
     const faltan=UNIV-validadas;
     const semanas=rVal>0?Math.ceil(faltan/rVal):null;
@@ -4359,12 +4749,15 @@ cargarItemsExternos().then(()=>{
     const semHastaAP=Math.max(1,Math.ceil(dia(D_(FIN_AP),HOY)/7));
     const necSem=faltan>0?(faltan/semHastaAP):0;
 
-    // 4 cifras. Nada de porcentajes sueltos sin su número absoluto.
+    // 5 cifras (Migradas es informativa). Nada de porcentajes sueltos sin su número absoluto.
     cif.innerHTML=[
       {k:'Validadas',v:nf(validadas),
        s:'de '+nf(UNIV)+' sedes · '+Math.round(validadas/UNIV*100)+'% del universo'},
       {k:'Alta operativa',v:nf(alta),
        s:'cerradas con conformidad del PJ · '+Math.round(alta/UNIV*100)+'%'},
+      {k:'Migradas SD-WAN',v:migradas==null?'—':nf(migradas),
+       s:migradas==null?'vuelve a subir la plantilla para calcularlo'
+                       :Math.round(migradas/UNIV*100)+'% del universo · informativo'},
       {k:'Ritmo actual',v:rVal.toFixed(1),
        s:'sedes validadas por semana (últimas 4 semanas)'},
       {k:'Al ritmo de hoy',v:fProy?fFecha(fProy).replace(/ de /g,' '):'—',
