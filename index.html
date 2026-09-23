@@ -144,13 +144,13 @@
 <div id="tab-dashboard">
 
   <!-- ===== CIFRAS DE PORTADA (5 datos, sin recuadros de colores) ===== -->
-  <div class="viz">
+  <div class="viz" id="blk-cifras">
     <div class="vz-row" id="vz-cifras"></div>
     <div style="font-size:11px;color:#898781;margin:-10px 0 16px">Cifras del proyecto completo (745 sedes). Los filtros del bloque «Avance de sedes» no afectan a esta tira.</div>
   </div>
 
   <!-- ===== RELOJ DEL PROYECTO: las 3 fechas que deciden el contrato ===== -->
-  <div class="card viz" style="margin-bottom:16px">
+  <div class="card viz" style="margin-bottom:16px" id="card-reloj">
     <div class="card-title">Reloj del proyecto</div>
     <div class="vz-sub">Inicio del proyecto y las fechas que definen el contrato, y dónde estamos hoy respecto de ellas.</div>
     <div id="vz-hitos"></div>
@@ -158,7 +158,7 @@
   </div>
 
   <!-- ===== ¿CÓMO VAMOS CONTRA EL PLAN? (una sola serie propia) ===== -->
-  <div class="card viz" style="margin-bottom:16px">
+  <div class="card viz" style="margin-bottom:16px" id="card-curva-plan">
     <div class="card-title">¿Cómo vamos contra el plan?</div>
     <div class="vz-sub">Sedes validadas por nosotros (Ítem 3), acumuladas. La línea gris es el plan; la punteada, el ritmo que haría falta desde hoy para llegar al 03/12.</div>
     <canvas id="chart-desp" style="width:100%;max-height:300px"></canvas>
@@ -166,7 +166,7 @@
   </div>
 
   <!-- ===== ¿DE QUIÉN DEPENDE QUE PODAMOS AVANZAR? (terceros, escala propia) ===== -->
-  <div class="card viz" style="margin-bottom:16px">
+  <div class="card viz" style="margin-bottom:16px" id="card-curva-terceros">
     <div class="card-title">¿Nos habilitan más rápido de lo que validamos?</div>
     <div class="vz-sub">Una sede entra a nuestro trabajo cuando tiene gabinete (Ítem 5) y al menos un enlace (Bitel o Claro). La línea azul es lo que hemos validado; la distancia hasta las líneas de arriba es trabajo que ya está disponible y no depende de nadie más.</div>
     <canvas id="chart-terceros" style="width:100%;max-height:300px"></canvas>
@@ -174,7 +174,7 @@
   </div>
 
   <!-- ===== SEPARADOR: de aquí hacia abajo, detalle operativo ===== -->
-  <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#898781;margin:26px 0 12px;padding-top:14px;border-top:1px solid #e1e0d9">Detalle operativo</div>
+  <div id="sep-detalle" style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#898781;margin:26px 0 12px;padding-top:14px;border-top:1px solid #e1e0d9">Detalle operativo</div>
 
   <!-- ===== AVANCE DE SEDES (2026-09-23) — bloque filtrable: flujo, próxima atención, cierre e Ítems 1/2/5 ===== -->
   <div class="card" style="margin-bottom:16px" id="card-avance-sedes">
@@ -265,7 +265,7 @@
   </div>
 
   <!-- Semaforo -->
-  <div class="card" style="margin-bottom:16px">
+  <div class="card" style="margin-bottom:16px" id="card-semaforo">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
       <div class="card-title" style="margin:0">Semáforo de riesgo</div>
       <button id="btn-limpiar-semaforo" style="display:none;font-size:11px;background:#FCEBEB;color:#791F1F;border:1px solid #E8B4B4;border-radius:6px;padding:4px 10px;cursor:pointer" onclick="window.limpiarDuplicadosSemaforo()">🧹 Limpiar duplicados</button>
@@ -304,6 +304,18 @@
        diario, que dejó de alimentarse cuando el seguimiento pasó a la Plantilla.
        renderLogDashboard() sale sin hacer nada si el nodo no existe. -->
 </div>
+<script>
+/* ORDEN DEL RESUMEN (2026-09-23 · v4): vista ejecutiva arriba, detalle operativo abajo, semáforo al final.
+   Se fija por id al cargar: si una hoja de estilos externa usa «order» o nth-child, este orden manda. */
+(function(){
+  var cont=document.getElementById('tab-dashboard'); if(!cont)return;
+  ['blk-cifras','card-reloj','card-curva-plan','card-curva-terceros','sep-detalle',
+   'card-avance-sedes','card-tickets','card-semaforo'].forEach(function(id,i){
+    var el=document.getElementById(id); if(!el)return;
+    el.style.order=String(i+1); cont.appendChild(el);
+  });
+})();
+</script>
 
 <!-- GESTION: Registrar avance + Carga masiva (fusionadas) -->
 <div id="tab-gestion" style="display:none">
@@ -1361,7 +1373,7 @@ const isMobileHist=window.innerWidth<=640;
   }
 
   try{ window.renderTickets&&window.renderTickets(); }catch(e){ console.warn('renderTickets',e); }
-  document.getElementById('last-update').textContent='Actualizado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('last-update').textContent='Actualizado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})+' · versión 23/09 v4';
 }
 
 
@@ -1690,7 +1702,7 @@ window.cargarMasRecienteDeCarpeta=async function(){
 })();
 
 // Marca de versión del parser — sirve para confirmar en consola (F12) qué archivo está corriendo.
-window.VERSION_PARSER='2026-09-23 · etapas del flujo + tickets + migración';
+window.VERSION_PARSER='2026-09-23 v4 · orden ejecutivo + etapas del flujo + tickets';
 console.log('%c[Parser SD-WAN] '+window.VERSION_PARSER,'background:#0F766E;color:#fff;padding:2px 6px;border-radius:3px');
 
 window.handleFile=function(file){
