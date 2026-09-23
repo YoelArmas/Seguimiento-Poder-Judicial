@@ -1107,7 +1107,20 @@ onSnapshot(qSem,snap=>{
 // ============================================================
 // TABLAS — Dashboard principal (embudo, KPIs, hitos, historial)
 // ============================================================
+// Las curvas S se dibujan en renderMetricas(). Antes solo se llamaba al hacer clic en
+// «Resumen»; al abrir la página las tarjetas quedaban vacías. Ahora se redibujan solas
+// cada vez que llegan datos, siempre que el Resumen esté visible.
+let _tMetricas=null;
+function _programarMetricas(){
+  clearTimeout(_tMetricas);
+  _tMetricas=setTimeout(()=>{
+    const td=document.getElementById('tab-dashboard');
+    if(td&&td.style.display!=='none'){ try{renderMetricas();}catch(e){console.warn('renderMetricas',e);} }
+  },150);
+}
+window._programarMetricas=_programarMetricas;
 function renderTodo(){
+  _programarMetricas();
   const t=totalesPorFrente(),ht=hoyPorFrente();
   const pj=proyectar(t.configurados,'configurados'),aj=proyectar(t.alta,'alta');
 
@@ -1373,7 +1386,7 @@ const isMobileHist=window.innerWidth<=640;
   }
 
   try{ window.renderTickets&&window.renderTickets(); }catch(e){ console.warn('renderTickets',e); }
-  document.getElementById('last-update').textContent='Actualizado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})+' · versión 23/09 v4';
+  document.getElementById('last-update').textContent='Actualizado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})+' · versión 23/09 v5';
 }
 
 
@@ -1702,7 +1715,7 @@ window.cargarMasRecienteDeCarpeta=async function(){
 })();
 
 // Marca de versión del parser — sirve para confirmar en consola (F12) qué archivo está corriendo.
-window.VERSION_PARSER='2026-09-23 v4 · orden ejecutivo + etapas del flujo + tickets';
+window.VERSION_PARSER='2026-09-23 v5 · curvas S al abrir + orden ejecutivo + etapas del flujo + tickets';
 console.log('%c[Parser SD-WAN] '+window.VERSION_PARSER,'background:#0F766E;color:#fff;padding:2px 6px;border-radius:3px');
 
 window.handleFile=function(file){
@@ -4989,7 +5002,7 @@ cargarItemsExternos().then(()=>{
       window.renderTodo=function(){
         const res=o.apply(this,arguments);
         try{window.renderResumenExtras();}catch(e){console.warn('extras',e);}
-        try{if(window.renderMetricas)window.renderMetricas();}catch(e){console.warn('metricas',e);}
+        try{if(window._programarMetricas)window._programarMetricas();}catch(e){console.warn('metricas',e);}
         return res;
       };
       window.renderTodo.__vz=1;
@@ -4997,7 +5010,7 @@ cargarItemsExternos().then(()=>{
   }
   let intentos=0;
   const t=setInterval(()=>{envolver();if(++intentos>40||(window.showTab&&window.showTab.__vz&&window.renderTodo&&window.renderTodo.__vz))clearInterval(t);},250);
-  window.addEventListener('load',()=>{envolver();try{window.renderResumenExtras();}catch(e){}});
+  window.addEventListener('load',()=>{envolver();try{window.renderResumenExtras();}catch(e){}try{if(window._programarMetricas)window._programarMetricas();}catch(e){}});
 })();
 </script>
 </body>
