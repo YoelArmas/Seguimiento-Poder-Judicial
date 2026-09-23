@@ -143,40 +143,19 @@
 <!-- RESUMEN -->
 <div id="tab-dashboard">
 
-  <!-- ===== CIFRAS DE PORTADA (4 datos, sin recuadros de colores) ===== -->
+  <!-- ===== CIFRAS DE PORTADA (5 datos, sin recuadros de colores) ===== -->
   <div class="viz">
     <div class="vz-row" id="vz-cifras"></div>
-    <div style="font-size:11px;color:#898781;margin:-10px 0 16px">Cifras del proyecto completo (745 sedes). El filtro por zona de más abajo no afecta a esta tira.</div>
+    <div style="font-size:11px;color:#898781;margin:-10px 0 16px">Cifras del proyecto completo (745 sedes). Los filtros del bloque «Avance de sedes» no afectan a esta tira.</div>
   </div>
 
-  <!-- ===== RELOJ DEL PROYECTO: las 3 fechas que deciden el contrato ===== -->
-  <div class="card viz" style="margin-bottom:16px">
-    <div class="card-title">Reloj del proyecto</div>
-    <div class="vz-sub">Las tres fechas que definen el contrato, y dónde estamos hoy respecto de ellas.</div>
-    <div id="vz-hitos"></div>
-    <div class="vz-read" id="vz-hitos-lectura"></div>
-  </div>
-
-  <!-- ===== ¿CÓMO VAMOS CONTRA EL PLAN? (una sola serie propia) ===== -->
-  <div class="card viz" style="margin-bottom:16px">
-    <div class="card-title">¿Cómo vamos contra el plan?</div>
-    <div class="vz-sub">Sedes validadas por nosotros (Ítem 3), acumuladas. La línea gris es el plan; la punteada, el ritmo que haría falta desde hoy para llegar al 03/12.</div>
-    <canvas id="chart-desp" style="width:100%;max-height:300px"></canvas>
-    <div class="vz-read" id="vz-lectura-plan"></div>
-  </div>
-
-  <!-- ===== ¿DE QUIÉN DEPENDE QUE PODAMOS AVANZAR? (terceros, escala propia) ===== -->
-  <div class="card viz" style="margin-bottom:16px">
-    <div class="card-title">¿Nos habilitan más rápido de lo que validamos?</div>
-    <div class="vz-sub">Una sede entra a nuestro trabajo cuando tiene gabinete (Ítem 5) y al menos un enlace (Bitel o Claro). La línea azul es lo que hemos validado; la distancia hasta las líneas de arriba es trabajo que ya está disponible y no depende de nadie más.</div>
-    <canvas id="chart-terceros" style="width:100%;max-height:300px"></canvas>
-    <div class="vz-read" id="vz-lectura-terceros"></div>
-  </div>
-
-  <!-- AVANCE ITEM 1, 2 Y 5 (antes estaba después del embudo; ahora va primero) -->
-  <div class="card" style="margin-bottom:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-      <div class="card-title" style="margin:0">Avance Ítems de Soporte (1, 2 y 5)</div>
+  <!-- ===== AVANCE DE SEDES (2026-09-23) — bloque filtrable: flujo, próxima atención, cierre e Ítems 1/2/5 ===== -->
+  <div class="card" style="margin-bottom:16px" id="card-avance-sedes">
+    <div class="flex-between flex-wrap gap-8 mb-12" style="align-items:flex-start">
+      <div>
+        <div class="card-title" style="margin:0" id="titulo-flujo">Avance de sedes — 745</div>
+        <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
+      </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <select class="inp" id="filtro-zona-dash" style="width:auto;font-size:12px;min-width:140px" onchange="window.actualizarFiltrosCascada('zona')">
           <option value="">Todas las zonas</option>
@@ -199,24 +178,11 @@
           <option value="item1">Ítem 1 — Bitel</option>
           <option value="item2">Ítem 2 — Claro</option>
         </select>
-        <span id="fuente-items" style="font-size:11px;color:var(--text3)">Fuente: SEGUIMIENTO_TDR_WAN — actualizado al 13/07/2026</span>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" id="cards-items"></div>
-  </div>
-
-  <!-- DESPLIEGUE EN CAMPO -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="flex-between flex-wrap gap-8 mb-16">
-      <div class="card-title" style="margin:0" id="titulo-flujo">Flujo de implementacion — 745 sedes</div>
-      <span style="font-size:12px;color:var(--text3)" id="fecha-corte"></span>
+    <div id="diagrama-contenido" style="margin-bottom:18px">
+      <div style="color:#9ca3af;text-align:center;padding:40px;font-size:14px">Carga la plantilla para ver el avance de sedes</div>
     </div>
-
-    <!-- Diagrama de flujo jerárquico -->
-    <div id="diagrama-contenido" style="overflow-x:auto;margin-bottom:20px;padding:16px;background:#f9fafb;border-radius:12px;border:1px solid #e5e7eb;min-height:400px">
-      <div style="color:#9ca3af;text-align:center;padding:40px;font-size:14px">Carga la Plantilla_Carga para ver el diagrama de flujo</div>
-    </div>
-
     <!-- Bloque Despliegue — OCULTO: duplicaba lo que ya muestra el diagrama de flujo.
          Los nodos se conservan porque renderTodo() escribe en ellos. -->
     <div class="section-label" style="display:none">Despliegue en campo: Cantidad Sedes Instaladas</div>
@@ -257,6 +223,52 @@
         <div id="desglose-alta" style="display:flex;justify-content:center;gap:8px;margin-top:8px;font-size:11px;color:var(--text2)"></div>
       </div>
     </div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin:6px 0 10px;padding-top:14px;border-top:1px solid var(--border)">
+      <div class="card-title" style="margin:0;font-size:14px">Ítems de soporte (1, 2 y 5)</div>
+      <span id="fuente-items" style="font-size:11px;color:var(--text3)">Fuente: SEGUIMIENTO_TDR_WAN — actualizado al 13/07/2026</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px" id="cards-items"></div>
+  </div>
+
+  <!-- ===== GESTIÓN DE TICKETS (2026-09-23) ===== -->
+  <div class="card viz" style="margin-bottom:16px" id="card-tickets">
+    <div class="card-title">Gestión de tickets de alta</div>
+    <div class="vz-sub">Fuente: hoja «Sedes para alta» de la plantilla. Requeridos = sedes validadas registradas en esa hoja.</div>
+    <div id="tickets-contenido">Cargando...</div>
+  </div>
+
+  <!-- ===== RELOJ DEL PROYECTO: las 3 fechas que deciden el contrato ===== -->
+  <div class="card viz" style="margin-bottom:16px">
+    <div class="card-title">Reloj del proyecto</div>
+    <div class="vz-sub">Las tres fechas que definen el contrato, y dónde estamos hoy respecto de ellas.</div>
+    <div id="vz-hitos"></div>
+    <div class="vz-read" id="vz-hitos-lectura"></div>
+  </div>
+
+  <!-- ===== ¿CÓMO VAMOS CONTRA EL PLAN? (una sola serie propia) ===== -->
+  <div class="card viz" style="margin-bottom:16px">
+    <div class="card-title">¿Cómo vamos contra el plan?</div>
+    <div class="vz-sub">Sedes validadas por nosotros (Ítem 3), acumuladas. La línea gris es el plan; la punteada, el ritmo que haría falta desde hoy para llegar al 03/12.</div>
+    <canvas id="chart-desp" style="width:100%;max-height:300px"></canvas>
+    <div class="vz-read" id="vz-lectura-plan"></div>
+  </div>
+
+  <!-- Semaforo -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+      <div class="card-title" style="margin:0">Semáforo de riesgo</div>
+      <button id="btn-limpiar-semaforo" style="display:none;font-size:11px;background:#FCEBEB;color:#791F1F;border:1px solid #E8B4B4;border-radius:6px;padding:4px 10px;cursor:pointer" onclick="window.limpiarDuplicadosSemaforo()">🧹 Limpiar duplicados</button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin:0 0 12px;line-height:1.5">Los ítems <b>automáticos</b> se recalculan solos cada vez que se sube la plantilla. Los <b>manuales</b> cubren lo que la plantilla no registra (cabeceras, LAN, puesta en marcha) y los edita un administrador.</div>
+    <div id="semaforo">Cargando...</div>
+  </div>
+
+  <!-- ===== ¿DE QUIÉN DEPENDE QUE PODAMOS AVANZAR? (terceros, escala propia) ===== -->
+  <div class="card viz" style="margin-bottom:16px">
+    <div class="card-title">¿Nos habilitan más rápido de lo que validamos?</div>
+    <div class="vz-sub">Una sede entra a nuestro trabajo cuando tiene gabinete (Ítem 5) y al menos un enlace (Bitel o Claro). La línea azul es lo que hemos validado; la distancia hasta las líneas de arriba es trabajo que ya está disponible y no depende de nadie más.</div>
+    <canvas id="chart-terceros" style="width:100%;max-height:300px"></canvas>
+    <div class="vz-read" id="vz-lectura-terceros"></div>
   </div>
 
   <!-- KPIs rápidos — OCULTOS (se alimentaban del registro manual diario, sin uso desde julio).
@@ -283,16 +295,6 @@
         <div style="font-size:11px;color:var(--text3);margin-top:4px" id="pct-retirados">0% del universo</div>
       </div>
     </div>
-  </div>
-
-  <!-- Semaforo -->
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
-      <div class="card-title" style="margin:0">Semáforo de riesgo</div>
-      <button id="btn-limpiar-semaforo" style="display:none;font-size:11px;background:#FCEBEB;color:#791F1F;border:1px solid #E8B4B4;border-radius:6px;padding:4px 10px;cursor:pointer" onclick="window.limpiarDuplicadosSemaforo()">🧹 Limpiar duplicados</button>
-    </div>
-    <div style="font-size:12px;color:var(--text3);margin:0 0 12px;line-height:1.5">Los ítems <b>automáticos</b> se recalculan solos cada vez que se sube la plantilla. Los <b>manuales</b> cubren lo que la plantilla no registra (cabeceras, LAN, puesta en marcha) y los edita un administrador.</div>
-    <div id="semaforo">Cargando...</div>
   </div>
 
   <!-- «Entradas registradas» se retiró (2026-09-22): mostraba el registro manual
@@ -1117,7 +1119,7 @@ function renderTodo(){
   document.getElementById('fecha-corte').textContent='Corte: '+new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
   (function(){
     const tf=document.getElementById('titulo-flujo');
-    if(tf)tf.textContent='Flujo de implementacion — '+universo+' sedes'+(_ambito?' · '+_ambito:'');
+    if(tf)tf.textContent='Avance de sedes — '+universo+(_ambito?' · '+_ambito:'');
     // Aviso visible cuando los datos en pantalla los generó una versión anterior
     // del parser. Sin esto, un dataset viejo se ve idéntico a uno correcto pero
     // con sedes de menos, y el error pasa inadvertido.
@@ -1355,6 +1357,7 @@ const isMobileHist=window.innerWidth<=640;
     window.renderDiagramaFlujoCompleto();
   }
 
+  try{ window.renderTickets&&window.renderTickets(); }catch(e){ console.warn('renderTickets',e); }
   document.getElementById('last-update').textContent='Actualizado '+new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
 }
 
@@ -1684,7 +1687,7 @@ window.cargarMasRecienteDeCarpeta=async function(){
 })();
 
 // Marca de versión del parser — sirve para confirmar en consola (F12) qué archivo está corriendo.
-window.VERSION_PARSER='2026-09-22 · avance = validadas (sin rackeo) + Historial y Tiempos';
+window.VERSION_PARSER='2026-09-23 · etapas del flujo + tickets + migración';
 console.log('%c[Parser SD-WAN] '+window.VERSION_PARSER,'background:#0F766E;color:#fff;padding:2px 6px;border-radius:3px');
 
 window.handleFile=function(file){
@@ -3307,7 +3310,7 @@ function agregarSedes(sedes,esV1){
     pendientes:z(),pendientes_programables:z(),pendientes_en_espera:z(),
     programados:z(),reprog_pendiente:z(),agendadas:z(),agend_listo:z(),
     listo_pruebas:z(),validado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
-    enlace_item1:z(),enlace_item2:z(),migradas:z(),atenciones:0,quebradas:0,reintentos:0,rackeoReal:0};
+    enlace_item1:z(),enlace_item2:z(),migradas:z(),atendidas:z(),atenciones:0,quebradas:0,reintentos:0,rackeoReal:0};
 
   sedes.forEach(s=>{
     const t=s.t; if(B.universo[t]===undefined)return;
@@ -3358,7 +3361,8 @@ function agregarSedes(sedes,esV1){
       return;
     }
     B.pendientes[t]++;
-    if(s.st==='reprog')           B.reprog_pendiente[t]++;
+    if(s.st==='atendida')         B.atendidas[t]++;
+    else if(s.st==='reprog')      B.reprog_pendiente[t]++;
     else if(s.st==='program')     B.programados[t]++;
     else if(s.st==='programable'||s.st==='listo') B.pendientes_programables[t]++;  // 'listo' = dataset antiguo
     else                          B.pendientes_en_espera[t]++;                     // incluye 'racksin' antiguo
@@ -3373,7 +3377,7 @@ function agregarSedes(sedes,esV1){
 // 'migrado_pend_doc' y 'ritmo.mig'. Si se lee tal cual, esos buckets
 // quedan en 0 y el Dashboard pierde sedes sin avisar. Aquí se renombran
 // al vuelo para que cualquier caché antiguo siga siendo válido.
-window.SCHEMA_DATASET='v6-validadas-sin-rackeo';
+window.SCHEMA_DATASET='v7-etapas-flujo';
 window.migrarDataset=function(D){
   if(!D||typeof D!=='object')return D;
   const fix=b=>{
@@ -3546,10 +3550,29 @@ function procesarCampo(wb,rawPlantilla){
     });
   }
 
-  if(!tiem.length&&!hist.length){console.warn('[Campo] El libro no trae Historial_Atenciones ni Tiempos Atenciones');window.CAMPO_DATOS=null;return;}
-  window.CAMPO_DATOS={v:1,tiem,hist,metas,actualizado:Date.now()};
+  // ---------- Tickets (hoja «Sedes para alta») ----------
+  let tickets=null;
+  const rawS=leer(n=>_nrm(n)==='sedes para alta');
+  if(rawS){
+    const h=cabecera(rawS,['pj','ticket creado','ticket cargado']);
+    if(h>=0){
+      const ix=indices(rawS[h],{pj:'pj',cr:'ticket creado',ca:'ticket cargado',fc:'fecha de carga'});
+      const si=v=>v===true||['true','verdadero','si','sí','x','1'].includes(_nrm(v));
+      tickets={req:0,creados:0,cargados:0,sinFecha:0};
+      rawS.slice(h+1).forEach(r=>{
+        if(!txt(r,ix.pj))return;
+        tickets.req++;
+        const cr=si(val(r,ix.cr)), ca=si(val(r,ix.ca));
+        if(cr)tickets.creados++;
+        if(ca){tickets.cargados++; if(!_fISO(val(r,ix.fc)))tickets.sinFecha++;}
+      });
+    }
+  }
+
+  if(!tiem.length&&!hist.length&&!tickets){console.warn('[Campo] El libro no trae Historial, Tiempos ni Sedes para alta');window.CAMPO_DATOS=null;return;}
+  window.CAMPO_DATOS={v:2,tiem,hist,metas,tickets,actualizado:Date.now()};
   guardarCampo(window.CAMPO_DATOS);
-  console.log('[Campo] Tiempos:',tiem.length,'· Historial:',hist.length,'· metas:',metas);
+  console.log('[Campo] Tiempos:',tiem.length,'· Historial:',hist.length,'· Tickets:',tickets,'· metas:',metas);
 }
 
 function guardarCampo(C){
@@ -3753,7 +3776,8 @@ const UMBRALES_SEMAFORO={
   espera:{ok:20,alerta:60},      // sedes con gabinete que esperan enlace (Ítem 1/2)
   margenAPdias:21,               // validación: amarillo si al ritmo actual se termina a menos de 21 días del 03/12
   quiebrePct:{ok:20,alerta:35},  // % de atenciones quebradas, últimas 4 semanas
-  ventanaPct:{ok:80,alerta:60}   // % dentro de la ventana, últimas 4 semanas (aquí MAYOR es mejor)
+  ventanaPct:{ok:80,alerta:60},  // % dentro de la ventana, últimas 4 semanas (aquí MAYOR es mejor)
+  ticketsPct:{ok:80,alerta:50}   // % de tickets cargados sobre requeridos (MAYOR es mejor)
 };
 const SEM_FIN_AP='2026-12-03';
 // Ítems manuales por defecto que ahora se calculan solos: se ocultan para no duplicar.
@@ -3771,7 +3795,7 @@ function calcSemaforoAuto(){
   const validadas=s(D.validado_pend_doc)+s(D.en_validacion)+s(D.en_conformidad)+s(D.alta);
   const alta=s(D.alta), gab=s(D.gabinete), espera=s(D.pendientes_en_espera);
   const programados=s(D.programados), porAgendar=s(D.pendientes_programables)+s(D.reprog_pendiente);
-  const vencidas=(D.alertas||[]).filter(a=>a.tipo==='vencida').length;
+  const vencidas=s(D.atendidas||{});
   const HOYd=new Date(); HOYd.setHours(0,0,0,0);
   const r4=((D.ritmo&&D.ritmo.val)||[]).filter(f=>{const d=Math.round((HOYd-new Date(f))/86400000);return d>=0&&d<=28;}).length/4;
   const faltan=Math.max(0,UNIV-validadas);
@@ -3793,8 +3817,14 @@ function calcSemaforoAuto(){
     {lbl:'Ítem 1 / Ítem 2 — Enlaces',r:_nivel(espera,UMBRALES_SEMAFORO.espera),
      nota:nf(espera)+' sedes con gabinete esperan enlace · entregados: Bitel '+nf(s(D.enlace_item1))+' · Claro '+nf(s(D.enlace_item2))},
     {lbl:'Programación de campo',r:(porAgendar>0&&programados===0)?'critico':(vencidas>0?'alerta':'ok'),
-     nota:nf(programados)+' con visita vigente · '+nf(porAgendar)+' habilitadas por agendar · '+nf(vencidas)+' vencidas sin registrar'}
+     nota:nf(programados)+' programadas · '+nf(porAgendar)+' por agendar · '+nf(vencidas)+' atendidas sin resultado registrado'}
   ];
+  const TK=(window.CAMPO_DATOS||{}).tickets;
+  if(TK&&TK.req>0){
+    const p=TK.cargados/TK.req*100, u=UMBRALES_SEMAFORO.ticketsPct;
+    items.push({lbl:'Tickets de alta',r:p>=u.ok?'ok':p>=u.alerta?'alerta':'critico',
+      nota:nf(TK.cargados)+'/'+nf(TK.req)+' cargados ('+p.toFixed(0)+'%) · '+nf(TK.creados-TK.cargados)+' por cargar · '+nf(TK.req-TK.creados)+' falta crear'});
+  }
   if(window.CAMPO_DATOS){
     const m=metricasCampo(28);
     if(m.hist.cerradas>0)items.push({lbl:'Efectividad en campo (últimas 4 semanas)',
@@ -4077,6 +4107,7 @@ function _procesarPlantillaNueva(raw){
     'estado atencion':['estado de atencion'],
     'fecha validacion':['fecha de validacion'],
     'fecha migracion sdwan':['fecha migracion sd-wan','fecha de migracion sdwan','fecha migracion'],
+    'etapa flujo':['etapa del flujo','etapa'],
     'fecha rackeo':['fecha de rackeo'],
     'n.º atenciones':['n° atenciones','nro atenciones','num atenciones','n atenciones'],
     'atenc. quebradas':['atenciones quebradas','atenc quebradas'],
@@ -4109,15 +4140,16 @@ function _procesarPlantillaNueva(raw){
     pendientes:z(),pendientes_programables:z(),pendientes_en_espera:z(),
     programados:z(),reprog_pendiente:z(),agendadas:z(),agend_listo:z(),
     listo_pruebas:z(),validado_pend_doc:z(),en_validacion:z(),en_conformidad:z(),alta:z(),
-    enlace_item1:z(),enlace_item2:z(),migradas:z(),
+    enlace_item1:z(),enlace_item2:z(),migradas:z(),atendidas:z(),
     atenciones:0,quebradas:0,reintentos:0,rackeoReal:0});
 
   // v5 = el avance cuenta SOLO validadas (sin rackeo) + migradas informativas
-  const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2'; D.v=5; D.schema=window.SCHEMA_DATASET;
+  // v6 = etapas excluyentes del flujo (Por agendar → Programadas → Atendidas → Validadas → Alta)
+  const D=nuevo(); D.porZona={}; D.colAlta=0; D.formato='v2'; D.v=6; D.schema=window.SCHEMA_DATASET;
   const iGabF=col('fecha gabinete (item 5)'), iRack=col('fecha rackeo'), iMig=col('fecha validacion'),
         iSede=col('sede'), iMot=col('ult. atencion — motivo'), iResp=col('ult. atencion — responsable'),
         iUlt=col('ult. atencion — estado'), iEstAt=col('estado atencion'), iFProg=col('fecha programada vigente'),
-        iMigSD=col('fecha migracion sdwan');
+        iMigSD=col('fecha migracion sdwan'), iEtapa=col('etapa flujo');
   const HOY=new Date(); HOY.setHours(0,0,0,0);
   // SheetJS entrega las fechas como SERIAL de Excel (46202), no como Date.
   // new Date(46202) daría 1970 -> de ahí salían antigüedades de ~20.681 días y ritmos en 0.
@@ -4146,6 +4178,9 @@ function _procesarPlantillaNueva(raw){
     if(e.includes('conformidad'))         return 'conformidad';
     if(e.includes('validacion'))          return 'validacion';
     if(e.includes('validado')||e.includes('migrado')) return 'validado';
+    if(ultE.includes('programado'))       return 'program';
+    if(ultE.includes('vencida'))          return 'atendida';
+    if(e.includes('rackeada sin enlace')||e.includes('espera de enlace')) return 'espera';
     if(e.includes('reprogramacion'))      return 'reprog';
     if(e.includes('visita agendada')||e.includes('programado')) return 'program';
     if(e.includes('programable'))         return 'programable';
@@ -4172,7 +4207,22 @@ function _procesarPlantillaNueva(raw){
     const estAt=iEstAt>=0?norm(String(r[iEstAt]||'')):'';
     const agendada=estAt.includes('visita agendada');
     const ultE0=iUlt>=0?norm(String(r[iUlt]||'')):'';
-    const st=clasificar(norm(estado),ultE0);
+    // Si la plantilla trae «ETAPA FLUJO», manda esa columna (misma regla del Excel);
+    // el detalle interno (sub-estado de cierre, reagendar vs sin fecha) sale de ESTADO SEDE.
+    const st=(()=>{
+      const base=clasificar(norm(estado),ultE0);
+      if(iEtapa<0)return base;
+      const et=norm(String(r[iEtapa]||''));
+      if(!et)return base;
+      if(et.includes('sin gabinete'))  return 'singab';
+      if(et.includes('alta operativa'))return 'alta';
+      if(et.startsWith('validada'))    return ['validado','validacion','conformidad'].includes(base)?base:'validado';
+      if(et.startsWith('programada'))  return 'program';
+      if(et.startsWith('atendida'))    return 'atendida';
+      if(et.includes('sin enlace'))    return 'espera';
+      if(et.includes('por agendar'))   return (ultE0.includes('quebrada')||ultE0.includes('anulada'))?'reprog':'programable';
+      return base;
+    })();
     const migSD=iMigSD>=0&&!!fx(r[iMigSD]);
 
     const acum=B=>{
@@ -4201,7 +4251,8 @@ function _procesarPlantillaNueva(raw){
 
       // --- POR VALIDAR (con gabinete) ---
       B.pendientes[tipo]++;
-      if(st==='reprog')           B.reprog_pendiente[tipo]++;
+      if(st==='atendida')         B.atendidas[tipo]++;
+      else if(st==='reprog')      B.reprog_pendiente[tipo]++;
       else if(st==='program')     B.programados[tipo]++;
       else if(st==='programable') B.pendientes_programables[tipo]++;
       else                        B.pendientes_en_espera[tipo]++;
@@ -4220,7 +4271,8 @@ function _procesarPlantillaNueva(raw){
       if(!D.sedes)D.sedes=[];
       D.sedes.push({z:zona,r:regRaw,d:dpRaw,p:pvRaw,t:tipo,st:st,
                     e1:e1?1:0,e2:e2?1:0,ag:agendada?1:0,at:nAt,qb:nQb,
-                    mg:migSD?1:0});
+                    mg:migSD?1:0,
+                    fp:(st==='program'&&iFProg>=0&&fx(r[iFProg]))?fx(r[iFProg]).toISOString().slice(0,10):''});
     }
 
     // --- datos para la Vista Ejecutiva ---
@@ -4286,7 +4338,7 @@ function _procesarPlantillaNueva(raw){
         '   · En conformidad PJ: '+s(D.en_conformidad)+'\n'+
         '   · Alta operativa: '+s(D.alta)+'\n\n'+
         'Por validar: '+s(D.pendientes)+'\n'+
-        '   · Agendadas: '+s(D.programados)+'   · Reagendar: '+s(D.reprog_pendiente)+'\n'+
+        '   · Programadas: '+s(D.programados)+'   · Atendidas sin resultado: '+s(D.atendidas)+'   · Reagendar: '+s(D.reprog_pendiente)+'\n'+
         '   · Listas para agendar: '+s(D.pendientes_programables)+'   · En espera de enlace: '+s(D.pendientes_en_espera)+'\n\n'+
         'Migradas SD-WAN (informativo): '+s(D.migradas)+'\n'+
         'Atenciones: '+D.atenciones+'   ·   Quebradas: '+D.quebradas+
@@ -4547,11 +4599,12 @@ function renderEjecutivo(){
 window.renderEjecutivo=renderEjecutivo;
 
 function renderDiagramaFlujoCompleto(opts) {
+  // (2026-09-23) Flujo ejecutivo en tarjetas: cada sede está en UNA sola etapa y la suma da el universo.
+  //   Por agendar → Programadas → Atendidas → Validadas → Alta operativa  (+ bloqueadas aparte)
+  // Fuente: columna «ETAPA FLUJO» de la plantilla (o la misma regla calculada aquí si no existe).
   opts = opts || {};
-  const compacto = !!opts.compacto;
   const el = document.getElementById(opts.target || 'diagrama-contenido');
   if (!el) return;
-
   const TV = ['Tipo 1','Tipo 2','Tipo 3'];
   const sum = o => TV.reduce((a,t) => a + (Number((o||{})[t]) || 0), 0);
   const zonaSel = document.getElementById('filtro-zona-dash')?.value || '';
@@ -4561,312 +4614,163 @@ function renderDiagramaFlujoCompleto(opts) {
   const operSel = document.getElementById('filtro-oper-dash')?.value || '';
   const operLblD = operSel==='item1'?'Ítem 1':operSel==='item2'?'Ítem 2':'';
   const D = datosDiagramaActivos();
-
   const aviso = txt => { el.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:36px 20px;font-size:13.5px;line-height:1.5">'+txt+'</div>'; };
-
-  if (!window.DIAGRAMA_DATOS) { aviso('Carga la Plantilla_Carga para ver el diagrama de flujo'); return; }
-  // Etiqueta del ámbito activo (el filtro más específico seleccionado)
+  if (!window.DIAGRAMA_DATOS) { aviso('Carga la plantilla para ver el avance de sedes'); return; }
   const ambitoSel = [(provSel||dptoSel||regionSel||zonaSel||''),operLblD].filter(Boolean).join(' · ');
-  const tieneSedes = Array.isArray(window.DIAGRAMA_DATOS.sedes) && window.DIAGRAMA_DATOS.sedes.length > 0;
-  if (!tieneSedes && (regionSel || dptoSel || provSel || operSel)) {
-    aviso('Los filtros por región, departamento, provincia y operador necesitan recalcular la plantilla.<br>Ve a «Registrar y cargar avance» y vuelve a cargar la Plantilla_Carga una vez.');
-    return;
-  }
-  if (!tieneSedes && zonaSel && !window.DIAGRAMA_DATOS.porZona) {
-    aviso('El filtro por zona necesita recalcular la plantilla.<br>Ve a «Registrar y cargar avance» y vuelve a cargar la Plantilla_Carga una vez.');
-    return;
-  }
   if (!D) { aviso('Sin sedes en '+(ambitoSel||'la selección actual')); return; }
-  if (sum(D.gabinete) === 0) { aviso('Sin sedes con gabinete en '+(ambitoSel||'la selección actual')); return; }
+  if ((window.DIAGRAMA_DATOS.v||0) < 6) { aviso('Vuelve a subir la plantilla una vez para calcular el flujo por etapas.'); return; }
 
-  const ce = D.item3_con_enlace || {item1:{},item2:{},item1_item2:{}};
-  const ceTipo = t => (ce.item1?.[t]||0) + (ce.item2?.[t]||0) + (ce.item1_item2?.[t]||0);
-  const enEspera = D.pendientes_en_espera || TV.reduce((o,t)=>{o[t]=(D.pendientes?.[t]||0)-(D.pendientes_programables?.[t]||0);return o;},{});
+  const nf = n => Number(n||0).toLocaleString('es-PE');
+  const UNIV = sum(D.universo) || 745;
+  const pc = n => UNIV ? Math.round(n/UNIV*100) : 0;
+  const porAgSin = sum(D.pendientes_programables), porAgReag = sum(D.reprog_pendiente);
+  const porAgendar = porAgSin + porAgReag;
+  const programadas = sum(D.programados), atendidas = sum(D.atendidas||{});
+  const valDoc = sum(D.validado_pend_doc), valIt5 = sum(D.en_validacion), valConf = sum(D.en_conformidad);
+  const validadas = valDoc + valIt5 + valConf, alta = sum(D.alta);
+  const sinGab = UNIV - sum(D.gabinete), sinEnl = sum(D.pendientes_en_espera);
 
-  const totalUniverso    = sum(D.universo) || 745;
-  const totalGabinete    = sum(D.gabinete);
-  const totalConEnlace   = TV.reduce((a,t) => a + ceTipo(t), 0);
-  const totalSinEnlace   = sum(D.item3_sin_enlace);
-  const totalPendientes  = sum(D.pendientes);
-  const totalProgramables= sum(D.pendientes_programables);
-  const totalEspera      = sum(enEspera);
-  const totalAlta        = sum(D.alta);
-  const totalProgramados = sum(D.programados);
-  const totalAgendadas   = sum(D.agendadas||{});
-  const totalAgendListo  = sum(D.agend_listo||{});
-  const totalListoPru    = sum(D.listo_pruebas);
-  const totalValidadoDoc = sum(D.validado_pend_doc);
-  const totalValid       = sum(D.en_validacion);
-  const totalConf        = sum(D.en_conformidad);
-  const totalCierre      = totalValidadoDoc+totalValid+totalConf+totalAlta;
-  const validadasTipo = TV.reduce((o,t)=>{o[t]=(D.validado_pend_doc?.[t]||0)+(D.en_validacion?.[t]||0)+
-                                              (D.en_conformidad?.[t]||0)+(D.alta?.[t]||0);return o;},{});
-  const totalReprog      = sum(D.reprog_pendiente);
-  const totalCriterio    = totalConEnlace + totalProgramables + totalProgramados + totalReprog;
-  const esV2             = (window.DIAGRAMA_DATOS||{}).formato === 'v2';
-  const hayAlta          = (window.DIAGRAMA_DATOS.colAlta ?? -1) >= 0;
+  // Sedes del ámbito filtrado (para migración y próxima atención)
+  const sedes = (window.sedesFiltradas && window.sedesFiltradas()) || window.DIAGRAMA_DATOS.sedes || [];
+  const esVal = s => ['validado','validacion','conformidad'].includes(s.st);
+  const migVal = sedes.filter(s=>s.mg&&esVal(s)).length, migAlta = sedes.filter(s=>s.mg&&s.st==='alta').length;
+  const migTot = sedes.filter(s=>s.mg).length, valAcum = validadas + alta;
+  const hoyS = hoy();
+  const fechasProg = sedes.filter(s=>s.st==='program'&&s.fp&&s.fp>=hoyS).map(s=>s.fp).sort();
+  const prox = fechasProg[0] || null, proxN = prox ? fechasProg.filter(f=>f===prox).length : 0;
+  const fLarga = f => new Date(f+'T00:00:00').toLocaleDateString('es-PE',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
 
-  // El diagrama pasó de 6 colores compitiendo a una sola idea:
-  //   AZUL  = está en nuestra cancha (y más oscuro = más avanzado)
-  //   GRIS  = no depende de nosotros
-  //   ROJO  = solo para lo que está en alerta
-  // La rampa azul de 4 pasos está validada (monótona, un solo tono, contraste OK).
-  const C = { gris:'#898781', linea:'#d8d7d0', texto:'#334155', rojo:'#d03b3b',
-              az1:'#86b6ef', az2:'#3987e5', az3:'#256abf', az4:'#0d366b',
-              // alias conservados para el resto de la función
-              morado:'#898781', verde:'#0d366b', azul:'#3987e5', naranja:'#898781', ambar:'#2a78d6' };
-
-  const circulo = (valor,titulo,sub,color,cls) =>
-    '<div class="dfx-c '+cls+'" style="border-color:'+color+'">'+
-      '<div class="dfx-n" style="color:'+color+'">'+valor+'</div>'+
-      '<div class="dfx-t" style="color:'+color+'">'+titulo+'</div>'+
-      (sub?'<div class="dfx-s" style="color:'+color+'">'+sub+'</div>':'')+
+  const C = { pend:'#b8752a', pendbg:'#fbf3e8', curso:'#2a78d6', val:'#0d366b', valbg:'#e7eef8', ok:'#0f7a55', okbg:'#e6f4ee',
+              blk:'#a9a8a1', blk2:'#d4d3cc', mig:'#6d3fb8', grid:'#e1e0d9', ink2:'#52514e', ink3:'#898781' };
+  const tip = obj => TV.map(t=>t+'   '+((obj||{})[t]||0)).join('\n');
+  const tarjeta = (lbl,n,color,bg,det,obj) =>
+    '<div class="fx-st" style="border-top-color:'+color+';'+(bg?'background:'+bg+';':'')+'" data-tip="'+tip(obj)+'">'+
+      '<div class="fx-l" style="color:'+color+'">'+lbl+'</div>'+
+      '<div class="fx-n">'+nf(n)+'</div>'+
+      '<div class="fx-p">'+pc(n)+'% de '+nf(UNIV)+'</div>'+
+      (det?'<div class="fx-d">'+det+'</div>':'')+
     '</div>';
+  const flecha = '<div class="fx-ar">›</div>';
+  const tipoSum = (...objs) => TV.reduce((o,t)=>{o[t]=objs.reduce((a,x)=>a+((x||{})[t]||0),0);return o;},{});
 
-  const conector = (positions,width) => {
-    const ln='position:absolute;background:'+C.linea+';';
-    let h='<div class="dfx-con" style="width:'+width+'px">';
-    h+='<div style="'+ln+'left:0;top:50%;width:52%;height:1.5px"></div>';
-    if(positions.length>1){
-      const mn=Math.min.apply(null,positions),mx=Math.max.apply(null,positions);
-      h+='<div style="'+ln+'left:50%;top:'+mn+'%;height:'+(mx-mn)+'%;width:1.5px"></div>';
-    }
-    positions.forEach(function(p){
-      h+='<div style="'+ln+'left:50%;top:'+p+'%;width:44%;height:1.5px"></div>';
-      h+='<div style="position:absolute;right:0;top:'+p+'%;transform:translateY(-50%);width:0;height:0;border-left:6px solid '+C.linea+';border-top:4px solid transparent;border-bottom:4px solid transparent"></div>';
-    });
-    return h+'</div>';
-  };
+  const seg = (n,color) => n>0 ? '<div style="width:'+(n/UNIV*100)+'%;background:'+color+'" title="'+nf(n)+'"></div>' : '';
+  const leyenda = (color,txt) => '<span><i style="background:'+color+'"></i>'+txt+'</span>';
 
-  const filaTipo = (tipo,color) =>
-    '<div class="dfx-tipo">'+
-      '<div class="dfx-c dfx-sm" style="border-color:'+color+'"><div class="dfx-n" style="color:'+color+'">'+ceTipo(tipo)+'</div></div>'+
-      '<div class="dfx-card dfx-grow">'+
-        '<div class="dfx-card-h"><span class="dfx-card-t">'+tipo.toUpperCase()+'</span><span class="dfx-card-x">Ítem 5 + enlace</span></div>'+
-        '<div class="dfx-l"><span>+ Ítem 1</span><strong>'+(ce.item1?.[tipo]||0)+'</strong></div>'+
-        '<div class="dfx-l"><span>+ Ítem 2</span><strong>'+(ce.item2?.[tipo]||0)+'</strong></div>'+
-        '<div class="dfx-l"><span>+ Ítem 1 y 2</span><strong>'+(ce.item1_item2?.[tipo]||0)+'</strong></div>'+
-      '</div>'+
-    '</div>';
+  const estilos = '<style>'+
+    '.fx-leg{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11.5px;color:'+C.ink2+';margin:0 0 12px}'+
+    '.fx-leg i,.fx-bl i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}'+
+    '.fx-wrap{display:grid;grid-template-columns:1fr 230px;gap:16px}'+
+    '.fx-flow{display:grid;grid-template-columns:1fr 18px 1fr 18px 1fr 18px 1fr 18px 1fr;align-items:stretch}'+
+    '.fx-st{border:1px solid '+C.grid+';border-top:4px solid;border-radius:10px;padding:11px 13px;background:#fff;position:relative;cursor:help}'+
+    '.fx-l{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}'+
+    '.fx-n{font-size:30px;font-weight:750;line-height:1.1;margin-top:4px;color:#0b0b0b}'+
+    '.fx-p{font-size:11px;color:'+C.ink3+'}'+
+    '.fx-d{font-size:11px;color:'+C.ink2+';margin-top:6px;line-height:1.35;border-top:1px dashed '+C.grid+';padding-top:6px}'+
+    '.fx-ar{display:flex;align-items:center;justify-content:center;color:#c3c2b7;font-size:18px}'+
+    '.fx-st::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);'+
+      'background:rgba(11,11,11,.93);color:#fff;font-size:10.5px;font-weight:600;line-height:1.55;white-space:pre;'+
+      'padding:7px 11px;border-radius:6px;opacity:0;pointer-events:none;transition:opacity .12s;z-index:30}'+
+    '.fx-st:hover::after{opacity:1}'+
+    '.fx-bar{display:flex;height:14px;border-radius:5px;overflow:hidden;margin:14px 0 6px;background:#eceae4}'+
+    '.fx-bar div{height:100%}'+
+    '.fx-bl{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:11px;color:'+C.ink2+'}'+
+    '.fx-blq{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}'+
+    '.fx-blq div{background:#f4f4f1;border-radius:8px;padding:8px 12px;font-size:11.5px;color:'+C.ink2+'}'+
+    '.fx-blq b{font-size:16px;color:#0b0b0b;margin-right:6px}'+
+    '.fx-mig{display:grid;grid-template-columns:210px 1fr;gap:16px;align-items:center;border:1px solid '+C.grid+';border-radius:10px;padding:12px 14px;margin-top:12px;background:#fbfbf9}'+
+    '.fx-prox{border:1px solid '+C.grid+';border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;justify-content:center}'+
+    '.fx-prox .k{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:'+C.ink3+'}'+
+    '.fx-prox .f{font-size:21px;font-weight:750;margin-top:6px;line-height:1.2}'+
+    '.fx-prox .s{font-size:12px;color:'+C.ink2+';margin-top:4px}'+
+    '.fx-cierre{margin-top:14px;border:1px dashed #cbd5e1;border-radius:10px;padding:10px 12px}'+
+    '.fx-cierre-t{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#64748b;margin-bottom:8px}'+
+    '.fx-cad{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'+
+    '.fx-paso{flex:1;min-width:110px;text-align:center;border:1px solid '+C.grid+';border-radius:8px;padding:7px 6px;background:#fff}'+
+    '.fx-paso b{display:block;font-size:19px;color:#0b0b0b}.fx-paso span{font-size:10.5px;color:'+C.ink2+'}'+
+    '@media(max-width:1000px){.fx-wrap{grid-template-columns:1fr}.fx-flow{grid-template-columns:1fr 1fr;gap:10px}.fx-ar{display:none}'+
+      '.fx-mig{grid-template-columns:1fr}.fx-blq{grid-template-columns:1fr}}'+
+    '</style>';
 
-  const paso = (n,txt,color,fuerte) =>
-    '<div class="dfx-paso'+(fuerte?' dfx-paso-f':'')+'" style="border-color:'+color+'">'+
-      '<div style="font-size:20px;font-weight:800;color:'+color+';line-height:1">'+n+'</div>'+
-      '<div style="font-size:9px;font-weight:700;color:'+color+';line-height:1.15;margin-top:2px">'+txt+'</div>'+
-    '</div>';
-  const flecha = () => '<div class="dfx-fl">→</div>';
-
-  // El desglose Tipo 1/2/3 se repetía en las 7 cajas: 21 números que ahogaban
-  // la cifra principal. Ahora viaja en el tooltip del círculo (helper tip()).
-  const tipTexto = obj => TV.map(t=>t+'   '+((obj||{})[t]||0)).join('\n');
-
-  // Círculo con el desglose por tipo al pasar el mouse.
-  const circuloT = (valor,titulo,sub,color,cls,obj) =>
-    '<div class="dfx-c dfx-tip '+cls+'" style="border-color:'+color+'" data-tip="'+tipTexto(obj)+'">'+
-      '<div class="dfx-n" style="color:'+color+'">'+valor+'</div>'+
-      '<div class="dfx-t" style="color:'+color+'">'+titulo+'</div>'+
-      (sub?'<div class="dfx-s" style="color:'+color+'">'+sub+'</div>':'')+
-    '</div>';
-
-  // Tarjeta: ahora lleva las LÍNEAS QUE IMPORTAN (el reparto real del grupo),
-  // no la repetición del desglose por tipo.
-  const mini = (titulo,color,bg,borde,lineas,pie) =>
-    '<div class="dfx-card dfx-grow" style="background:'+bg+';border-color:'+borde+'">'+
-      '<div class="dfx-card-t" style="color:'+color+';margin-bottom:4px">'+titulo+'</div>'+
-      (lineas||[]).map(function(l){
-        return '<div class="dfx-l"><span'+(l.alerta?' style="color:#b91c1c;font-weight:700"':'')+'>'+l.t+'</span>'+
-               '<strong'+(l.alerta?' style="color:#b91c1c"':'')+'>'+l.v+'</strong></div>';
-      }).join('')+
-      (pie?'<div class="dfx-pie" style="'+((lineas||[]).length?'border-color:'+borde+';':'border:none;margin-top:0;padding-top:0;')+'color:'+color+'">'+pie+'</div>':'')+
-    '</div>';
-
-  const estilos =
-  '<style>'+
-  '.dfx-wrap{background:#fff;border-radius:10px;padding:16px 12px}'+
-  '.dfx-flow{display:flex;align-items:stretch;min-width:940px}'+
-  '.dfx-row{display:flex;align-items:stretch;min-width:0;flex:1}'+
-  '.dfx-col{display:flex;flex-direction:column;min-width:0;flex:1}'+
-  '.dfx-fila{display:flex;align-items:center;gap:12px}'+
-  '.dfx-mid{display:flex;align-items:center;flex-shrink:0}'+
-  '.dfx-grow{flex:1}'+
-  '.dfx-c{border-radius:50%;border:3px solid;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.06);text-align:center}'+
-  '.dfx-xl{width:118px;height:118px}.dfx-xl .dfx-n{font-size:35px}'+
-  '.dfx-lg{width:100px;height:100px}.dfx-lg .dfx-n{font-size:30px}'+
-  '.dfx-md{width:84px;height:84px}.dfx-md .dfx-n{font-size:25px}'+
-  '.dfx-sm{width:52px;height:52px;border-width:2.5px}.dfx-sm .dfx-n{font-size:18px}'+
-  '.dfx-n{font-weight:800;line-height:1}'+
-  '.dfx-t{font-size:9.5px;font-weight:700;margin-top:2px;line-height:1.1}'+
-  '.dfx-s{font-size:8.5px;opacity:.7;line-height:1.1}'+
-  '.dfx-con{position:relative;align-self:stretch;flex-shrink:0;min-height:62px}'+
-  '.dfx-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px 11px;min-width:0}'+
-  '.dfx-card-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}'+
-  '.dfx-card-t{font-size:10.5px;font-weight:800;color:'+C.texto+';letter-spacing:.3px}'+
-  '.dfx-card-x{font-size:8.5px;color:#94a3b8}'+
-  '.dfx-l{display:flex;justify-content:space-between;font-size:10px;color:#475569}'+
-  '.dfx-l strong{color:'+C.texto+'}'+
-  '.dfx-pie{margin-top:5px;padding-top:4px;border-top:1px dashed;font-size:9px;font-weight:700}'+
-  '.dfx-tipo{display:flex;align-items:center;gap:10px}'+
-  '.dfx-tip{cursor:help;position:relative}'+
-  '.dfx-tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 9px);left:50%;'+
-    'transform:translateX(-50%);background:rgba(11,11,11,.93);color:#fff;font-size:10.5px;'+
-    'font-weight:600;line-height:1.55;white-space:pre;padding:7px 11px;border-radius:6px;'+
-    'opacity:0;pointer-events:none;transition:opacity .12s;z-index:30;font-family:inherit}'+
-  '.dfx-tip::before{content:"";position:absolute;bottom:calc(100% + 3px);left:50%;'+
-    'transform:translateX(-50%);border:5px solid transparent;border-top-color:rgba(11,11,11,.93);'+
-    'opacity:0;pointer-events:none;transition:opacity .12s;z-index:30}'+
-  '.dfx-tip:hover::after,.dfx-tip:hover::before{opacity:1}'+
-  '.dfx-nota{margin-top:14px;font-size:10.5px;color:#94a3b8;line-height:1.5}'+
-  '.dfx-cmp{padding:4px 0}'+
-  '.dfx-cmp .dfx-flow{min-width:860px}'+
-  '.dfx-cmp .dfx-xl{width:96px;height:96px}.dfx-cmp .dfx-xl .dfx-n{font-size:28px}'+
-  '.dfx-cmp .dfx-lg{width:82px;height:82px}.dfx-cmp .dfx-lg .dfx-n{font-size:24px}'+
-  '.dfx-cmp .dfx-md{width:70px;height:70px}.dfx-cmp .dfx-md .dfx-n{font-size:20px}'+
-  '.dfx-cmp .dfx-card{padding:6px 9px}'+
-  '.dfx-cmp .dfx-l{font-size:9.5px}'+
-  '.dfx-cmp .dfx-cierre{margin-top:14px}'+
-  '.dfx-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:1px;background:#e8edf3;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:18px}'+
-  '.dfx-top-i{background:#fff;padding:10px 12px;display:flex;flex-direction:column;gap:1px}'+
-  '.dfx-top-l{font-size:8.5px;font-weight:800;color:#94a3b8;letter-spacing:.7px}'+
-  '.dfx-top-v{font-size:25px;font-weight:800;color:'+C.texto+';line-height:1.1}'+
-  '.dfx-top-s{font-size:9px;color:#94a3b8;line-height:1.25}'+
-  '.dfx-cierre-p{font-size:9.5px;color:#64748b;margin-top:8px;line-height:1.4}'+
-  '.dfx-cierre{margin-top:20px;border:1px dashed #cbd5e1;border-radius:10px;padding:10px 12px;background:#fcfdff}'+
-  '.dfx-cierre-t{font-size:9.5px;font-weight:800;color:#64748b;letter-spacing:.6px;margin-bottom:8px}'+
-  '.dfx-cadena{display:flex;align-items:center;gap:6px;flex-wrap:wrap}'+
-  '.dfx-paso{flex:1;min-width:92px;text-align:center;border:2px solid;border-radius:8px;padding:7px 6px;background:#fff}'+
-  '.dfx-paso-f{box-shadow:0 0 0 3px rgba(13,54,107,.10)}'+
-  '.dfx-fl{color:#cbd5e1;font-size:15px;flex-shrink:0}'+
-  '.dfx-foot{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid #e2e8f0}'+
-  '@media(max-width:900px){'+
-    '.dfx-wrap{padding:12px 8px}'+
-    '.dfx-flow{display:block!important;min-width:0!important}'+
-    '.dfx-row{display:block!important}'+
-    '.dfx-con{display:none!important}'+
-    '.dfx-mid{justify-content:flex-start;margin-bottom:8px}'+
-    '.dfx-col{gap:12px!important}'+
-    '.dfx-ind{border-left:2px solid '+C.linea+';margin-left:24px;padding-left:16px;margin-top:10px;position:relative}'+
-    '.dfx-fila{gap:10px;align-items:stretch}'+
-    '.dfx-tipo{gap:9px;align-items:stretch}'+
-    '.dfx-xl{width:96px;height:96px}.dfx-xl .dfx-n{font-size:29px}'+
-    '.dfx-lg{width:84px;height:84px}.dfx-lg .dfx-n{font-size:25px}'+
-    '.dfx-md{width:72px;height:72px}.dfx-md .dfx-n{font-size:21px}'+
-    '.dfx-sm{width:46px;height:46px}.dfx-sm .dfx-n{font-size:16px}'+
-    '.dfx-c{align-self:center}'+
-    '.dfx-card{padding:7px 9px}'+
-    '.dfx-l{font-size:10.5px}'+
-    '.dfx-foot{grid-template-columns:1fr 1fr;gap:10px}'+
-  '}'+
-  '@media(max-width:420px){'+
-    '.dfx-foot{grid-template-columns:1fr}'+
-    '.dfx-fila{flex-direction:column;align-items:flex-start}'+
-    '.dfx-tipo{flex-direction:row}'+
-  '}'+
-  '</style>';
-
-  const avisoViejo = (esV2 && (window.DIAGRAMA_DATOS.v||0)>=3) ? '' :
-    '<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:11.5px;color:#92400e;line-height:1.45">'+
-    '<strong>Estos datos son de una carga anterior.</strong> Ve a «Registrar y cargar avance» y sube la Plantilla_Carga_SDWAN_PJ_v6 una vez para actualizar el diagrama.'+
-    '</div>';
-
-  // La tira de cifras de encabezado se eliminó: repetía exactamente los dos
-  // círculos más grandes del árbol que va justo debajo. Lo único que aporta es
-  // decir qué ámbito está filtrado, así que queda una sola línea de texto.
   const resumen = ambitoSel
-    ? '<div style="font-size:11.5px;color:#64748b;margin-bottom:14px">Filtrado por <strong>'+ambitoSel+'</strong> · '+totalUniverso+' sedes en el ámbito</div>'
-    : '';
+    ? '<div style="font-size:11.5px;color:#64748b;margin-bottom:10px">Filtrado por <strong>'+ambitoSel+'</strong> · '+nf(UNIV)+' sedes en el ámbito</div>' : '';
 
-  const cierre = (esV2&&totalCierre>0) ?
-    '<div class="dfx-cierre">'+
-      '<div class="dfx-cierre-t">FASE DE CIERRE DOCUMENTARIO — continúa con las '+totalCierre+' sedes ya validadas</div>'+
-      '<div class="dfx-cadena">'+
-        paso(totalValidadoDoc,'Pend.<br>documentación',C.az1)+ flecha()+
-        paso(totalValid,'En validación<br>Ítem 5',C.az2)+ flecha()+
-        paso(totalConf,'En conformidad<br>PJ',C.az3)+ flecha()+
-        paso(totalAlta,'ALTA<br>OPERATIVA',C.az4,true)+
+  el.innerHTML = estilos + resumen +
+    '<div class="fx-leg">'+leyenda(C.pend,'Pendiente')+leyenda(C.curso,'En curso')+leyenda(C.val,'Validada (Ítem 3 cumplido)')+
+      leyenda(C.ok,'Terminada')+'<span style="color:'+C.ink3+'">Cada sede está en una sola tarjeta · pasa el mouse para ver Tipo 1/2/3</span></div>'+
+    '<div class="fx-wrap"><div>'+
+      '<div class="fx-flow">'+
+        tarjeta('Por agendar',porAgendar,C.pend,C.pendbg,nf(porAgSin)+' sin fecha<br>'+nf(porAgReag)+' por reagendar (quiebre)',
+                tipoSum(D.pendientes_programables,D.reprog_pendiente)) + flecha +
+        tarjeta('Programadas',programadas,C.curso,'','con fecha de visita vigente',D.programados) + flecha +
+        tarjeta('Atendidas',atendidas,C.curso,'','visita pasada sin resultado registrado',D.atendidas) + flecha +
+        tarjeta('Validadas',validadas,C.val,C.valbg,'en cierre documentario'+(migVal?'<br><b style="color:'+C.mig+'">'+nf(migVal)+' ya migradas</b>':''),
+                tipoSum(D.validado_pend_doc,D.en_validacion,D.en_conformidad)) + flecha +
+        tarjeta('Alta operativa',alta,C.ok,C.okbg,'conformidad PJ firmada'+'<br><b style="color:'+C.mig+'">'+nf(migAlta)+' migradas</b>',D.alta) +
       '</div>'+
-      '<div class="dfx-cierre-p">Sin conformidad del Poder Judicial la sede no se considera entregada, aunque el servicio ya esté activo.</div>'+
-    '</div>' : '';
-
-  // ============================================================
-  //  ÁRBOL PODADO (2026-09)
-  //  Antes: 10 círculos en 4 niveles. «Programadas», «Reprogramar» y
-  //  «Programables» eran tres círculos para una sola pregunta —¿qué hay que
-  //  agendar?— y «Sin enlace» colgaba aparte aunque ya tiene equipo puesto.
-  //  Ahora: 6 círculos bajo el universo, el reparto vive dentro de la tarjeta
-  //  y el desglose Tipo 1/2/3 viaja en el tooltip de cada círculo.
-  //  El rackeo ya no es una etapa: es historial, y baja a la nota al pie.
-  // ============================================================
-
-  // (2026-09-22) El rackeo dejó de ser etapa y de contarse: el árbol es
-  //   Con gabinete -> VALIDADAS | POR VALIDAR -> (por agendar | esperando enlace)
-
-  // Todo lo que depende de que alguien salga a campo.
-  const porAgendar      = totalProgramables + totalReprog + totalProgramados;
-  const porAgendarTipo  = TV.reduce((o,t)=>{o[t]=(D.pendientes_programables?.[t]||0)+
-                              (D.reprog_pendiente?.[t]||0)+(D.programados?.[t]||0);return o;},{});
-
-  const notaPie =
-    '<div class="dfx-nota">'+
-      'Pasa el mouse sobre cualquier círculo para ver el desglose por Tipo 1 / 2 / 3. '+
-      'El avance del Ítem 3 se mide solo con sedes validadas; el rackeo no se contabiliza.'+
-    '</div>';
-
-  el.innerHTML = estilos +
-  '<div class="dfx-wrap'+(compacto?' dfx-cmp':'')+'">'+ avisoViejo + (compacto?'':resumen) +
-    '<div class="dfx-flow">'+
-
-      '<div class="dfx-mid">'+ circuloT(totalGabinete,'SEDES CON<br>GABINETE','entregadas por Ítem 5',C.gris,'dfx-xl',D.gabinete) +'</div>'+
-      conector([30,80],40)+
-
-      '<div class="dfx-col dfx-ind" style="gap:22px">'+
-
-        // ---------- RAMA A: validadas (único avance que cuenta) ----------
-        '<div class="dfx-row">'+
-          '<div class="dfx-mid">'+ circuloT(totalCierre,'VALIDADAS','avance Ítem 3',C.az4,'dfx-lg',validadasTipo) +'</div>'+
-          conector([50],36)+
-          '<div class="dfx-col dfx-ind" style="gap:12px;justify-content:center">'+
-            '<div class="dfx-fila">'+
-              mini('YA VALIDADAS',C.az4,'#eef4fd','#cfe2fa',[
-                {t:'Pendiente de documentación',v:totalValidadoDoc},
-                {t:'En validación Ítem 5 / conformidad PJ',v:totalValid+totalConf},
-                {t:'Alta operativa (conformidad PJ)',v:totalAlta}
-              ],'El detalle del cierre documentario va abajo')+
-            '</div>'+
-          '</div>'+
-        '</div>'+
-
-        // ---------- RAMA B: por validar ----------
-        '<div class="dfx-row">'+
-          '<div class="dfx-mid">'+ circuloT(totalPendientes,'POR<br>VALIDAR','con gabinete',C.gris,'dfx-lg',D.pendientes) +'</div>'+
-          conector([28,74],36)+
-          '<div class="dfx-col dfx-ind" style="gap:12px">'+
-
-            '<div class="dfx-fila">'+
-              circuloT(porAgendar,'POR AGENDAR','depende de nosotros',C.az2,'dfx-md',porAgendarTipo)+
-              mini('LISTAS PARA SALIR A CAMPO',C.az3,'#eff6ff','#cfe2fa',[
-                {t:'Sin fecha — listas para agendar',v:totalProgramables},
-                {t:'Atención quebrada — rehacer fecha',v:totalReprog},
-                {t:'Con fecha vigente',v:totalProgramados,alerta:totalProgramados===0}
-              ], totalProgramados===0
-                   ? '⚠ Pipeline vacío: ninguna de las '+porAgendar+' tiene fecha'
-                   : 'Criterio vigente: gabinete + enlace')+
-            '</div>'+
-
-            '<div class="dfx-fila">'+
-              circuloT(totalEspera,'ESPERANDO<br>ENLACE','depende de terceros',C.gris,'dfx-md',enEspera)+
-              mini('BLOQUEADAS POR ÍTEM 1 / 2',C.gris,'#f7f7f5','#e4e3dd',[],
-                   'Tienen gabinete pero no enlace. No podemos programarlas hasta que Bitel o Claro entreguen.')+
-            '</div>'+
-
-          '</div>'+
-        '</div>'+
-
-      '</div>'+
+      '<div class="fx-bar">'+seg(sinGab,C.blk2)+seg(sinEnl,C.blk)+seg(porAgendar,C.pend)+seg(programadas+atendidas,C.curso)+
+        seg(validadas,C.val)+seg(alta,C.ok)+'</div>'+
+      '<div class="fx-bl">'+leyenda(C.blk2,'Sin gabinete '+nf(sinGab))+leyenda(C.blk,'Sin enlace '+nf(sinEnl))+
+        leyenda(C.pend,'Por agendar '+nf(porAgendar))+leyenda(C.curso,'Programadas + atendidas '+nf(programadas+atendidas))+
+        leyenda(C.val,'Validadas '+nf(validadas))+leyenda(C.ok,'Alta '+nf(alta))+
+        '<span style="margin-left:auto"><b>Suma: '+nf(sinGab+sinEnl+porAgendar+programadas+atendidas+validadas+alta)+'</b></span></div>'+
+      '<div class="fx-blq"><div><b>'+nf(sinGab)+'</b>bloqueadas · sin gabinete (Ítem 5)</div>'+
+        '<div><b>'+nf(sinEnl)+'</b>bloqueadas · sin enlace (Ítem 1 / 2)</div></div>'+
+      '<div class="fx-mig"><div><div style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:'+C.mig+'">Migración SD-WAN</div>'+
+          '<div style="font-size:26px;font-weight:750;color:'+C.mig+'">'+nf(migTot)+'</div>'+
+          '<div style="font-size:11.5px;color:'+C.ink2+'">de '+nf(valAcum)+' validadas · '+(valAcum?(migTot/valAcum*100).toFixed(1):'0')+'%</div></div>'+
+        '<div><div class="fx-bar" style="margin:0"><div style="width:'+(valAcum?Math.min(100,migTot/valAcum*100):0)+'%;background:'+C.mig+'"></div></div>'+
+          '<div style="display:flex;justify-content:space-between;font-size:11.5px;color:'+C.ink2+';margin-top:6px;flex-wrap:wrap;gap:4px">'+
+          '<span><b style="color:'+C.mig+'">'+nf(migTot)+' migradas</b> (Fecha Migración SDWAN)</span>'+
+          '<span><b>'+nf(Math.max(0,valAcum-migVal-migAlta))+'</b> validadas listas para migrar</span></div></div></div>'+
     '</div>'+
-
-    cierre + notaPie +
-  '</div>';
+    '<div class="fx-prox"><div class="k">Próxima atención</div>'+
+      (prox ? '<div class="f">'+fLarga(prox)+'</div><div class="s"><b>'+nf(proxN)+' sede'+(proxN===1?'':'s')+'</b> programada'+(proxN===1?'':'s')+' ese día</div>'+
+              '<div class="s" style="color:'+C.ink3+'">'+nf(programadas)+' programadas en total</div>'
+            : '<div class="f" style="color:'+C.ink3+'">Sin fechas</div><div class="s">No hay visitas programadas a futuro.</div>')+
+      (atendidas?'<div class="s" style="margin-top:10px;color:#b45309"><b>'+nf(atendidas)+'</b> visita'+(atendidas===1?'':'s')+' sin resultado registrado</div>':'')+
+    '</div></div>'+
+    (validadas+alta>0 ?
+      '<div class="fx-cierre"><div class="fx-cierre-t">Cierre documentario de las '+nf(validadas+alta)+' sedes validadas</div><div class="fx-cad">'+
+        '<div class="fx-paso"><b>'+nf(valDoc)+'</b><span>Pend. documentación</span></div><div class="fx-ar">›</div>'+
+        '<div class="fx-paso"><b>'+nf(valIt5)+'</b><span>En validación Ítem 5</span></div><div class="fx-ar">›</div>'+
+        '<div class="fx-paso"><b>'+nf(valConf)+'</b><span>En conformidad PJ</span></div><div class="fx-ar">›</div>'+
+        '<div class="fx-paso" style="border-color:'+C.ok+'"><b style="color:'+C.ok+'">'+nf(alta)+'</b><span>Alta operativa</span></div>'+
+      '</div></div>' : '');
 }
+
+// ============================================================
+// GESTIÓN DE TICKETS — hoja «Sedes para alta» (se lee al subir la plantilla)
+//   Pendientes por cargar = creados − cargados · Falta crear = requeridos − creados
+// ============================================================
+window.renderTickets=function(){
+  const el=document.getElementById('tickets-contenido'); if(!el)return;
+  const T=(window.CAMPO_DATOS||{}).tickets;
+  if(!T){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0">Sube la plantilla (con la hoja «Sedes para alta») para calcular los tickets.</div>';return;}
+  const nf=n=>Number(n||0).toLocaleString('es-PE');
+  const porCargar=T.creados-T.cargados, faltaCrear=T.req-T.creados;
+  const pct=T.req?T.cargados/T.req*100:0, pctCre=T.req?T.creados/T.req*100:0;
+  const sm=(lbl,n,sub,color)=>'<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;'+(color?'border-top:3px solid '+color+';':'')+'">'+
+    '<div style="font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#898781">'+lbl+'</div>'+
+    '<div style="font-size:22px;font-weight:700;margin-top:4px;color:'+(color||'#0b0b0b')+'">'+nf(n)+'</div>'+
+    '<div style="font-size:10.5px;color:#898781">'+sub+'</div></div>';
+  el.innerHTML=
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">'+
+      '<div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;grid-column:span 2;min-width:0">'+
+        '<div style="font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#898781">Avance de carga</div>'+
+        '<div style="font-size:30px;font-weight:750;margin-top:2px">'+Math.round(pct)+'%</div>'+
+        '<div style="height:10px;background:#eceae4;border-radius:5px;overflow:hidden;margin:8px 0 6px;position:relative">'+
+          '<div style="position:absolute;inset:0 auto 0 0;width:'+Math.min(100,pctCre)+'%;background:#b9d3f3"></div>'+
+          '<div style="position:absolute;inset:0 auto 0 0;width:'+Math.min(100,pct)+'%;background:#0f7a55"></div></div>'+
+        '<div style="font-size:11px;color:#898781">'+nf(T.cargados)+' cargados de '+nf(T.req)+' requeridos · barra clara = creados ('+Math.round(pctCre)+'%)</div></div>'+
+      sm('Requeridos',T.req,'sedes validadas en «Sedes para alta»')+
+      sm('Creados',T.creados,Math.round(pctCre)+'% de requeridos')+
+      sm('Cargados',T.cargados,'terminado','#0f7a55')+
+      sm('Por cargar',porCargar,'creados − cargados','#2a78d6')+
+      sm('Falta crear',faltaCrear,'requeridos − creados','#b8752a')+
+    '</div>'+
+    (T.sinFecha?'<div style="font-size:11.5px;color:#92400e;margin-top:10px">⚠ '+nf(T.sinFecha)+' tickets marcados como cargados no tienen «Fecha de carga» en el Excel.</div>':'')+
+    (porCargar<0?'<div style="font-size:11.5px;color:#92400e;margin-top:6px">⚠ Hay tickets marcados como cargados que no figuran como creados; revisa la hoja «Sedes para alta».</div>':'');
+};
 
 // Exportar función
 window.renderDiagramaFlujoCompleto = renderDiagramaFlujoCompleto;
@@ -4932,7 +4836,7 @@ cargarItemsExternos().then(()=>{
     const cif=document.getElementById('vz-cifras');
     if(!cif)return;
 
-    if(!D||D.formato!=='v2'||(D.v||0)<4){
+    if(!D||D.formato!=='v2'||(D.v||0)<5){
       cif.innerHTML='<div class="vz-cell" style="grid-column:1/-1"><div class="k">Sin datos</div>'+
         '<div class="s">Sube la <b>Plantilla_Carga_SDWAN_PJ</b> en «Datos → Cargar plantilla» '+
         'para calcular las cifras de portada.</div></div>';
@@ -4953,7 +4857,7 @@ cargarItemsExternos().then(()=>{
 
     // 5 cifras (Migradas es informativa). Nada de porcentajes sueltos sin su número absoluto.
     cif.innerHTML=[
-      {k:'Validadas',v:nf(validadas),
+      {k:'Validadas (acum.)',v:nf(validadas),
        s:'de '+nf(UNIV)+' sedes · '+Math.round(validadas/UNIV*100)+'% del universo'},
       {k:'Alta operativa',v:nf(alta),
        s:'cerradas con conformidad del PJ · '+Math.round(alta/UNIV*100)+'%'},
