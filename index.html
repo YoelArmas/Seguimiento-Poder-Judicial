@@ -581,7 +581,7 @@
 
   <!-- CPI y variacion - SOLO ADMIN -->
   <div class="card" id="card-admin-metrics" style="display:none">
-    <div class="card-title">🔒 Métricas avanzadas (solo administradores)</div>
+    <div class="card-title">🔒 Valor ganado y costos — CPI (acceso restringido)</div>
     <div id="admin-metrics-container">Cargando...</div>
   </div>
 
@@ -751,7 +751,10 @@ const ZONA_COORD={
   'Zona Oriente':'Miguel Pando (Zona Oriente)',
 };
 const EMAILS_AUTORIZADOS=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com','miguel.del08@gmail.com','rromerom2002@gmail.com','angel.cruz.condori.2@gmail.com','noemi.optical@gmail.com'];
-const EMAILS_ADMIN=['ryoel110@gmail.com','joel.hipolito.garcia@gmail.com'];
+// Deben coincidir con esAdmin() de las reglas de Firestore.
+const EMAILS_ADMIN=['ryoel110@gmail.com','miguel.del08@gmail.com'];
+// Quién ve y registra costos (Valor ganado / CPI). Debe coincidir con la regla de «evm_cortes».
+const EMAILS_COSTOS=['ryoel110@gmail.com'];
 const app=initializeApp(firebaseConfig);
 initializeAppCheck(app,{provider:new ReCaptchaV3Provider('6LcN-lotAAAAALr5rfOd-NmxQwKrE_zdWKX6AhmQ'),isTokenAutoRefreshEnabled:true});
 const db=getFirestore(app),auth=getAuth(app),provider=new GoogleAuthProvider();
@@ -770,7 +773,7 @@ const ZONA_UNIVERSO={
 // ============================================================
 // ESTADO GLOBAL — variables compartidas por todo el tracker
 // ============================================================
-let registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[],eliminados=[],ediciones=[],sedesEstado={},sedesEstadoCargado=false,pendingEstados={},ultimoLoteId=null,_histPagina=1,_histPorPagina=10,_elimPagina=1,_elimPorPagina=10,seleccionadosElim=new Set();
+let esCostos=false,registros=[],seleccionados=new Set(),pendingRows=[],usuarioActual=null,esAutorizado=false,esAdmin=false,itemsRiesgo=[],eliminados=[],ediciones=[],sedesEstado={},sedesEstadoCargado=false,pendingEstados={},ultimoLoteId=null,_histPagina=1,_histPorPagina=10,_elimPagina=1,_elimPorPagina=10,seleccionadosElim=new Set();
 
 
 // ============================================================
@@ -872,6 +875,7 @@ onAuthStateChanged(auth,user=>{
   usuarioActual=user;
   esAutorizado=user&&!user.isAnonymous&&EMAILS_AUTORIZADOS.includes(user.email);
   esAdmin=user&&!user.isAnonymous&&EMAILS_ADMIN.includes(user.email);
+  esCostos=user&&!user.isAnonymous&&EMAILS_COSTOS.includes(user.email);
   actualizarUI();
   document.getElementById('loading').style.display='none';
   registrarPresencia(user);
@@ -928,6 +932,7 @@ function actualizarUI(){
   renderSemaforo();
   renderEliminados();
   renderEdiciones();
+  try{ iniciarEVM(); }catch(e){ console.warn('iniciarEVM',e); }   // lee «evm_cortes» solo si es admin
   // Re-render presencia bar based on new auth state
   const presEl=document.getElementById('presencia-bar');
   if(presEl&&!esAutorizado)presEl.innerHTML='';
@@ -2485,7 +2490,7 @@ function renderMetricas(){
   const cardAdmin=document.getElementById('card-admin-metrics');
   if(cardCoord)cardCoord.style.display='none';   // reemplazado por «Desempeño de campo»
   if(cardSpi)cardSpi.style.display='block';
-  if(cardAdmin)cardAdmin.style.display=esAdmin?'block':'none';
+  if(cardAdmin)cardAdmin.style.display=esCostos?'block':'none';
 
   // Acumulados reales por fecha
   function acumReal(frente){
@@ -2694,15 +2699,8 @@ function renderMetricas(){
     }
   }
 
-  // Admin metrics
-  if(esAdmin){
-    document.getElementById('admin-metrics-container').innerHTML=`
-      <div style="font-size:13px;color:var(--text2);padding:8px 0;line-height:2">
-        <strong>CPI (Índice de Costo):</strong> Requiere ingresar costo real ejecutado. Funcionalidad disponible próximamente.<br>
-        <strong>Variación cronograma Producción:</strong> <span style="font-weight:600;color:${(variacionDias(spiProdData,PROD_PLAN,dhProdTotal)||0)>=0?'#0F6E56':'#A32D2D'}">${variacionDias(spiProdData,PROD_PLAN,dhProdTotal)!==null?(variacionDias(spiProdData,PROD_PLAN,dhProdTotal)>=0?'+':'')+variacionDias(spiProdData,PROD_PLAN,dhProdTotal)+' días':'Sin datos'}</span><br>
-        <strong>Variación cronograma Despliegue:</strong> <span style="font-weight:600;color:${(variacionDias(spiDespData,DESP_PLAN,dhDespTotal)||0)>=0?'#0F6E56':'#A32D2D'}">${variacionDias(spiDespData,DESP_PLAN,dhDespTotal)!==null?(variacionDias(spiDespData,DESP_PLAN,dhDespTotal)>=0?'+':'')+variacionDias(spiDespData,DESP_PLAN,dhDespTotal)+' días':'Sin datos'}</span>
-      </div>`;
-  }
+  // Valor ganado y costos (EVM) — solo administradores
+  if(esCostos){ try{ window.renderEVM(); }catch(e){ console.warn('renderEVM',e); } }
 
   // CURVA S con línea de hoy y % en tooltip
   function buildDatasets(plan,real,hoyStr){
@@ -3811,6 +3809,210 @@ function calcSemaforoAuto(){
   }
   return items.map((x,i)=>({...x,auto:true,id:'auto-'+i}));
 }
+
+// ============================================================
+// VALOR GANADO (EVM) Y COSTOS — solo administradores (2026-09-22)
+//   Datos: colección Firestore «evm_cortes», un documento por fecha de corte
+//   (id = AAAA-MM-DD). Solo se lee y escribe si el usuario es admin.
+//   EV = valor ganado CONTRACTUAL por hitos (lo ingresa el admin desde su libro
+//   de Curva S/EVM). No se deriva del avance físico de sedes validadas.
+// ============================================================
+let evmCortes=[], evmUnsub=null, chartEVM=null;
+const EVM_CAMPOS=[
+  {k:'venta',lbl:'Venta (Full Contract Value)'},
+  {k:'pv',   lbl:'Presupuesto planificado a la fecha (PV)'},
+  {k:'ev',   lbl:'Valor ganado contractual por hitos (EV)'},
+  {k:'ac',   lbl:'Costo real a la fecha (AC)'},
+  {k:'bac',  lbl:'Presupuesto total planificado (BAC)'},
+  {k:'eac',  lbl:'Presupuesto proyectado al cierre (EAC)'}
+];
+
+function iniciarEVM(){
+  if(esCostos&&!evmUnsub){
+    evmUnsub=onSnapshot(query(collection(db,'evm_cortes'),orderBy('fecha','asc')),snap=>{
+      evmCortes=snap.docs.map(d=>({id:d.id,...d.data()}));
+      window.renderEVM();
+    },err=>{
+      console.error('evm_cortes:',err);
+      const el=document.getElementById('evm-resumen');
+      if(el)el.innerHTML='<div class="error" style="display:block">No se pudo leer «evm_cortes» ('+(err.code||err.message)+'). Revisa las reglas de Firestore.</div>';
+    });
+  }
+  if(!esCostos&&evmUnsub){evmUnsub();evmUnsub=null;evmCortes=[];}
+}
+
+// Acepta "1,234,567.89", "S/ 1 234 567.89" o "1234567.89"
+function evmNum(v){
+  const t=String(v==null?'':v).replace(/S\/|\s|,/gi,'').trim();
+  if(t==='')return null;
+  const n=Number(t); return isFinite(n)?n:NaN;
+}
+const evmS=n=>n==null||!isFinite(n)?'—':'S/ '+Number(n).toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2});
+const evmI=n=>n==null||!isFinite(n)?'—':Number(n).toFixed(2);
+const evmP=n=>n==null||!isFinite(n)?'—':(n*100).toFixed(1)+'%';
+
+function evmCalc(c){
+  const {venta,pv,ev,ac,bac,eac}=c;
+  const div=(a,b)=>(a!=null&&b!=null&&b!==0)?a/b:null;
+  return {
+    cpi:div(ev,ac), spi:div(ev,pv),
+    cv:(ev!=null&&ac!=null)?ev-ac:null, sv:(ev!=null&&pv!=null)?ev-pv:null,
+    eacCalc:div(bac,div(ev,ac)),                                   // BAC ÷ CPI (referencia)
+    vac:(bac!=null&&eac!=null)?bac-eac:null,
+    tcpi:(bac!=null&&ev!=null&&ac!=null&&bac-ac!==0)?(bac-ev)/(bac-ac):null,
+    margen:(venta!=null&&eac!=null)?venta-eac:null,
+    margenPct:div((venta!=null&&eac!=null)?venta-eac:null,venta),
+    avanceEV:div(ev,bac), gastado:div(ac,bac)
+  };
+}
+// Mismo criterio de color que el SPI: >=0.95 controlado · >=0.80 riesgo medio · menor, crítico
+const evmColor=v=>v==null?'#888':v>=0.95?'#0F6E56':v>=0.8?'#B07A10':'#A32D2D';
+const evmLbl=v=>v==null?'Sin datos':v>=0.95?'Controlado':v>=0.8?'Riesgo medio':'Riesgo crítico';
+
+window.renderEVM=function(){
+  const cont=document.getElementById('admin-metrics-container');
+  if(!cont||!esCostos)return;
+  if(!document.getElementById('evm-form')){
+    cont.innerHTML=`
+      <div style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.5">
+        Ingresa los montos de cada fecha de corte en soles. El <b>EV es el valor ganado contractual por hitos</b> (de tu libro de Curva S/EVM):
+        no se calcula con las sedes validadas, porque el avance físico y el EVM contractual son métricas distintas.
+        Si registras una fecha que ya existe, se sobrescribe.
+      </div>
+      <div id="evm-resumen"></div>
+      <div id="evm-grafico-wrap" style="display:none;margin:18px 0 6px"><canvas id="chart-evm" style="width:100%;max-height:260px"></canvas></div>
+      <div id="evm-historial" style="margin-top:14px"></div>
+      <div id="evm-form" style="margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-weight:600;font-size:13px;margin-bottom:10px">Registrar corte</div>
+        <div class="form-grid">
+          <div><label class="label">Fecha de corte</label><input type="date" class="inp" id="evm-fecha"></div>
+          <div><label class="label">Nota (opcional)</label><input type="text" class="inp" id="evm-nota" placeholder="ej. Cierre contable agosto"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:10px">
+          ${EVM_CAMPOS.map(c=>`<div><label class="label">${c.lbl} (S/)</label><input type="text" inputmode="decimal" class="inp" id="evm-${c.k}" placeholder="0.00"></div>`).join('')}
+        </div>
+        <div id="evm-error" class="error"></div>
+        <div id="evm-ok" class="success-msg"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-primary" onclick="window.guardarCorteEVM()">Guardar corte</button>
+          <button class="btn" onclick="window.limpiarFormEVM()">Limpiar</button>
+        </div>
+      </div>`;
+    document.getElementById('evm-fecha').value=hoy();
+  }
+
+  const res=document.getElementById('evm-resumen'), hist=document.getElementById('evm-historial');
+  if(!evmCortes.length){
+    res.innerHTML='<div style="color:var(--text3);font-size:13px;padding:10px 0">Aún no hay cortes registrados. Ingresa el primero con el formulario de abajo.</div>';
+    hist.innerHTML=''; document.getElementById('evm-grafico-wrap').style.display='none';
+    return;
+  }
+  const u=evmCortes[evmCortes.length-1], k=evmCalc(u);
+  const tarjeta=(val,lbl,sub,color)=>`<div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--text3)">${lbl}</div>
+      <div style="font-size:24px;font-weight:700;color:${color||'var(--text)'};margin-top:4px">${val}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">${sub}</div></div>`;
+  const signo=n=>n==null?'var(--text)':n>=0?'#0F6E56':'#A32D2D';
+  const alertas=[];
+  if(u.ev!=null&&u.bac!=null&&u.ev>u.bac)alertas.push('El EV supera al BAC.');
+  if(u.pv!=null&&u.bac!=null&&u.pv>u.bac)alertas.push('El PV supera al BAC.');
+  if(u.eac!=null&&u.ac!=null&&u.eac<u.ac)alertas.push('El EAC es menor que el costo ya incurrido (AC).');
+  res.innerHTML=`
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Último corte: <b>${fmt(u.fecha)}</b>${u.nota?' · '+_esc(u.nota):''}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
+      ${tarjeta(evmI(k.cpi),'CPI · EV ÷ AC',evmLbl(k.cpi)+(k.cpi!=null?(k.cpi>=1?' · se gasta menos de lo ganado':' · se gasta más de lo ganado'):''),evmColor(k.cpi))}
+      ${tarjeta(evmI(k.spi),'SPI (EVM) · EV ÷ PV',evmLbl(k.spi)+' · contractual, no físico',evmColor(k.spi))}
+      ${tarjeta(evmS(k.cv),'Variación de costo (CV)','EV − AC',signo(k.cv))}
+      ${tarjeta(evmS(k.sv),'Variación de cronograma (SV)','EV − PV',signo(k.sv))}
+      ${tarjeta(evmS(u.eac),'EAC ingresado','al ritmo de costo actual sería '+evmS(k.eacCalc))}
+      ${tarjeta(evmS(k.vac),'VAC · BAC − EAC','sobrecosto si es negativo',signo(k.vac))}
+      ${tarjeta(evmI(k.tcpi),'TCPI','eficiencia necesaria para cerrar en el BAC',k.tcpi!=null&&k.tcpi>1.1?'#A32D2D':'var(--text)')}
+      ${tarjeta(evmS(k.margen),'Margen proyectado','Venta − EAC · '+evmP(k.margenPct)+' de la venta',signo(k.margen))}
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-top:10px;line-height:1.6">
+      Venta ${evmS(u.venta)} · BAC ${evmS(u.bac)} · PV ${evmS(u.pv)} · EV ${evmS(u.ev)} · AC ${evmS(u.ac)} ·
+      avance ganado ${evmP(k.avanceEV)} del BAC · gastado ${evmP(k.gastado)} del BAC
+    </div>
+    ${alertas.length?`<div style="margin-top:8px;font-size:12px;color:#92400E;background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:8px 10px">⚠ Revisa los datos: ${alertas.join(' ')}</div>`:''}`;
+
+  hist.innerHTML=`<div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">Historial de cortes</div>
+    <div style="overflow-x:auto"><table class="preview-table" style="width:100%;font-size:12px">
+      <thead><tr><th>Fecha</th><th>PV</th><th>EV</th><th>AC</th><th>CPI</th><th>SPI (EVM)</th><th>EAC</th><th>Registrado por</th><th></th></tr></thead>
+      <tbody>${evmCortes.slice().reverse().map(c=>{const x=evmCalc(c);return `<tr>
+        <td>${fmt(c.fecha)}</td><td>${evmS(c.pv)}</td><td>${evmS(c.ev)}</td><td>${evmS(c.ac)}</td>
+        <td style="color:${evmColor(x.cpi)};font-weight:600">${evmI(x.cpi)}</td>
+        <td style="color:${evmColor(x.spi)};font-weight:600">${evmI(x.spi)}</td>
+        <td>${evmS(c.eac)}</td><td>${_esc(c.registradoPor||'—')}</td>
+        <td style="white-space:nowrap"><button class="btn" style="font-size:11px;padding:2px 8px" onclick="window.editarCorteEVM('${c.id}')">✏️</button>
+            <button class="btn" style="font-size:11px;padding:2px 8px" onclick="window.borrarCorteEVM('${c.id}')">🗑</button></td></tr>`;}).join('')}</tbody>
+    </table></div>`;
+
+  // Gráfico CPI / SPI en el tiempo (desde 2 cortes)
+  const wrap=document.getElementById('evm-grafico-wrap');
+  if(chartEVM){chartEVM.destroy();chartEVM=null;}
+  if(evmCortes.length>=2&&window.Chart){
+    wrap.style.display='block';
+    const cal=evmCortes.map(evmCalc);
+    chartEVM=new Chart(document.getElementById('chart-evm'),{
+      type:'line',
+      data:{labels:evmCortes.map(c=>fmt(c.fecha)),datasets:[
+        {label:'CPI',data:cal.map(x=>x.cpi),borderColor:'#2a78d6',backgroundColor:'#2a78d6',borderWidth:2,tension:.2,pointRadius:3},
+        {label:'SPI (EVM)',data:cal.map(x=>x.spi),borderColor:'#898781',backgroundColor:'#898781',borderWidth:2,borderDash:[5,4],tension:.2,pointRadius:3}
+      ]},
+      options:{responsive:true,interaction:{mode:'index',intersect:false},
+        plugins:{legend:{position:'top',labels:{boxWidth:10,boxHeight:10}},
+          annotation:{annotations:{uno:{type:'line',yMin:1,yMax:1,borderColor:'#c3c2b7',borderWidth:1,
+            label:{content:'1.00',display:true,position:'start',backgroundColor:'rgba(0,0,0,0)',color:'#52514e',font:{size:10}}}}}},
+        scales:{y:{suggestedMin:0.6,suggestedMax:1.2,grid:{color:'#e1e0d9'}},x:{grid:{display:false}}}}
+    });
+  } else wrap.style.display='none';
+};
+
+window.limpiarFormEVM=function(){
+  ['nota',...EVM_CAMPOS.map(c=>c.k)].forEach(k=>{const e=document.getElementById('evm-'+k);if(e)e.value='';});
+  const f=document.getElementById('evm-fecha'); if(f)f.value=hoy();
+  ['evm-error','evm-ok'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
+};
+
+window.editarCorteEVM=function(id){
+  const c=evmCortes.find(x=>x.id===id); if(!c)return;
+  document.getElementById('evm-fecha').value=c.fecha;
+  document.getElementById('evm-nota').value=c.nota||'';
+  EVM_CAMPOS.forEach(f=>{document.getElementById('evm-'+f.k).value=c[f.k]!=null?c[f.k]:'';});
+  document.getElementById('evm-form').scrollIntoView({behavior:'smooth',block:'center'});
+};
+
+window.borrarCorteEVM=async function(id){
+  if(!esCostos)return;
+  if(!confirm('¿Eliminar el corte del '+fmt(id)+'? Esta acción no se puede deshacer.'))return;
+  try{await deleteDoc(doc(db,'evm_cortes',id));}catch(e){alert('No se pudo eliminar: '+e.message);}
+};
+
+window.guardarCorteEVM=async function(){
+  const err=document.getElementById('evm-error'), ok=document.getElementById('evm-ok');
+  err.style.display='none'; ok.style.display='none';
+  const fail=m=>{err.textContent=m;err.style.display='block';};
+  if(!esCostos)return fail('Tu usuario no tiene permiso para registrar costos.');
+  const fecha=document.getElementById('evm-fecha').value;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(fecha))return fail('Indica la fecha de corte.');
+  if(fecha>hoy())return fail('La fecha de corte no puede ser futura.');
+  const datos={fecha,nota:document.getElementById('evm-nota').value.trim()};
+  for(const c of EVM_CAMPOS){
+    const n=evmNum(document.getElementById('evm-'+c.k).value);
+    if(Number.isNaN(n))return fail('«'+c.lbl+'» no es un número válido.');
+    if(n!=null&&n<0)return fail('«'+c.lbl+'» no puede ser negativo.');
+    datos[c.k]=n;
+  }
+  const falta=['pv','ev','ac','bac'].filter(k=>datos[k]==null).map(k=>EVM_CAMPOS.find(c=>c.k===k).lbl);
+  if(falta.length)return fail('Faltan datos obligatorios para el CPI/SPI: '+falta.join(', ')+'.');
+  if(datos.ac===0)return fail('El costo real (AC) no puede ser 0: el CPI sería indeterminado.');
+  datos.registradoPor=usuarioActual?.email||'';
+  datos.ts=Date.now();
+  try{
+    await setDoc(doc(db,'evm_cortes',fecha),datos);
+    ok.textContent='Corte del '+fmt(fecha)+' guardado.'; ok.style.display='block';
+  }catch(e){fail('No se pudo guardar: '+(e.code||e.message)+'. Revisa las reglas de Firestore para «evm_cortes».');}
+};
 
 // ============================================================
 // PLANTILLA NUEVA: mapea columnas por NOMBRE (no por posición) y
