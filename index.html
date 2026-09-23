@@ -149,6 +149,35 @@
     <div style="font-size:11px;color:#898781;margin:-10px 0 16px">Cifras del proyecto completo (745 sedes). Los filtros del bloque «Avance de sedes» no afectan a esta tira.</div>
   </div>
 
+  <!-- ===== RELOJ DEL PROYECTO: las 3 fechas que deciden el contrato ===== -->
+  <div class="card viz" style="margin-bottom:16px">
+    <div class="card-title">Reloj del proyecto</div>
+    <div class="vz-sub">Las tres fechas que definen el contrato, y dónde estamos hoy respecto de ellas.</div>
+    <div id="vz-hitos"></div>
+    <div class="vz-read" id="vz-hitos-lectura"></div>
+  </div>
+
+  <!-- ===== ¿CÓMO VAMOS CONTRA EL PLAN? (una sola serie propia) ===== -->
+  <div class="card viz" style="margin-bottom:16px">
+    <div class="card-title">¿Cómo vamos contra el plan?</div>
+    <div class="vz-sub">Sedes validadas por nosotros (Ítem 3), acumuladas. La línea gris es el plan; la punteada, el ritmo que haría falta desde hoy para llegar al 03/12.</div>
+    <canvas id="chart-desp" style="width:100%;max-height:300px"></canvas>
+    <div class="vz-read" id="vz-lectura-plan"></div>
+  </div>
+
+  <!-- Semaforo -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+      <div class="card-title" style="margin:0">Semáforo de riesgo</div>
+      <button id="btn-limpiar-semaforo" style="display:none;font-size:11px;background:#FCEBEB;color:#791F1F;border:1px solid #E8B4B4;border-radius:6px;padding:4px 10px;cursor:pointer" onclick="window.limpiarDuplicadosSemaforo()">🧹 Limpiar duplicados</button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin:0 0 12px;line-height:1.5">Los ítems <b>automáticos</b> se recalculan solos cada vez que se sube la plantilla. Los <b>manuales</b> cubren lo que la plantilla no registra (cabeceras, LAN, puesta en marcha) y los edita un administrador.</div>
+    <div id="semaforo">Cargando...</div>
+  </div>
+
+  <!-- ===== SEPARADOR: de aquí hacia abajo, detalle operativo ===== -->
+  <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#898781;margin:26px 0 12px;padding-top:14px;border-top:1px solid #e1e0d9">Detalle operativo</div>
+
   <!-- ===== AVANCE DE SEDES (2026-09-23) — bloque filtrable: flujo, próxima atención, cierre e Ítems 1/2/5 ===== -->
   <div class="card" style="margin-bottom:16px" id="card-avance-sedes">
     <div class="flex-between flex-wrap gap-8 mb-12" style="align-items:flex-start">
@@ -235,32 +264,6 @@
     <div class="card-title">Gestión de tickets de alta</div>
     <div class="vz-sub">Fuente: hoja «Sedes para alta» de la plantilla. Requeridos = sedes validadas registradas en esa hoja.</div>
     <div id="tickets-contenido">Cargando...</div>
-  </div>
-
-  <!-- ===== RELOJ DEL PROYECTO: las 3 fechas que deciden el contrato ===== -->
-  <div class="card viz" style="margin-bottom:16px">
-    <div class="card-title">Reloj del proyecto</div>
-    <div class="vz-sub">Las tres fechas que definen el contrato, y dónde estamos hoy respecto de ellas.</div>
-    <div id="vz-hitos"></div>
-    <div class="vz-read" id="vz-hitos-lectura"></div>
-  </div>
-
-  <!-- ===== ¿CÓMO VAMOS CONTRA EL PLAN? (una sola serie propia) ===== -->
-  <div class="card viz" style="margin-bottom:16px">
-    <div class="card-title">¿Cómo vamos contra el plan?</div>
-    <div class="vz-sub">Sedes validadas por nosotros (Ítem 3), acumuladas. La línea gris es el plan; la punteada, el ritmo que haría falta desde hoy para llegar al 03/12.</div>
-    <canvas id="chart-desp" style="width:100%;max-height:300px"></canvas>
-    <div class="vz-read" id="vz-lectura-plan"></div>
-  </div>
-
-  <!-- Semaforo -->
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
-      <div class="card-title" style="margin:0">Semáforo de riesgo</div>
-      <button id="btn-limpiar-semaforo" style="display:none;font-size:11px;background:#FCEBEB;color:#791F1F;border:1px solid #E8B4B4;border-radius:6px;padding:4px 10px;cursor:pointer" onclick="window.limpiarDuplicadosSemaforo()">🧹 Limpiar duplicados</button>
-    </div>
-    <div style="font-size:12px;color:var(--text3);margin:0 0 12px;line-height:1.5">Los ítems <b>automáticos</b> se recalculan solos cada vez que se sube la plantilla. Los <b>manuales</b> cubren lo que la plantilla no registra (cabeceras, LAN, puesta en marcha) y los edita un administrador.</div>
-    <div id="semaforo">Cargando...</div>
   </div>
 
   <!-- ===== ¿DE QUIÉN DEPENDE QUE PODAMOS AVANZAR? (terceros, escala propia) ===== -->
