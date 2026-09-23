@@ -152,7 +152,7 @@
   <!-- ===== RELOJ DEL PROYECTO: las 3 fechas que deciden el contrato ===== -->
   <div class="card viz" style="margin-bottom:16px">
     <div class="card-title">Reloj del proyecto</div>
-    <div class="vz-sub">Las tres fechas que definen el contrato, y dónde estamos hoy respecto de ellas.</div>
+    <div class="vz-sub">Inicio del proyecto y las fechas que definen el contrato, y dónde estamos hoy respecto de ellas.</div>
     <div id="vz-hitos"></div>
     <div class="vz-read" id="vz-hitos-lectura"></div>
   </div>
@@ -165,14 +165,12 @@
     <div class="vz-read" id="vz-lectura-plan"></div>
   </div>
 
-  <!-- Semaforo -->
-  <div class="card" style="margin-bottom:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
-      <div class="card-title" style="margin:0">Semáforo de riesgo</div>
-      <button id="btn-limpiar-semaforo" style="display:none;font-size:11px;background:#FCEBEB;color:#791F1F;border:1px solid #E8B4B4;border-radius:6px;padding:4px 10px;cursor:pointer" onclick="window.limpiarDuplicadosSemaforo()">🧹 Limpiar duplicados</button>
-    </div>
-    <div style="font-size:12px;color:var(--text3);margin:0 0 12px;line-height:1.5">Los ítems <b>automáticos</b> se recalculan solos cada vez que se sube la plantilla. Los <b>manuales</b> cubren lo que la plantilla no registra (cabeceras, LAN, puesta en marcha) y los edita un administrador.</div>
-    <div id="semaforo">Cargando...</div>
+  <!-- ===== ¿DE QUIÉN DEPENDE QUE PODAMOS AVANZAR? (terceros, escala propia) ===== -->
+  <div class="card viz" style="margin-bottom:16px">
+    <div class="card-title">¿Nos habilitan más rápido de lo que validamos?</div>
+    <div class="vz-sub">Una sede entra a nuestro trabajo cuando tiene gabinete (Ítem 5) y al menos un enlace (Bitel o Claro). La línea azul es lo que hemos validado; la distancia hasta las líneas de arriba es trabajo que ya está disponible y no depende de nadie más.</div>
+    <canvas id="chart-terceros" style="width:100%;max-height:300px"></canvas>
+    <div class="vz-read" id="vz-lectura-terceros"></div>
   </div>
 
   <!-- ===== SEPARADOR: de aquí hacia abajo, detalle operativo ===== -->
@@ -266,12 +264,14 @@
     <div id="tickets-contenido">Cargando...</div>
   </div>
 
-  <!-- ===== ¿DE QUIÉN DEPENDE QUE PODAMOS AVANZAR? (terceros, escala propia) ===== -->
-  <div class="card viz" style="margin-bottom:16px">
-    <div class="card-title">¿Nos habilitan más rápido de lo que validamos?</div>
-    <div class="vz-sub">Una sede entra a nuestro trabajo cuando tiene gabinete (Ítem 5) y al menos un enlace (Bitel o Claro). La línea azul es lo que hemos validado; la distancia hasta las líneas de arriba es trabajo que ya está disponible y no depende de nadie más.</div>
-    <canvas id="chart-terceros" style="width:100%;max-height:300px"></canvas>
-    <div class="vz-read" id="vz-lectura-terceros"></div>
+  <!-- Semaforo -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+      <div class="card-title" style="margin:0">Semáforo de riesgo</div>
+      <button id="btn-limpiar-semaforo" style="display:none;font-size:11px;background:#FCEBEB;color:#791F1F;border:1px solid #E8B4B4;border-radius:6px;padding:4px 10px;cursor:pointer" onclick="window.limpiarDuplicadosSemaforo()">🧹 Limpiar duplicados</button>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin:0 0 12px;line-height:1.5">Los ítems <b>automáticos</b> se recalculan solos cada vez que se sube la plantilla. Los <b>manuales</b> cubren lo que la plantilla no registra (cabeceras, LAN, puesta en marcha) y los edita un administrador.</div>
+    <div id="semaforo">Cargando...</div>
   </div>
 
   <!-- KPIs rápidos — OCULTOS (se alimentaban del registro manual diario, sin uso desde julio).
@@ -4826,6 +4826,7 @@ cargarItemsExternos().then(()=>{
   const FIN_AP='2026-12-03';   // término propuesto con los 88 días de AP
   const FIN_LIC='2026-12-09';  // vence el período de gracia de licencias Fortinet
   const EJE_FIN='2027-01-10';   // margen a la derecha para que quepan las etiquetas de diciembre
+  const EJE_INI='2026-03-20';   // margen a la izquierda para que se vea el hito de inicio
   const D_=f=>new Date(f+'T00:00:00');
 
   // Ritmo de las últimas 4 semanas sobre un arreglo de fechas ISO
@@ -4875,10 +4876,11 @@ cargarItemsExternos().then(()=>{
             '<div class="s">'+c.s+'</div></div>').join('');
 
     // ---------- reloj del proyecto ----------
-    const t0=D_(INICIO).getTime(), t1=D_(EJE_FIN).getTime();
+    const t0=D_(EJE_INI).getTime(), t1=D_(EJE_FIN).getTime();
     const pos=t=>Math.max(0,Math.min(100,(t-t0)/(t1-t0)*100));
     const pHoy=pos(HOY.getTime());
     const hitos=[
+      {f:INICIO,      t:'Inicio del proyecto',c:'#52514e'},
       {f:FIN_CONTRATO,t:'Término contractual',c:'#d03b3b'},
       {f:FIN_AP,      t:'Término con AP',c:'#2a78d6'},
       {f:FIN_LIC,     t:'Gracia de licencias',c:'#fab219'}
@@ -4903,8 +4905,9 @@ cargarItemsExternos().then(()=>{
     const dVenc=dia(HOY,D_(FIN_CONTRATO));
     const dAP=dia(D_(FIN_AP),HOY);
     const dLic=dia(D_(FIN_LIC),HOY);
+    const dIni=dia(HOY,D_(INICIO));
     document.getElementById('vz-hitos-lectura').innerHTML=
-      'El plazo contractual venció hace <b>'+dVenc+' días</b> (06 sep). Con la Ampliación de Plazo solicitada '+
+      'Desde el inicio del proyecto (09 abr) han transcurrido <b>'+dIni+' días</b>. El plazo contractual venció hace <b>'+dVenc+' días</b> (06 sep). Con la Ampliación de Plazo solicitada '+
       'quedan <b>'+dAP+' días</b> para cerrar las <b>'+nf(faltan)+'</b> sedes que faltan, y <b>'+dLic+' días</b> '+
       'antes de que las licencias no activadas empiecen a consumir vigencia por sí solas.';
 
